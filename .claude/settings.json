@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "description": "업비트 시그널 프로그램 — 프로젝트 차원 Claude Code 설정. 사용자 글로벌 ~/.claude/CLAUDE.md §28.3 가이드 적용.",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ \"${CLAUDE_FILE_PATH##*.}\" = \"py\" ]; then uv run ruff check --fix \"$CLAUDE_FILE_PATH\"; fi"
+          },
+          {
+            "type": "command",
+            "command": "if [ \"${CLAUDE_FILE_PATH##*.}\" = \"py\" ]; then uv run ruff format \"$CLAUDE_FILE_PATH\"; fi"
+          }
+        ]
+      }
+    ]
+  },
+  "_notes": [
+    "Hooks는 .py 파일에만 동작. 다른 파일(.md, .json 등)에는 영향 없음.",
+    "uv가 미설치 또는 가상환경 미동기화면 명령이 실패할 수 있음 — 첫 실행 전 'uv sync' 필요.",
+    "mypy는 파일 단위보다 프로젝트 단위가 적합해 Hook이 아닌 CI에서 강제."
+  ]
+}

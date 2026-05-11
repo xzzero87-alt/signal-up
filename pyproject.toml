@@ -1,0 +1,67 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "signal-program"
+version = "0.1.0"
+description = "업비트 KRW 마켓 BB+CCI 시그널 프로그램 (자동매매 제외)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "httpx>=0.28,<1.0",
+    "pydantic>=2.9,<3.0",
+    "pydantic-settings>=2.6,<3.0",
+    "structlog>=24.4,<26.0",
+    "typer>=0.13,<1.0",
+    "rich>=13.9,<14.0",
+    "tzdata>=2024.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3,<9.0",
+    "pytest-cov>=6.0,<8.0",
+    "ruff>=0.7,<1.0",
+    "mypy>=1.13,<2.0",
+]
+
+[project.scripts]
+signal = "signal_program.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/signal_program"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "TCH"]
+ignore = ["B008"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["signal_program"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src"]
+strict = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+# stub 부재 라이브러리 — 마일스톤 진행 시 여기에 추가
+module = ["structlog.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 70
+show_missing = true

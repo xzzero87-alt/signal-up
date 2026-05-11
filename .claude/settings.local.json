@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "PowerShell(uv sync *)",
+      "PowerShell(uv run *)",
+      "PowerShell(cd \"C:\\\\Users\\\\user3\\\\Desktop\\\\VibeCoding\\\\signal-up\"; Get-ChildItem src -Recurse -Name | Where-Object { $_ -notmatch \"__pycache__\" } | Sort-Object)",
+      "Bash(uv sync *)",
+      "Bash(uv run *)",
+      "Bash(python -)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(TELEGRAM_BOT_TOKEN=\"9876543210:AAFfakeTokenForCodePathVerification01\" uv run signal doctor)",
+      "Bash(python *)",
+      "Bash(Select-String -Path pyproject.toml -Pattern \"overrides|ignore_missing|structlog|apscheduler|tenacity\")",
+      "Bash(Select-Object -First 20)",
+      "Bash(PYTHONIOENCODING=utf-8 uv run signal doctor)",
+      "Bash(PYTHONIOENCODING=utf-8 uv run ruff check src/ tests/)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}

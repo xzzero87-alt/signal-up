@@ -1,0 +1,12 @@
+data/
+state/
+reports/
+.env
+.env.*
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.log
+htmlcov/
+.venv/
