@@ -291,6 +291,87 @@ def test_cci_threshold_strong_controls_strength(
     assert buy_sigs[0].strength == expected_strength
 
 
+# ─── Phase 3: 모드 B property 테스트 ─────────────────────────────────────────
+
+@given(
+    closes=st.lists(
+        st.floats(min_value=100.0, max_value=100_000.0, allow_nan=False, allow_infinity=False),
+        min_size=160,
+        max_size=200,
+    ),
+    sq_lb=st.integers(min_value=50, max_value=150),
+)
+@settings(max_examples=50, deadline=5000)
+def test_property_mode_b_no_exception(closes: list[float], sq_lb: int) -> None:
+    """임의 시계열 + squeeze_lookback → 예외 없이 list[Signal] 반환 (0~2개)."""
+    strat = BbCciStrategy(squeeze_lookback=sq_lb)
+    candles = make_candles(closes)
+    result = strat.evaluate("KRW-BTC", candles)
+    assert isinstance(result, list)
+    assert len(result) <= 2
+    for s in result:
+        assert isinstance(s, Signal)
+
+
+@given(
+    closes=st.lists(
+        st.floats(min_value=100.0, max_value=100_000.0, allow_nan=False, allow_infinity=False),
+        min_size=160,
+        max_size=200,
+    ),
+    sq_q=st.floats(min_value=0.05, max_value=0.5, allow_nan=False),
+)
+@settings(max_examples=50, deadline=5000)
+def test_property_varying_squeeze_quantile(closes: list[float], sq_q: float) -> None:
+    """임의 squeeze_quantile → 예외 없음."""
+    strat = BbCciStrategy(squeeze_quantile=sq_q)
+    candles = make_candles(closes)
+    result = strat.evaluate("KRW-BTC", candles)
+    assert isinstance(result, list)
+
+
+def test_property_simultaneous_signals_have_different_modes() -> None:
+    """A·B 동시 트리거 시 두 Signal의 mode가 서로 다르고 market·triggered_at 동일."""
+    # squeeze BUY data: close>bb_upper AND is_squeeze AND cci>100
+    # → Mode A SELL (MEAN_REVERSION) + Mode B BUY (SQUEEZE_BREAKOUT)
+    result = STRAT_B.evaluate("KRW-BTC", _sq_buy_candles(vol_ratio=1.8))
+    assert len(result) == 2
+    m0, m1 = result[0].mode, result[1].mode
+    assert m0 != m1
+    assert result[0].market == result[1].market
+    assert result[0].triggered_at == result[1].triggered_at
+
+
+# ─── Phase 3: 모드 B parametrize ─────────────────────────────────────────────
+
+@pytest.mark.parametrize("sq_q,expect_squeeze", [
+    (0.10, True),   # narrow quantile: still squeezes (qpct=0.025 ≤ 0.10)
+    (0.20, True),   # default: squeezes
+    (0.30, True),   # wider quantile: also squeezes
+])
+def test_b_squeeze_quantile_controls_detection(sq_q: float, expect_squeeze: bool) -> None:
+    """squeeze_quantile 변화에 따른 스퀴즈 감지 여부."""
+    strat = BbCciStrategy(squeeze_quantile=sq_q)
+    candles = _sq_buy_candles(vol_ratio=1.8)
+    result = strat.evaluate("KRW-BTC", candles)
+    b = [s for s in result if s.mode == StrategyMode.SQUEEZE_BREAKOUT]
+    assert bool(b) == expect_squeeze
+
+
+@pytest.mark.parametrize("vol_min_b,expect_b_signal", [
+    (1.0, True),   # 1.0 ≤ vol_ratio(1.8) → B 시그널
+    (1.5, True),   # 1.5 ≤ 1.8 → B 시그널
+    (2.0, False),  # 2.0 > 1.8 → B 시그널 없음
+])
+def test_b_volume_ratio_min_controls_signal(vol_min_b: float, expect_b_signal: bool) -> None:
+    """volume_ratio_min_b 변화에 따른 모드 B 시그널 유무 (vol_ratio=1.8)."""
+    strat = BbCciStrategy(volume_ratio_min_b=vol_min_b)
+    candles = _sq_buy_candles(vol_ratio=1.8)
+    result = strat.evaluate("KRW-BTC", candles)
+    b = [s for s in result if s.mode == StrategyMode.SQUEEZE_BREAKOUT]
+    assert bool(b) == expect_b_signal
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Phase 1/2 — 모드 B 스퀴즈 돌파 시나리오 12종
 # ═══════════════════════════════════════════════════════════════════════════════
