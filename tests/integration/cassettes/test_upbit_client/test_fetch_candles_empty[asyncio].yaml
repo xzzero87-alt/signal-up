@@ -1,0 +1,48 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      Accept:
+      - '*/*'
+      Accept-Encoding:
+      - gzip, deflate
+      Connection:
+      - keep-alive
+      Host:
+      - api.upbit.com
+      User-Agent:
+      - python-httpx/0.28.1
+    method: GET
+    uri: https://api.upbit.com/v1/candles/minutes/60?market=KRW-BTC&count=200&to=2016-01-01T00%3A00%3A00
+  response:
+    body:
+      string: '[]'
+    headers:
+      Cache-Control:
+      - no-cache, no-store, max-age=0, must-revalidate
+      Connection:
+      - keep-alive
+      Content-Length:
+      - '2'
+      Content-Type:
+      - application/json;charset=UTF-8
+      Date:
+      - Tue, 12 May 2026 02:36:51 GMT
+      ETag:
+      - W/"0d751713988987e9331980363e24189ce"
+      Expires:
+      - '0'
+      Limit-By-Ip:
+      - 'Yes'
+      Pragma:
+      - no-cache
+      Remaining-Req:
+      - group=candles; min=600; sec=8
+      Vary:
+      - Origin
+      - Access-Control-Request-Method
+      - Access-Control-Request-Headers
+    status:
+      code: 200
+      message: ''
+version: 1

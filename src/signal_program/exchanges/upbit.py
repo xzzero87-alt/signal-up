@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+from zoneinfo import ZoneInfo
 
 import httpx
 import structlog
@@ -14,6 +15,12 @@ if TYPE_CHECKING:
 
 log = structlog.get_logger()
 _BASE_URL = "https://api.upbit.com"
+_KST = ZoneInfo("Asia/Seoul")
+
+
+def _log_rate_limit(resp: httpx.Response, market: str = "") -> None:
+    if remaining := resp.headers.get("Remaining-Req"):
+        log.debug("upbit.rate_limit", remaining_req=remaining, market=market)
 
 
 class UpbitClient:
@@ -31,7 +38,11 @@ class UpbitClient:
         self._sem = asyncio.Semaphore(5)
 
     async def list_krw_markets(self) -> list[str]:
-        raise NotImplementedError
+        async with self._sem:
+            resp = await self._client.get("/v1/market/all", params={"isDetails": "false"})
+            resp.raise_for_status()
+            _log_rate_limit(resp)
+        return [item["market"] for item in resp.json() if item["market"].startswith("KRW-")]
 
     async def fetch_candles(
         self,
@@ -40,7 +51,34 @@ class UpbitClient:
         count: int,
         to: datetime | None = None,
     ) -> list[Candle]:
-        raise NotImplementedError
+        from datetime import datetime as _dt
+
+        from signal_program.models import Candle as CandleModel
+
+        params: dict[str, Any] = {"market": market, "count": count}
+        if to is not None:
+            params["to"] = to.strftime("%Y-%m-%dT%H:%M:%S")
+
+        unit = str(timeframe)  # Timeframe.HOUR_1 → "60"
+
+        async with self._sem:
+            resp = await self._client.get(f"/v1/candles/minutes/{unit}", params=params)
+            resp.raise_for_status()
+            _log_rate_limit(resp, market=market)
+
+        return [
+            CandleModel(
+                market=raw["market"],
+                opened_at=_dt.fromisoformat(raw["candle_date_time_kst"]).replace(tzinfo=_KST),
+                open=float(raw["opening_price"]),
+                high=float(raw["high_price"]),
+                low=float(raw["low_price"]),
+                close=float(raw["trade_price"]),
+                volume=float(raw["candle_acc_trade_volume"]),
+                quote_volume=float(raw["candle_acc_trade_price"]),
+            )
+            for raw in resp.json()
+        ]
 
     async def aclose(self) -> None:
         await self._client.aclose()
