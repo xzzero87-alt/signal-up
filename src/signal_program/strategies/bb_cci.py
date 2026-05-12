@@ -28,6 +28,9 @@ class BbCciStrategy:
         cci_threshold_strong: int = 200,
         volume_ratio_min_a: float = 1.0,
         volume_lookback: int = 20,
+        squeeze_lookback: int = 120,
+        squeeze_quantile: float = 0.20,
+        volume_ratio_min_b: float = 1.5,
     ) -> None:
         self.bb_period = bb_period
         self.bb_std_mult = bb_std_mult
@@ -36,10 +39,13 @@ class BbCciStrategy:
         self.cci_threshold_strong = cci_threshold_strong
         self.volume_ratio_min_a = volume_ratio_min_a
         self.volume_lookback = volume_lookback
+        self.squeeze_lookback = squeeze_lookback
+        self.squeeze_quantile = squeeze_quantile
+        self.volume_ratio_min_b = volume_ratio_min_b
 
     def evaluate(self, market: str, candles: pd.DataFrame) -> list[Signal]:
-        min_len = max(self.bb_period, self.cci_period) + self.volume_lookback
-        if len(candles) < min_len:
+        min_len_a = max(self.bb_period, self.cci_period) + self.volume_lookback
+        if len(candles) < min_len_a:
             return []
 
         close = candles["close"]

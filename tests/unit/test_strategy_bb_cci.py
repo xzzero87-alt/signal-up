@@ -1,4 +1,4 @@
-"""BbCciStrategy 모드 A — TDD RED → GREEN 시나리오 13종 + Hypothesis property."""
+"""BbCciStrategy 모드 A/B — TDD RED → GREEN 시나리오 + Hypothesis property."""
 from __future__ import annotations
 
 import math
@@ -289,3 +289,206 @@ def test_cci_threshold_strong_controls_strength(
     buy_sigs = [s for s in result if s.direction == SignalDirection.BUY]
     assert len(buy_sigs) == 1
     assert buy_sigs[0].strength == expected_strength
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Phase 1/2 — 모드 B 스퀴즈 돌파 시나리오 12종
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# 데이터 구조 (n=160봉):
+#   Bars 0-39  : wide osc (amp=2000, warmup, ref 밖)
+#   Bars 40-59 : ultra-flat 10000 (ref 내, width≈0 — NORMAL strength용)
+#   Bars 60-139: wide osc (amp=2000, ref 내, large widths)
+#   Bars 140-158: tight base (amp=30) — 스퀴즈 구간
+#   Bar 159    : spike (close_last)
+#
+# Probe 결과 (STRAT_B 기본값 기준):
+#   BUY: close=10200, bb_upper=10166.7, cci=285.7, vol=1.80 → STRONG (qpct=0.025≤0.10)
+#   SELL: close=9800,  bb_lower=9836.0,  cci=-288.1, vol=1.80 → STRONG
+#   no-sq BUY 부정: 60봉 osc only → is_squeeze=False
+#   no-breakout: amp=100 tight, close=10200 < bb_upper=10253 → 돌파 미달
+
+
+def _sq_buy_candles(vol_ratio: float = 1.8, close_last: float = 10_200.0) -> pd.DataFrame:
+    """스퀴즈 + BUY 돌파 합성 캔들 (n=160).
+
+    구조: 40 warmup + 20 ultra-flat + 80 wide + 19 tight + 1 spike.
+    close_last > bb_upper(≈10167), is_squeeze=True, cci≈+286.
+    """
+    n = 160
+    closes = (
+        [10_000 + 2000 * math.sin(i * 0.4) for i in range(40)]
+        + [10_000.0] * 20
+        + [10_000 + 2000 * math.sin(i * 0.4) for i in range(80)]
+        + [10_100 + 30 * math.sin(i * 0.4) for i in range(19)]
+        + [close_last]
+    )
+    volumes = [1.0] * n
+    volumes[-1] = vol_ratio * (sum(volumes[-21:-1]) / 20)
+    return make_candles(closes, volumes)
+
+
+def _sq_sell_candles(vol_ratio: float = 1.8, close_last: float = 9_800.0) -> pd.DataFrame:
+    """스퀴즈 + SELL 이탈 합성 캔들 (n=160).
+
+    구조: 40 warmup + 20 ultra-flat + 80 wide + 19 tight + 1 spike.
+    close_last < bb_lower(≈9836), is_squeeze=True, cci≈-288.
+    """
+    n = 160
+    closes = (
+        [10_000 + 2000 * math.sin(i * 0.4) for i in range(40)]
+        + [10_000.0] * 20
+        + [10_000 + 2000 * math.sin(i * 0.4) for i in range(80)]
+        + [9_900 + 30 * math.sin(i * 0.4) for i in range(19)]
+        + [close_last]
+    )
+    volumes = [1.0] * n
+    volumes[-1] = vol_ratio * (sum(volumes[-21:-1]) / 20)
+    return make_candles(closes, volumes)
+
+
+def _no_sq_candles(close_last: float = 10_500.0, vol_ratio: float = 1.8) -> pd.DataFrame:
+    """스퀴즈 아닌 데이터 (60봉 oscillating). is_squeeze=False."""
+    n = 60
+    closes = _oscillating_closes(n)
+    closes[-1] = close_last
+    volumes = [1.0] * n
+    volumes[-1] = vol_ratio * (sum(volumes[-21:-1]) / 20)
+    return make_candles(closes, volumes)
+
+
+def _no_breakout_candles(vol_ratio: float = 1.8) -> pd.DataFrame:
+    """스퀴즈 있으나 돌파 미달 (close < bb_upper).
+
+    amp=100 tight → bb_upper≈10253, close=10200 < bb_upper.
+    """
+    n = 160
+    closes = (
+        [10_000 + 2000 * math.sin(i * 0.4) for i in range(40)]
+        + [10_000.0] * 20
+        + [10_000 + 2000 * math.sin(i * 0.4) for i in range(80)]
+        + [10_100 + 100 * math.sin(i * 0.4) for i in range(19)]
+        + [10_200.0]
+    )
+    volumes = [1.0] * n
+    volumes[-1] = vol_ratio * (sum(volumes[-21:-1]) / 20)
+    return make_candles(closes, volumes)
+
+
+STRAT_B = BbCciStrategy()
+
+
+def _eval_b(candles: pd.DataFrame) -> list:
+    return STRAT_B.evaluate("KRW-BTC", candles)
+
+
+def _b_sigs(result: list) -> list:
+    return [s for s in result if s.mode == StrategyMode.SQUEEZE_BREAKOUT]
+
+
+# ─── (a) BUY STRONG by quantile (vol=1.8, qpct≈0.025 ≤ 0.10) ───────────────
+def test_b_buy_strong_by_quantile() -> None:
+    result = _eval_b(_sq_buy_candles(vol_ratio=1.8))
+    b = _b_sigs(result)
+    assert len(b) == 1
+    assert b[0].direction == SignalDirection.BUY
+    assert b[0].strength == SignalStrength.STRONG
+    assert b[0].mode == StrategyMode.SQUEEZE_BREAKOUT
+    assert b[0].market == "KRW-BTC"
+    assert b[0].indicators.bb_width_quantile is not None
+    assert b[0].triggered_at.tzinfo is not None
+
+
+# ─── (b) BUY STRONG by vol=2.5 ──────────────────────────────────────────────
+def test_b_buy_strong_by_volume() -> None:
+    result = _eval_b(_sq_buy_candles(vol_ratio=2.5))
+    b = _b_sigs(result)
+    assert len(b) == 1
+    assert b[0].direction == SignalDirection.BUY
+    assert b[0].strength == SignalStrength.STRONG
+
+
+# ─── (c) BUY 부정 — 스퀴즈 아님 ─────────────────────────────────────────────
+def test_b_buy_negative_no_squeeze() -> None:
+    candles = _no_sq_candles(close_last=10_500.0)
+    b = _b_sigs(_eval_b(candles))
+    assert len(b) == 0
+
+
+# ─── (d) BUY 부정 — 돌파 미달 (close ≤ bb_upper) ─────────────────────────
+def test_b_buy_negative_no_breakout() -> None:
+    b = _b_sigs(_eval_b(_no_breakout_candles()))
+    assert len(b) == 0
+
+
+# ─── (e) BUY 부정 — vol < 1.5 ───────────────────────────────────────────────
+def test_b_buy_negative_volume_low() -> None:
+    b = _b_sigs(_eval_b(_sq_buy_candles(vol_ratio=1.0)))
+    assert len(b) == 0
+
+
+# ─── (f) SELL STRONG by quantile ────────────────────────────────────────────
+def test_b_sell_strong_by_quantile() -> None:
+    result = _eval_b(_sq_sell_candles(vol_ratio=1.8))
+    b = _b_sigs(result)
+    assert len(b) == 1
+    assert b[0].direction == SignalDirection.SELL
+    assert b[0].strength == SignalStrength.STRONG
+    assert b[0].mode == StrategyMode.SQUEEZE_BREAKOUT
+    assert b[0].indicators.bb_width_quantile is not None
+
+
+# ─── (g) SELL STRONG by vol=2.5 ─────────────────────────────────────────────
+def test_b_sell_strong_by_volume() -> None:
+    result = _eval_b(_sq_sell_candles(vol_ratio=2.5))
+    b = _b_sigs(result)
+    assert len(b) == 1
+    assert b[0].direction == SignalDirection.SELL
+    assert b[0].strength == SignalStrength.STRONG
+
+
+# ─── (h) SELL 부정 — 스퀴즈 아님 ────────────────────────────────────────────
+def test_b_sell_negative_no_squeeze() -> None:
+    candles = _no_sq_candles(close_last=9_500.0)
+    b = _b_sigs(_eval_b(candles))
+    assert len(b) == 0
+
+
+# ─── (i) SELL 부정 — 이탈 미달 (close ≥ bb_lower) ───────────────────────
+def test_b_sell_negative_no_breakdown() -> None:
+    # close=9900: from probe, bb_lower≈9836 → 9900 > 9836 → 이탈 미달
+    b = _b_sigs(_eval_b(_sq_sell_candles(close_last=9_900.0)))
+    assert len(b) == 0
+
+
+# ─── (j) SELL 부정 — vol < 1.5 ──────────────────────────────────────────────
+def test_b_sell_negative_volume_low() -> None:
+    b = _b_sigs(_eval_b(_sq_sell_candles(vol_ratio=1.0)))
+    assert len(b) == 0
+
+
+# ─── (k) A·B 동시 트리거 ─────────────────────────────────────────────────────
+# squeeze + close > bb_upper + cci > 100 + vol >= 1.0
+# → Mode A SELL (MEAN_REVERSION) + Mode B BUY (SQUEEZE_BREAKOUT) 동시 발생
+def test_ab_simultaneous_two_signals() -> None:
+    # _sq_buy_candles: close=10200>bb_upper≈10167, cci≈+286, is_squeeze=True
+    # Mode A SELL: close≥bb_upper ✓, cci≥100 ✓, vol≥1.0 ✓
+    # Mode B BUY:  is_squeeze ✓, close>bb_upper ✓, cci>100 ✓, vol≥1.5 ✓
+    result = _eval_b(_sq_buy_candles(vol_ratio=1.8))
+    assert len(result) == 2
+    modes = {s.mode for s in result}
+    assert StrategyMode.MEAN_REVERSION in modes
+    assert StrategyMode.SQUEEZE_BREAKOUT in modes
+    mkt = {s.market for s in result}
+    ts  = {s.triggered_at for s in result}
+    assert len(mkt) == 1  # 동일 market
+    assert len(ts) == 1   # 동일 triggered_at
+
+
+# ─── (l) bb_width_quantile 검증 ─────────────────────────────────────────────
+def test_b_buy_bb_width_quantile_not_none() -> None:
+    result = _eval_b(_sq_buy_candles())
+    b = _b_sigs(result)
+    assert len(b) == 1
+    assert b[0].indicators.bb_width_quantile is not None
+    assert 0.0 <= b[0].indicators.bb_width_quantile <= 1.0
