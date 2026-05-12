@@ -79,9 +79,18 @@ class BbCciStrategy:
         if buy_a is not None:
             signals.append(
                 self._build_signal(
-                    market, buy_a, close_last, dt,
-                    bb_upper, bb_middle, bb_lower, bb_width, bb_pct_b,
-                    cci_val, volume_ratio, bb_width_quantile=None,
+                    market,
+                    buy_a,
+                    close_last,
+                    dt,
+                    bb_upper,
+                    bb_middle,
+                    bb_lower,
+                    bb_width,
+                    bb_pct_b,
+                    cci_val,
+                    volume_ratio,
+                    bb_width_quantile=None,
                     mode=StrategyMode.MEAN_REVERSION,
                 )
             )
@@ -90,9 +99,18 @@ class BbCciStrategy:
         if sell_a is not None:
             signals.append(
                 self._build_signal(
-                    market, sell_a, close_last, dt,
-                    bb_upper, bb_middle, bb_lower, bb_width, bb_pct_b,
-                    cci_val, volume_ratio, bb_width_quantile=None,
+                    market,
+                    sell_a,
+                    close_last,
+                    dt,
+                    bb_upper,
+                    bb_middle,
+                    bb_lower,
+                    bb_width,
+                    bb_pct_b,
+                    cci_val,
+                    volume_ratio,
+                    bb_width_quantile=None,
                     mode=StrategyMode.MEAN_REVERSION,
                 )
             )
@@ -107,30 +125,56 @@ class BbCciStrategy:
             bb_width_quantile = float(recent.rank(pct=True).iloc[-1])
 
             buy_b = self._check_squeeze_buy(
-                close_last, bb_upper, cci_val, volume_ratio,
-                is_squeeze, bb_width, recent,
+                close_last,
+                bb_upper,
+                cci_val,
+                volume_ratio,
+                is_squeeze,
+                bb_width,
+                recent,
             )
             if buy_b is not None:
                 signals.append(
                     self._build_signal(
-                        market, buy_b, close_last, dt,
-                        bb_upper, bb_middle, bb_lower, bb_width, bb_pct_b,
-                        cci_val, volume_ratio,
+                        market,
+                        buy_b,
+                        close_last,
+                        dt,
+                        bb_upper,
+                        bb_middle,
+                        bb_lower,
+                        bb_width,
+                        bb_pct_b,
+                        cci_val,
+                        volume_ratio,
                         bb_width_quantile=bb_width_quantile,
                         mode=StrategyMode.SQUEEZE_BREAKOUT,
                     )
                 )
 
             sell_b = self._check_squeeze_sell(
-                close_last, bb_lower, cci_val, volume_ratio,
-                is_squeeze, bb_width, recent,
+                close_last,
+                bb_lower,
+                cci_val,
+                volume_ratio,
+                is_squeeze,
+                bb_width,
+                recent,
             )
             if sell_b is not None:
                 signals.append(
                     self._build_signal(
-                        market, sell_b, close_last, dt,
-                        bb_upper, bb_middle, bb_lower, bb_width, bb_pct_b,
-                        cci_val, volume_ratio,
+                        market,
+                        sell_b,
+                        close_last,
+                        dt,
+                        bb_upper,
+                        bb_middle,
+                        bb_lower,
+                        bb_width,
+                        bb_pct_b,
+                        cci_val,
+                        volume_ratio,
                         bb_width_quantile=bb_width_quantile,
                         mode=StrategyMode.SQUEEZE_BREAKOUT,
                     )
@@ -186,7 +230,7 @@ class BbCciStrategy:
         volume_ratio: float,
         is_squeeze: bool,
         bb_width: float,
-        recent_widths: pd.Series,  # type: ignore[type-arg]
+        recent_widths: pd.Series,
     ) -> tuple[SignalDirection, SignalStrength] | None:
         if not (
             is_squeeze
@@ -211,7 +255,7 @@ class BbCciStrategy:
         volume_ratio: float,
         is_squeeze: bool,
         bb_width: float,
-        recent_widths: pd.Series,  # type: ignore[type-arg]
+        recent_widths: pd.Series,
     ) -> tuple[SignalDirection, SignalStrength] | None:
         if not (
             is_squeeze
