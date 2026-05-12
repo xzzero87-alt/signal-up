@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
 import pandas as pd
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 from signal_program.enums import SignalDirection, SignalStrength, StrategyMode, Timeframe
 from signal_program.indicators.bollinger import bollinger
@@ -58,10 +62,7 @@ class BbCciStrategy:
         volume_ratio = float(volume.iloc[-1]) / vol_mean if vol_mean > 0 else 0.0
 
         raw_ts = candles["opened_at"].iloc[-1]
-        if isinstance(raw_ts, pd.Timestamp):
-            dt = raw_ts.to_pydatetime()
-        else:
-            dt = raw_ts  # type: ignore[assignment]
+        dt = raw_ts.to_pydatetime() if isinstance(raw_ts, pd.Timestamp) else raw_ts
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=_KST)
 
@@ -71,9 +72,17 @@ class BbCciStrategy:
         if buy is not None:
             signals.append(
                 self._build_signal(
-                    market, buy, close_last, dt,
-                    bb_upper, bb_middle, bb_lower, bb_width, bb_pct_b,
-                    cci_val, volume_ratio,
+                    market,
+                    buy,
+                    close_last,
+                    dt,
+                    bb_upper,
+                    bb_middle,
+                    bb_lower,
+                    bb_width,
+                    bb_pct_b,
+                    cci_val,
+                    volume_ratio,
                 )
             )
 
@@ -81,9 +90,17 @@ class BbCciStrategy:
         if sell is not None:
             signals.append(
                 self._build_signal(
-                    market, sell, close_last, dt,
-                    bb_upper, bb_middle, bb_lower, bb_width, bb_pct_b,
-                    cci_val, volume_ratio,
+                    market,
+                    sell,
+                    close_last,
+                    dt,
+                    bb_upper,
+                    bb_middle,
+                    bb_lower,
+                    bb_width,
+                    bb_pct_b,
+                    cci_val,
+                    volume_ratio,
                 )
             )
 
@@ -143,8 +160,6 @@ class BbCciStrategy:
         cci_val: float,
         volume_ratio: float,
     ) -> Signal:
-        from datetime import datetime
-
         direction, strength = direction_strength
         dt: datetime = triggered_at  # type: ignore[assignment]
 
