@@ -62,6 +62,7 @@ class _AsyncMockTransport(httpx.AsyncBaseTransport):
         self.requests: list[httpx.Request] = []
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        await request.aread()  # streaming body (multipart 등) 읽기 완료
         self.requests.append(request)
         return self._handler(request)
 
@@ -300,3 +301,87 @@ def test_hypothesis_format_message_no_exception(
     assert len(text) > 0
     # 토큰 패턴 미포함
     assert not re.search(r"\d{5,}:[A-Za-z0-9_\-]{10,}", text)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Phase 2(M8) — sendPhoto 시나리오 4종
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32  # 최소 fake PNG
+
+
+def _make_chart_file(tmp_path: Path, name: str = "chart.png") -> Path:
+    f = tmp_path / name
+    f.write_bytes(_PNG_BYTES)
+    return f
+
+
+# (M8-a) chart_path 정상 → sendPhoto multipart 호출
+async def test_sendphoto_calls_sendphoto_endpoint(signal: Signal, tmp_path: Path) -> None:
+    chart = _make_chart_file(tmp_path)
+    tr = make_transport(200, _OK_BODY)
+    notifier = make_notifier(tr)
+    await notifier.send_signal(signal, chart_path=chart)
+
+    assert len(tr.requests) == 1
+    req = tr.requests[0]
+    assert "/sendPhoto" in str(req.url)
+    ct = req.headers.get("content-type", "")
+    assert "multipart/form-data" in ct
+    # caption 필드 이름이 바디에 존재
+    assert b"caption" in req.content
+
+
+# (M8-b) chart_path=None → M7 sendMessage 경로
+async def test_no_chart_path_uses_sendmessage(signal: Signal) -> None:
+    tr = make_transport(200, _OK_BODY)
+    notifier = make_notifier(tr)
+    await notifier.send_signal(signal, chart_path=None)
+
+    assert len(tr.requests) == 1
+    assert "/sendMessage" in str(tr.requests[0].url)
+
+
+# (M8-c) sendPhoto 5xx → sendMessage fallback
+async def test_sendphoto_5xx_falls_back_to_sendmessage(signal: Signal, tmp_path: Path) -> None:
+    chart = _make_chart_file(tmp_path)
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        if "/sendPhoto" in str(req.url):
+            return httpx.Response(503, json={"ok": False})
+        return httpx.Response(200, json=_OK_BODY)
+
+    tr = _AsyncMockTransport(handler)
+    notifier = make_notifier(tr, max_retries=3)
+    with structlog.testing.capture_logs() as cap:
+        await notifier.send_signal(signal, chart_path=chart)
+
+    photo_reqs = [r for r in tr.requests if "/sendPhoto" in str(r.url)]
+    msg_reqs = [r for r in tr.requests if "/sendMessage" in str(r.url)]
+    assert len(photo_reqs) == 3   # sendPhoto 3회 재시도 후 소진
+    assert len(msg_reqs) == 1     # sendMessage fallback 1회
+    # fallback warning 로그 확인
+    assert any("sendPhoto_failed_fallback" in str(e) for e in cap)
+
+
+# (M8-d) caption 1024자 초과 → 잘림 + warning 로그
+async def test_sendphoto_caption_truncated(signal: Signal, tmp_path: Path) -> None:
+    from unittest.mock import patch
+
+    chart = _make_chart_file(tmp_path)
+    long_text = "가" * 600  # 6*(2) = probably > 1024 bytes but let's use pure ASCII
+    long_text = "x" * 1100  # 1100 chars > 1024
+
+    tr = make_transport(200, _OK_BODY)
+    notifier = make_notifier(tr)
+
+    with patch("signal_program.notifiers.telegram.format_message", return_value=long_text):
+        with structlog.testing.capture_logs() as cap:
+            await notifier.send_signal(signal, chart_path=chart)
+
+    assert len(tr.requests) == 1
+    body = tr.requests[0].content
+    # caption 값이 잘렸는지 확인 — "x" * 1021 + "..." = 1024자
+    assert body.count(b"x" * 10) > 0   # 잘린 caption 일부 포함
+    assert b"x" * 1050 not in body      # 1050자 연속 없음 (잘림 확인)
+    assert any("caption_truncated" in str(e) for e in cap)

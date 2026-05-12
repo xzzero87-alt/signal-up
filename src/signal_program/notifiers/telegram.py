@@ -24,6 +24,7 @@ log = structlog.get_logger()
 
 _BASE_URL = "https://api.telegram.org"
 _MAX_TEXT_LEN = 4096
+_MAX_CAPTION_LEN = 1024
 
 _MODE_LABEL: dict[str, str] = {
     StrategyMode.MEAN_REVERSION.value: "평균회귀",
@@ -105,12 +106,14 @@ class TelegramNotifier:
             )
             return
 
-        # TODO(M8): chart_path → sendPhoto 분기 추가
-        text = format_message(signal)
-        # 토큰은 URL 구성 시에만 꺼냄 — 로그·예외에 절대 출력 금지
-        url = f"{_BASE_URL}/bot{self._token.get_secret_value()}/sendMessage"
-        payload = {"chat_id": self._chat_id, "text": text}
-        await self._send_with_retry(url, payload)
+        if chart_path is not None and chart_path.exists():
+            await self._send_photo(chart_path, signal)
+        else:
+            text = format_message(signal)
+            # 토큰은 URL 구성 시에만 꺼냄 — 로그·예외에 절대 출력 금지
+            url = f"{_BASE_URL}/bot{self._token.get_secret_value()}/sendMessage"
+            payload = {"chat_id": self._chat_id, "text": text}
+            await self._send_with_retry(url, payload)
 
     async def _send_with_retry(self, url: str, payload: dict[str, str]) -> None:
         client = self._client or httpx.AsyncClient()
@@ -151,3 +154,53 @@ class TelegramNotifier:
             max_retries=self._max_retries,
             chat_id=self._chat_id,
         )
+
+    async def _send_photo(self, chart_path: Path, signal: Signal) -> None:
+        """sendPhoto (multipart). 실패 시 sendMessage fallback."""
+        caption = format_message(signal)
+        if len(caption) > _MAX_CAPTION_LEN:
+            log.warning("telegram.caption_truncated", original_len=len(caption))
+            caption = caption[: _MAX_CAPTION_LEN - 3] + "..."
+
+        url = f"{_BASE_URL}/bot{self._token.get_secret_value()}/sendPhoto"
+        photo_bytes = chart_path.read_bytes()
+        client = self._client or httpx.AsyncClient()
+        success = False
+
+        for attempt in range(1, self._max_retries + 1):
+            try:
+                resp = await client.post(
+                    url,
+                    data={"chat_id": self._chat_id, "caption": caption},
+                    files={"photo": ("chart.png", photo_bytes, "image/png")},
+                    timeout=self._timeout,
+                )
+                if resp.status_code == 200:
+                    success = True
+                    return
+                if 500 <= resp.status_code < 600:
+                    log.warning(
+                        "telegram.photo_5xx",
+                        attempt=attempt,
+                        status=resp.status_code,
+                        chat_id=self._chat_id,
+                    )
+                    if attempt < self._max_retries:
+                        await asyncio.sleep(self._retry_mult * (2 ** (attempt - 1)))
+                    continue
+                break  # 4xx: 재시도 없음
+            except (httpx.NetworkError, httpx.TimeoutException) as exc:
+                log.warning(
+                    "telegram.photo_network_error",
+                    attempt=attempt,
+                    exc=type(exc).__name__,
+                    chat_id=self._chat_id,
+                )
+                if attempt < self._max_retries:
+                    await asyncio.sleep(self._retry_mult * (2 ** (attempt - 1)))
+
+        if not success:
+            log.warning("telegram.sendPhoto_failed_fallback", chat_id=self._chat_id)
+            text = format_message(signal)
+            msg_url = f"{_BASE_URL}/bot{self._token.get_secret_value()}/sendMessage"
+            await self._send_with_retry(msg_url, {"chat_id": self._chat_id, "text": text})
