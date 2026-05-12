@@ -51,9 +51,7 @@ class UpbitClient:
         self._client = _client or httpx.AsyncClient(base_url=_BASE_URL, timeout=10.0)
         self._sem = asyncio.Semaphore(5)
 
-    async def _get(
-        self, path: str, *, _market_tag: str = "", **params: Any
-    ) -> httpx.Response:
+    async def _get(self, path: str, *, _market_tag: str = "", **params: Any) -> httpx.Response:
         """세마포어 + 지수 백오프 재시도로 GET 요청."""
         async for attempt in AsyncRetrying(
             stop=stop_after_attempt(3),

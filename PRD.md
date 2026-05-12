@@ -220,6 +220,8 @@
 | [0005](docs/adr/0005-local-web-dashboard.md) | 로컬 웹 대시보드(FastAPI) 채택 | accepted |
 | [0006](docs/adr/0006-self-hosted-distribution.md) | 오픈소스 자가설치 배포 | accepted |
 | [0007](docs/adr/0007-user-owned-bot-token.md) | 사용자 자가 텔레그램 봇 토큰 | accepted |
+| [0008](docs/adr/0008-settings-storage.md) | 설정 영속화 — `state/settings.json` 단일 source of truth | accepted |
+| [0009](docs/adr/0009-windows-atomic-write.md) | Windows에서 atomic write 우회 (플랫폼 분기) | accepted |
 
 전체 인덱스와 작성 규칙은 [`docs/adr/README.md`](docs/adr/README.md) 참조.
 

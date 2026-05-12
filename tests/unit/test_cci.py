@@ -5,6 +5,7 @@
   index 4:  TP=[1,2,3,4,5],  mean=3.0,  MAD=1.2 → CCI = 2/0.018 ≈ 111.111
   index 19: TP=[16,17,18,19,20], mean=18.0, MAD=1.2 → CCI = 2/0.018 ≈ 111.111
 """
+
 from __future__ import annotations
 
 import numpy as np

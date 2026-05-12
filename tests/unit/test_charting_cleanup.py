@@ -1,12 +1,11 @@
 """cleanup_old_charts — 단위 테스트."""
+
 from __future__ import annotations
 
 import os
 import time
 from datetime import timedelta
 from pathlib import Path
-
-import pytest
 
 from signal_program.charting.cleanup import cleanup_old_charts
 

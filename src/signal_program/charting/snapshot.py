@@ -2,9 +2,10 @@
 
 generate_snapshot: 직전 80봉 캔들 + BB 3선 + CCI 서브플롯 → PNG
 """
+
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING
 
 import matplotlib
@@ -21,8 +22,8 @@ _CANDLES_REQUIRED = 80
 
 
 def generate_snapshot(
-    candles: "pd.DataFrame",
-    signal: "Signal",
+    candles: pd.DataFrame,
+    signal: Signal,
     output_dir: Path,
 ) -> Path:
     """직전 80봉 캔들 + BB 3선 + CCI 서브플롯을 1280×720 PNG로 저장.
@@ -39,13 +40,9 @@ def generate_snapshot(
         ValueError: 캔들 수가 80봉 미만일 때
     """
     if len(candles) < _CANDLES_REQUIRED:
-        raise ValueError(
-            f"캔들 부족: {len(candles)}봉 < {_CANDLES_REQUIRED}봉 필요"
-        )
+        raise ValueError(f"캔들 부족: {len(candles)}봉 < {_CANDLES_REQUIRED}봉 필요")
 
     output_dir.mkdir(parents=True, exist_ok=True)
-
-    import pandas as pd  # noqa: PLC0415
 
     from signal_program.indicators.bollinger import bollinger  # noqa: PLC0415
     from signal_program.indicators.cci import cci as calc_cci  # noqa: PLC0415
@@ -82,13 +79,23 @@ def generate_snapshot(
     offset = trigger_price * 0.012
     if signal.direction.value == "buy":
         ax_price.scatter(
-            [trigger_x], [trigger_price - offset],
-            marker="^", color="green", s=120, zorder=5, label="BUY",
+            [trigger_x],
+            [trigger_price - offset],
+            marker="^",
+            color="green",
+            s=120,
+            zorder=5,
+            label="BUY",
         )
     else:
         ax_price.scatter(
-            [trigger_x], [trigger_price + offset],
-            marker="v", color="red", s=120, zorder=5, label="SELL",
+            [trigger_x],
+            [trigger_price + offset],
+            marker="v",
+            color="red",
+            s=120,
+            zorder=5,
+            label="SELL",
         )
 
     ax_price.set_title(

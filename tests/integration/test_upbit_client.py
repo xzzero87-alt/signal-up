@@ -4,6 +4,7 @@ TDD Phase 1 RED  : NotImplementedError로 계약 위반 확인
 TDD Phase 2 GREEN: VCR 카세트 녹화 → 통과
 TDD Phase 3      : 429/재시도/동시성 MockTransport 검증
 """
+
 from __future__ import annotations
 
 import asyncio

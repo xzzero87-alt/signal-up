@@ -14,6 +14,7 @@
 | [0006](0006-self-hosted-distribution.md) | 오픈소스 자가설치 배포 | accepted | 2026-05-07 |
 | [0007](0007-user-owned-bot-token.md) | 사용자 자가 텔레그램 봇 토큰 | accepted | 2026-05-07 |
 | [0008](0008-settings-storage.md) | 설정 영속화 — `state/settings.json` 단일 source of truth | accepted | 2026-05-07 |
+| [0009](0009-windows-atomic-write.md) | Windows에서 atomic write 우회 (플랫폼 분기) | accepted | 2026-05-12 |
 
 ## 작성 규칙
 

@@ -1,4 +1,5 @@
 """integration 테스트 공통 픽스처."""
+
 from __future__ import annotations
 
 import pytest

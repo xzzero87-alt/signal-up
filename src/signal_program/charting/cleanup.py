@@ -1,9 +1,10 @@
 """오래된 차트 PNG 정리 — DESIGN.md §5.4 (24h 자동 정리)."""
+
 from __future__ import annotations
 
 import time
 from datetime import timedelta
-from pathlib import Path
+from pathlib import Path  # noqa: TC003
 
 import structlog
 

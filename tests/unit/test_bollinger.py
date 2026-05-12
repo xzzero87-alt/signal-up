@@ -4,6 +4,7 @@
   - index 2: window=[10,11,12], mean=11, std=1 → upper=13, lower=9, pct_b=0.75
   - index 10: window=[18,19,20], mean=19, std=1 → upper=21, lower=17, pct_b=0.75
 """
+
 from __future__ import annotations
 
 import numpy as np

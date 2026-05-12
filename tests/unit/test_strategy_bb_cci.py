@@ -1,4 +1,5 @@
 """BbCciStrategy 모드 A/B — TDD RED → GREEN 시나리오 + Hypothesis property."""
+
 from __future__ import annotations
 
 import math
@@ -205,6 +206,7 @@ def test_sideways_no_signal() -> None:
 
 # ─── Phase 3: Hypothesis property 테스트 ────────────────────────────────────
 
+
 @given(
     closes=st.lists(
         st.floats(min_value=100.0, max_value=100_000.0, allow_nan=False, allow_infinity=False),
@@ -258,12 +260,16 @@ def test_property_varying_volume_ratio_min(closes: list[float], vol_min: float) 
 
 # ─── Phase 3: 파라미터 보강 (parametrize) ────────────────────────────────────
 
-@pytest.mark.parametrize("vol_min,expect_signal", [
-    (0.5, True),   # 0.5 ≤ vol_ratio(1.2) → 시그널 발생
-    (1.0, True),   # 1.0 ≤ 1.2 → 시그널 발생
-    (1.5, False),  # 1.5 > 1.2 → 시그널 없음
-    (2.0, False),  # 2.0 > 1.2 → 시그널 없음
-])
+
+@pytest.mark.parametrize(
+    "vol_min,expect_signal",
+    [
+        (0.5, True),  # 0.5 ≤ vol_ratio(1.2) → 시그널 발생
+        (1.0, True),  # 1.0 ≤ 1.2 → 시그널 발생
+        (1.5, False),  # 1.5 > 1.2 → 시그널 없음
+        (2.0, False),  # 2.0 > 1.2 → 시그널 없음
+    ],
+)
 def test_volume_ratio_min_controls_signal(vol_min: float, expect_signal: bool) -> None:
     """volume_ratio_min_a 변화에 따른 BUY 시그널 유무."""
     strat = BbCciStrategy(volume_ratio_min_a=vol_min)
@@ -273,12 +279,15 @@ def test_volume_ratio_min_controls_signal(vol_min: float, expect_signal: bool) -
     assert bool(buy_sigs) == expect_signal
 
 
-@pytest.mark.parametrize("strong_thresh,expected_strength", [
-    (100, SignalStrength.STRONG),   # threshold=100, cci=-177 → STRONG
-    (150, SignalStrength.STRONG),   # threshold=150, cci=-177 → STRONG
-    (200, SignalStrength.NORMAL),   # threshold=200, cci=-177 < 200 → NORMAL
-    (300, SignalStrength.NORMAL),   # threshold=300, cci=-177 < 300 → NORMAL
-])
+@pytest.mark.parametrize(
+    "strong_thresh,expected_strength",
+    [
+        (100, SignalStrength.STRONG),  # threshold=100, cci=-177 → STRONG
+        (150, SignalStrength.STRONG),  # threshold=150, cci=-177 → STRONG
+        (200, SignalStrength.NORMAL),  # threshold=200, cci=-177 < 200 → NORMAL
+        (300, SignalStrength.NORMAL),  # threshold=300, cci=-177 < 300 → NORMAL
+    ],
+)
 def test_cci_threshold_strong_controls_strength(
     strong_thresh: int, expected_strength: SignalStrength
 ) -> None:
@@ -292,6 +301,7 @@ def test_cci_threshold_strong_controls_strength(
 
 
 # ─── Phase 3: 모드 B property 테스트 ─────────────────────────────────────────
+
 
 @given(
     closes=st.lists(
@@ -344,11 +354,15 @@ def test_property_simultaneous_signals_have_different_modes() -> None:
 
 # ─── Phase 3: 모드 B parametrize ─────────────────────────────────────────────
 
-@pytest.mark.parametrize("sq_q,expect_squeeze", [
-    (0.10, True),   # narrow quantile: still squeezes (qpct=0.025 ≤ 0.10)
-    (0.20, True),   # default: squeezes
-    (0.30, True),   # wider quantile: also squeezes
-])
+
+@pytest.mark.parametrize(
+    "sq_q,expect_squeeze",
+    [
+        (0.10, True),  # narrow quantile: still squeezes (qpct=0.025 ≤ 0.10)
+        (0.20, True),  # default: squeezes
+        (0.30, True),  # wider quantile: also squeezes
+    ],
+)
 def test_b_squeeze_quantile_controls_detection(sq_q: float, expect_squeeze: bool) -> None:
     """squeeze_quantile 변화에 따른 스퀴즈 감지 여부."""
     strat = BbCciStrategy(squeeze_quantile=sq_q)
@@ -358,11 +372,14 @@ def test_b_squeeze_quantile_controls_detection(sq_q: float, expect_squeeze: bool
     assert bool(b) == expect_squeeze
 
 
-@pytest.mark.parametrize("vol_min_b,expect_b_signal", [
-    (1.0, True),   # 1.0 ≤ vol_ratio(1.8) → B 시그널
-    (1.5, True),   # 1.5 ≤ 1.8 → B 시그널
-    (2.0, False),  # 2.0 > 1.8 → B 시그널 없음
-])
+@pytest.mark.parametrize(
+    "vol_min_b,expect_b_signal",
+    [
+        (1.0, True),  # 1.0 ≤ vol_ratio(1.8) → B 시그널
+        (1.5, True),  # 1.5 ≤ 1.8 → B 시그널
+        (2.0, False),  # 2.0 > 1.8 → B 시그널 없음
+    ],
+)
 def test_b_volume_ratio_min_controls_signal(vol_min_b: float, expect_b_signal: bool) -> None:
     """volume_ratio_min_b 변화에 따른 모드 B 시그널 유무 (vol_ratio=1.8)."""
     strat = BbCciStrategy(volume_ratio_min_b=vol_min_b)
@@ -561,9 +578,9 @@ def test_ab_simultaneous_two_signals() -> None:
     assert StrategyMode.MEAN_REVERSION in modes
     assert StrategyMode.SQUEEZE_BREAKOUT in modes
     mkt = {s.market for s in result}
-    ts  = {s.triggered_at for s in result}
+    ts = {s.triggered_at for s in result}
     assert len(mkt) == 1  # 동일 market
-    assert len(ts) == 1   # 동일 triggered_at
+    assert len(ts) == 1  # 동일 triggered_at
 
 
 # ─── (l) bb_width_quantile 검증 ─────────────────────────────────────────────

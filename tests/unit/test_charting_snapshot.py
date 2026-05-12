@@ -1,8 +1,9 @@
 """generate_snapshot — PNG 생성 단위 테스트."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from pathlib import Path
+from pathlib import Path  # noqa: TC003
 from zoneinfo import ZoneInfo
 
 import pandas as pd

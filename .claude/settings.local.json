@@ -16,7 +16,32 @@
       "Bash(PYTHONIOENCODING=utf-8 uv run signal doctor)",
       "Bash(PYTHONIOENCODING=utf-8 uv run ruff check src/ tests/)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(git config *)",
+      "Bash(mkdir -p .claude)",
+      "Bash(echo \"$\\(date +%Y-%m-%d-%H:%M\\) | milestone-1b-complete | $\\(git rev-parse --short HEAD\\) | ruff:OK mypy:OK pytest:13/13\")",
+      "Bash(PYTHONIOENCODING=utf-8 uv run mypy --strict src/)",
+      "Bash(PYTHONIOENCODING=utf-8 uv run pytest -v)",
+      "Bash(PYTHONIOENCODING=utf-8 grep -n \"§8\\\\|8\\\\.1\\\\|8\\\\.2\\\\|Timeframe\\\\|StrategyMode\\\\|SignalDirection\\\\|SignalStrength\\\\|Candle\\\\|IndicatorSnapshot\\\\|Signal\\\\|TradeRecord\\\\|BacktestResult\" DESIGN.md)",
+      "Bash(PYTHONIOENCODING=utf-8 uv sync)",
+      "Bash(PYTHONIOENCODING=utf-8 uv run pytest -v --cov=src/ --cov-report=term-missing)",
+      "Bash(PYTHONIOENCODING=utf-8 grep -n \"§4\\\\|4\\\\.1\\\\|candles/minutes\\\\|Remaining-Req\\\\|rate.limit\\\\|retry\\\\|tenacity\\\\|Semaphore\\\\|list_krw\\\\|fetch_candles\\\\|candle_date_time\" DESIGN.md)",
+      "Bash(PYTHONIOENCODING=utf-8 uv run pytest tests/integration/test_upbit_client.py -v)",
+      "Bash(git commit *)",
+      "Bash(PYTHONIOENCODING=utf-8 uv run pytest tests/integration/test_upbit_client.py -v --vcr-record=new_episodes)",
+      "Bash(PYTHONIOENCODING=utf-8 uv run pytest tests/integration/test_upbit_client.py -v --vcr-record=none)",
+      "Bash(PYTHONIOENCODING=utf-8 uv run pytest --cov=src/signal_program/exchanges --cov-report=term-missing -v)",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\Users\\\\user3\\\\.claude\\\\skills\\\\continuous-learning-v2\\\\hooks\")",
+      "Bash(Out-Null)",
+      "Bash(cat)",
+      "Bash(chmod +x \"/c/Users/user3/.claude/skills/continuous-learning-v2/hooks/observe.sh\")",
+      "Bash(py --version)",
+      "Bash(python3 .claude/hooks/gateguard.py)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(grep -v \"^$\")",
+      "Bash(sed -i 's/from pathlib import Path$/from pathlib import Path  # noqa: TC003/' tests/unit/test_charting_snapshot.py)",
+      "Bash(sed -i 's/from collections.abc import Callable$/from collections.abc import Callable  # noqa: TC003/' tests/unit/test_telegram_notifier.py)",
+      "Bash(sed -i 's/from pathlib import Path$/from pathlib import Path  # noqa: TC003/' tests/unit/test_telegram_notifier.py)"
     ]
   }
 }

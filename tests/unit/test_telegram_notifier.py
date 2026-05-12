@@ -1,22 +1,22 @@
 """TelegramNotifier — TDD RED → GREEN 시나리오 8종 + Phase 3 포맷·경계 보강."""
+
 from __future__ import annotations
 
 import re
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from typing import Callable
+from collections.abc import Callable  # noqa: TC003
+from datetime import datetime
+from pathlib import Path  # noqa: TC003
 from zoneinfo import ZoneInfo
 
 import httpx
 import pytest
 import structlog.testing
+from hypothesis import given, settings
+from hypothesis import strategies as st
 from pydantic import SecretStr
 
 from signal_program.enums import SignalDirection, SignalStrength, StrategyMode, Timeframe
 from signal_program.models import IndicatorSnapshot, Signal
-from hypothesis import given, settings
-from hypothesis import strategies as st
-
 from signal_program.notifiers.telegram import TelegramNotifier, format_message
 
 KST = ZoneInfo("Asia/Seoul")
@@ -30,6 +30,7 @@ _ERR_500 = {"ok": False, "error_code": 500, "description": "Internal Server Erro
 
 
 # ── 픽스처 ────────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def signal() -> Signal:
@@ -84,6 +85,7 @@ def make_notifier(transport: _AsyncMockTransport, **kwargs) -> TelegramNotifier:
 
 # ── 시나리오 8종 ──────────────────────────────────────────────────────────────
 
+
 # (a) 정상 전송 200 — 1회 호출, chat_id·text 포함
 async def test_a_ok_sends_once(signal: Signal) -> None:
     tr = make_transport(200, _OK_BODY)
@@ -101,13 +103,13 @@ async def test_b_message_format(signal: Signal) -> None:
     notifier = make_notifier(tr)
     await notifier.send_signal(signal, chart_path=None)
     text = tr.requests[0].content.decode()
-    assert "92,000,000" in text   # 가격 콤마
-    assert "σ" in text            # BB %B
-    assert "CCI" in text          # CCI
-    assert "거래량" in text        # 거래량
-    assert "KST" in text          # 시각
+    assert "92,000,000" in text  # 가격 콤마
+    assert "σ" in text  # BB %B
+    assert "CCI" in text  # CCI
+    assert "거래량" in text  # 거래량
+    assert "KST" in text  # 시각
     assert "참고용 시그널" in text  # 고지
-    assert "차트 첨부" in text     # M8 예정
+    assert "차트 첨부" in text  # M8 예정
 
 
 # (c) 401 → 재시도 없이 1회만
@@ -175,6 +177,7 @@ async def test_h_token_not_in_logs(signal: Signal) -> None:
 # Phase 3 — 포맷·경계 보강
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _make_signal(
     direction: SignalDirection,
     strength: SignalStrength,
@@ -207,13 +210,55 @@ def _make_signal(
     "direction,strength,mode,expected_emoji,expected_mode_label",
     [
         (SignalDirection.BUY, SignalStrength.NORMAL, StrategyMode.MEAN_REVERSION, "🟢", "평균회귀"),
-        (SignalDirection.BUY, SignalStrength.STRONG, StrategyMode.MEAN_REVERSION, "🟢🟢", "평균회귀"),
-        (SignalDirection.SELL, SignalStrength.NORMAL, StrategyMode.MEAN_REVERSION, "🔴", "평균회귀"),
-        (SignalDirection.SELL, SignalStrength.STRONG, StrategyMode.MEAN_REVERSION, "🔴🔴", "평균회귀"),
-        (SignalDirection.BUY, SignalStrength.NORMAL, StrategyMode.SQUEEZE_BREAKOUT, "🟢", "스퀴즈 돌파"),
-        (SignalDirection.BUY, SignalStrength.STRONG, StrategyMode.SQUEEZE_BREAKOUT, "🟢🟢", "스퀴즈 돌파"),
-        (SignalDirection.SELL, SignalStrength.NORMAL, StrategyMode.SQUEEZE_BREAKOUT, "🔴", "스퀴즈 돌파"),
-        (SignalDirection.SELL, SignalStrength.STRONG, StrategyMode.SQUEEZE_BREAKOUT, "🔴🔴", "스퀴즈 돌파"),
+        (
+            SignalDirection.BUY,
+            SignalStrength.STRONG,
+            StrategyMode.MEAN_REVERSION,
+            "🟢🟢",
+            "평균회귀",
+        ),
+        (
+            SignalDirection.SELL,
+            SignalStrength.NORMAL,
+            StrategyMode.MEAN_REVERSION,
+            "🔴",
+            "평균회귀",
+        ),
+        (
+            SignalDirection.SELL,
+            SignalStrength.STRONG,
+            StrategyMode.MEAN_REVERSION,
+            "🔴🔴",
+            "평균회귀",
+        ),
+        (
+            SignalDirection.BUY,
+            SignalStrength.NORMAL,
+            StrategyMode.SQUEEZE_BREAKOUT,
+            "🟢",
+            "스퀴즈 돌파",
+        ),
+        (
+            SignalDirection.BUY,
+            SignalStrength.STRONG,
+            StrategyMode.SQUEEZE_BREAKOUT,
+            "🟢🟢",
+            "스퀴즈 돌파",
+        ),
+        (
+            SignalDirection.SELL,
+            SignalStrength.NORMAL,
+            StrategyMode.SQUEEZE_BREAKOUT,
+            "🔴",
+            "스퀴즈 돌파",
+        ),
+        (
+            SignalDirection.SELL,
+            SignalStrength.STRONG,
+            StrategyMode.SQUEEZE_BREAKOUT,
+            "🔴🔴",
+            "스퀴즈 돌파",
+        ),
     ],
 )
 def test_format_message_8_combinations(
@@ -273,9 +318,7 @@ def test_message_truncation() -> None:
     vr=st.floats(min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False),
 )
 @settings(max_examples=50, deadline=1000)
-def test_hypothesis_format_message_no_exception(
-    price: float, cci: float, vr: float
-) -> None:
+def test_hypothesis_format_message_no_exception(price: float, cci: float, vr: float) -> None:
     """임의 Signal 값 → format_message 예외 없이 non-empty 반환."""
     sig = Signal(
         market="KRW-BTC",
@@ -358,8 +401,8 @@ async def test_sendphoto_5xx_falls_back_to_sendmessage(signal: Signal, tmp_path:
 
     photo_reqs = [r for r in tr.requests if "/sendPhoto" in str(r.url)]
     msg_reqs = [r for r in tr.requests if "/sendMessage" in str(r.url)]
-    assert len(photo_reqs) == 3   # sendPhoto 3회 재시도 후 소진
-    assert len(msg_reqs) == 1     # sendMessage fallback 1회
+    assert len(photo_reqs) == 3  # sendPhoto 3회 재시도 후 소진
+    assert len(msg_reqs) == 1  # sendMessage fallback 1회
     # fallback warning 로그 확인
     assert any("sendPhoto_failed_fallback" in str(e) for e in cap)
 
@@ -382,6 +425,6 @@ async def test_sendphoto_caption_truncated(signal: Signal, tmp_path: Path) -> No
     assert len(tr.requests) == 1
     body = tr.requests[0].content
     # caption 값이 잘렸는지 확인 — "x" * 1021 + "..." = 1024자
-    assert body.count(b"x" * 10) > 0   # 잘린 caption 일부 포함
-    assert b"x" * 1050 not in body      # 1050자 연속 없음 (잘림 확인)
+    assert body.count(b"x" * 10) > 0  # 잘린 caption 일부 포함
+    assert b"x" * 1050 not in body  # 1050자 연속 없음 (잘림 확인)
     assert any("caption_truncated" in str(e) for e in cap)

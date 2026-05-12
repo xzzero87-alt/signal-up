@@ -1,7 +1,7 @@
 """CooldownStore — TDD RED → GREEN 시나리오 12종 + Hypothesis property."""
+
 from __future__ import annotations
 
-import json
 import os
 import platform
 import stat
@@ -194,6 +194,7 @@ def test_property_multiple_keys_independent(keys: list[CooldownKey]) -> None:
 
 # ─── Phase 3: 동시성 테스트 ──────────────────────────────────────────────────
 
+
 def test_concurrent_mark_sent_no_loss(tmp_path: Path) -> None:
     """10개 서로 다른 키 동시 mark_sent → 모두 디스크 영속 (데이터 손실 없음)."""
     path = tmp_path / "concurrent.json"
@@ -241,6 +242,7 @@ def test_reload_matches_disk(tmp_path: Path) -> None:
 
 
 # ─── Phase 3: 파일 권한 (Unix only) ─────────────────────────────────────────
+
 
 @pytest.mark.skipif(
     platform.system() == "Windows",
