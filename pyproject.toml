@@ -23,6 +23,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "freezegun>=1.5,<2.0",
     "hypothesis>=6.115,<7.0",
     "mypy>=1.13,<2.0",
     "pandas-stubs>=2.2,<3.0",

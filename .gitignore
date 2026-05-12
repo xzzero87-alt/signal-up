@@ -1,5 +1,5 @@
 data/
-state/
+/state/
 reports/
 .env
 .env.*
@@ -10,3 +10,7 @@ __pycache__/
 *.log
 htmlcov/
 .venv/
+
+# GateGuard (세션 단위 상태, 로컬 비활성화 마커)
+.claude/.gateguard-state.json
+.claude/.gateguard-off
