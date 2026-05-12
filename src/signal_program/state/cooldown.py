@@ -1,15 +1,22 @@
 """CooldownStore — DESIGN.md §5.2 쿨다운 정책 구현.
 
-키: (market, mode, direction) — 동일 조합 2시간 내 1회만 허용.
-저장: state/cooldown.json {"<market>|<mode>|<direction>": "<iso8601_kst>"}
+키: (market, mode, direction) — 동일 조합 cooldown 이내 재송출 억제.
+저장: JSON {"<market>|<mode>|<direction>": "<iso8601_kst>"}
 """
 from __future__ import annotations
 
+import json
+import os
 import pathlib
+import platform
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+import structlog
+
 from signal_program.enums import SignalDirection, StrategyMode
+
+log = structlog.get_logger()
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,16 +35,71 @@ class CooldownStore:
     """
 
     def __init__(self, path: pathlib.Path, cooldown: timedelta) -> None:
-        raise NotImplementedError
+        self._path = path
+        self._cooldown = cooldown
+        self._cache: dict[CooldownKey, datetime] = {}
+        self._load_from_disk()
 
     def is_cooled_down(self, key: CooldownKey, now: datetime) -> bool:
         """True 반환 시 해당 시그널 아직 쿨다운 중(송출 억제)."""
-        raise NotImplementedError
+        last = self._cache.get(key)
+        if last is None:
+            return False
+        return now - last < self._cooldown
 
     def mark_sent(self, key: CooldownKey, now: datetime) -> None:
         """송출 완료 기록 — 메모리 갱신 후 디스크에 atomic write."""
-        raise NotImplementedError
+        self._cache[key] = now
+        self._save_to_disk()
 
     def reload(self) -> None:
         """디스크에서 상태 재로드."""
-        raise NotImplementedError
+        self._load_from_disk()
+
+    # ── 내부 직렬화 ──────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _serialize_key(key: CooldownKey) -> str:
+        return f"{key.market}|{key.mode.value}|{key.direction.value}"
+
+    @staticmethod
+    def _deserialize_key(s: str) -> CooldownKey:
+        market, mode_val, dir_val = s.split("|", 2)
+        return CooldownKey(
+            market=market,
+            mode=StrategyMode(mode_val),
+            direction=SignalDirection(dir_val),
+        )
+
+    # ── 디스크 I/O ───────────────────────────────────────────────────────────
+
+    def _load_from_disk(self) -> None:
+        if not self._path.exists():
+            self._cache = {}
+            return
+        try:
+            text = self._path.read_text(encoding="utf-8").strip()
+            if not text:
+                self._cache = {}
+                return
+            data: dict[str, str] = json.loads(text)
+            self._cache = {
+                self._deserialize_key(k): datetime.fromisoformat(v)
+                for k, v in data.items()
+            }
+        except (json.JSONDecodeError, ValueError, KeyError) as exc:
+            log.warning("cooldown.load_failed", path=str(self._path), error=str(exc))
+            self._cache = {}
+
+    def _save_to_disk(self) -> None:
+        data = {
+            self._serialize_key(k): v.isoformat()
+            for k, v in self._cache.items()
+        }
+        tmp = self._path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        if platform.system() != "Windows":
+            os.chmod(tmp, 0o600)
+        os.replace(tmp, self._path)
+        if platform.system() != "Windows":
+            os.chmod(self._path, 0o600)
