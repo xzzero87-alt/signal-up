@@ -3,16 +3,22 @@
 키: (market, mode, direction) — 동일 조합 cooldown 이내 재송출 억제.
 저장: JSON {"<market>|<mode>|<direction>": "<iso8601_kst>"}
 """
+
 from __future__ import annotations
 
 import json
 import os
-import pathlib
 import platform
+import threading
+import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
 import structlog
+
+if TYPE_CHECKING:
+    import pathlib
 
 from signal_program.enums import SignalDirection, StrategyMode
 
@@ -38,6 +44,7 @@ class CooldownStore:
         self._path = path
         self._cooldown = cooldown
         self._cache: dict[CooldownKey, datetime] = {}
+        self._lock = threading.Lock()
         self._load_from_disk()
 
     def is_cooled_down(self, key: CooldownKey, now: datetime) -> bool:
@@ -48,9 +55,10 @@ class CooldownStore:
         return now - last < self._cooldown
 
     def mark_sent(self, key: CooldownKey, now: datetime) -> None:
-        """송출 완료 기록 — 메모리 갱신 후 디스크에 atomic write."""
-        self._cache[key] = now
-        self._save_to_disk()
+        """송출 완료 기록 — 메모리 갱신 후 디스크에 atomic write (thread-safe)."""
+        with self._lock:
+            self._cache[key] = now
+            self._save_to_disk()
 
     def reload(self) -> None:
         """디스크에서 상태 재로드."""
@@ -84,22 +92,22 @@ class CooldownStore:
                 return
             data: dict[str, str] = json.loads(text)
             self._cache = {
-                self._deserialize_key(k): datetime.fromisoformat(v)
-                for k, v in data.items()
+                self._deserialize_key(k): datetime.fromisoformat(v) for k, v in data.items()
             }
         except (json.JSONDecodeError, ValueError, KeyError) as exc:
             log.warning("cooldown.load_failed", path=str(self._path), error=str(exc))
             self._cache = {}
 
     def _save_to_disk(self) -> None:
-        data = {
-            self._serialize_key(k): v.isoformat()
-            for k, v in self._cache.items()
-        }
-        tmp = self._path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-        if platform.system() != "Windows":
+        data = {self._serialize_key(k): v.isoformat() for k, v in self._cache.items()}
+        content = json.dumps(data, ensure_ascii=False, indent=2)
+        if platform.system() == "Windows":
+            # Windows: AV 스캐너 잠금 회피를 위해 직접 쓰기 (단일 사용자 앱)
+            self._path.write_text(content, encoding="utf-8")
+        else:
+            # Unix: UUID tmp 파일로 atomic write 후 replace
+            tmp = self._path.parent / f".{self._path.stem}_{uuid.uuid4().hex}.tmp"
+            tmp.write_text(content, encoding="utf-8")
             os.chmod(tmp, 0o600)
-        os.replace(tmp, self._path)
-        if platform.system() != "Windows":
+            os.replace(tmp, self._path)
             os.chmod(self._path, 0o600)
