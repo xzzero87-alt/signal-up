@@ -1,4 +1,4 @@
-"""TelegramNotifier — TDD RED → GREEN 시나리오 8종."""
+"""TelegramNotifier — TDD RED → GREEN 시나리오 8종 + Phase 3 포맷·경계 보강."""
 from __future__ import annotations
 
 import re
@@ -14,7 +14,10 @@ from pydantic import SecretStr
 
 from signal_program.enums import SignalDirection, SignalStrength, StrategyMode, Timeframe
 from signal_program.models import IndicatorSnapshot, Signal
-from signal_program.notifiers.telegram import TelegramNotifier
+from hypothesis import given, settings
+from hypothesis import strategies as st
+
+from signal_program.notifiers.telegram import TelegramNotifier, format_message
 
 KST = ZoneInfo("Asia/Seoul")
 pytestmark = pytest.mark.anyio
@@ -165,3 +168,135 @@ async def test_h_token_not_in_logs(signal: Signal) -> None:
     log_str = str(cap)
     assert plain_token not in log_str
     assert not token_pattern.findall(log_str)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Phase 3 — 포맷·경계 보강
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _make_signal(
+    direction: SignalDirection,
+    strength: SignalStrength,
+    mode: StrategyMode,
+    price: float = 50_000_000.0,
+) -> Signal:
+    return Signal(
+        market="KRW-BTC",
+        timeframe=Timeframe.HOUR_1,
+        mode=mode,
+        direction=direction,
+        strength=strength,
+        price=price,
+        triggered_at=datetime(2026, 5, 12, 15, 0, tzinfo=KST),
+        indicators=IndicatorSnapshot(
+            bb_upper=52_000_000.0,
+            bb_middle=50_000_000.0,
+            bb_lower=48_000_000.0,
+            bb_width=0.04,
+            bb_pct_b=0.5,
+            cci=130.0,
+            volume_ratio=1.8,
+            bb_width_quantile=None,
+        ),
+    )
+
+
+# format_message 8조합 parametrize
+@pytest.mark.parametrize(
+    "direction,strength,mode,expected_emoji,expected_mode_label",
+    [
+        (SignalDirection.BUY, SignalStrength.NORMAL, StrategyMode.MEAN_REVERSION, "🟢", "평균회귀"),
+        (SignalDirection.BUY, SignalStrength.STRONG, StrategyMode.MEAN_REVERSION, "🟢🟢", "평균회귀"),
+        (SignalDirection.SELL, SignalStrength.NORMAL, StrategyMode.MEAN_REVERSION, "🔴", "평균회귀"),
+        (SignalDirection.SELL, SignalStrength.STRONG, StrategyMode.MEAN_REVERSION, "🔴🔴", "평균회귀"),
+        (SignalDirection.BUY, SignalStrength.NORMAL, StrategyMode.SQUEEZE_BREAKOUT, "🟢", "스퀴즈 돌파"),
+        (SignalDirection.BUY, SignalStrength.STRONG, StrategyMode.SQUEEZE_BREAKOUT, "🟢🟢", "스퀴즈 돌파"),
+        (SignalDirection.SELL, SignalStrength.NORMAL, StrategyMode.SQUEEZE_BREAKOUT, "🔴", "스퀴즈 돌파"),
+        (SignalDirection.SELL, SignalStrength.STRONG, StrategyMode.SQUEEZE_BREAKOUT, "🔴🔴", "스퀴즈 돌파"),
+    ],
+)
+def test_format_message_8_combinations(
+    direction: SignalDirection,
+    strength: SignalStrength,
+    mode: StrategyMode,
+    expected_emoji: str,
+    expected_mode_label: str,
+) -> None:
+    """direction × strength × mode 8조합 — emoji·모드 라벨·필수 필드 검증."""
+    sig = _make_signal(direction, strength, mode)
+    text = format_message(sig)
+    assert expected_emoji in text
+    assert expected_mode_label in text
+    assert "KRW-BTC" in text
+    assert "CCI" in text
+    assert "KST" in text
+    assert "참고용 시그널" in text
+
+
+# chat_id 형식 다양성
+@pytest.mark.parametrize("chat_id", ["987654321", "-1001234567890", "@my_channel"])
+async def test_chat_id_formats(signal: Signal, chat_id: str) -> None:
+    """개인(양수), 그룹(음수), 채널(@) chat_id 모두 payload에 포함."""
+    tr = make_transport(200, _OK_BODY)
+    client = httpx.AsyncClient(transport=tr)
+    notifier = TelegramNotifier(
+        bot_token=FAKE_TOKEN,
+        chat_id=chat_id,
+        http_client=client,
+        _retry_wait_multiplier=0.0,
+    )
+    await notifier.send_signal(signal, chart_path=None)
+    body = tr.requests[0].content.decode()
+    assert chat_id in body
+
+
+# 메시지 4096자 한도 — 잘림 처리
+def test_message_truncation() -> None:
+    """format_message가 4096자를 초과하면 '...'으로 잘린다."""
+    from signal_program.notifiers.telegram import _MAX_TEXT_LEN
+
+    sig = _make_signal(SignalDirection.BUY, SignalStrength.NORMAL, StrategyMode.MEAN_REVERSION)
+    # 가격을 엄청 큰 수로 만들어 문자열을 늘림
+    long_sig = Signal(
+        **{**sig.model_dump(), "market": "KRW-" + "X" * 4100, "price": 1.0},
+    )
+    text = format_message(long_sig)
+    assert len(text) <= _MAX_TEXT_LEN
+    assert text.endswith("...")
+
+
+# Hypothesis: 임의 Signal → format_message가 non-empty str 반환, 토큰 미포함
+@given(
+    price=st.floats(min_value=1.0, max_value=1e12, allow_nan=False, allow_infinity=False),
+    cci=st.floats(min_value=-2000.0, max_value=2000.0, allow_nan=False, allow_infinity=False),
+    vr=st.floats(min_value=0.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+)
+@settings(max_examples=50, deadline=1000)
+def test_hypothesis_format_message_no_exception(
+    price: float, cci: float, vr: float
+) -> None:
+    """임의 Signal 값 → format_message 예외 없이 non-empty 반환."""
+    sig = Signal(
+        market="KRW-BTC",
+        timeframe=Timeframe.HOUR_1,
+        mode=StrategyMode.MEAN_REVERSION,
+        direction=SignalDirection.BUY,
+        strength=SignalStrength.NORMAL,
+        price=price,
+        triggered_at=datetime(2026, 5, 12, 14, 0, tzinfo=KST),
+        indicators=IndicatorSnapshot(
+            bb_upper=price * 1.05,
+            bb_middle=price,
+            bb_lower=price * 0.95,
+            bb_width=0.1,
+            bb_pct_b=0.5,
+            cci=cci,
+            volume_ratio=vr,
+            bb_width_quantile=None,
+        ),
+    )
+    text = format_message(sig)
+    assert isinstance(text, str)
+    assert len(text) > 0
+    # 토큰 패턴 미포함
+    assert not re.search(r"\d{5,}:[A-Za-z0-9_\-]{10,}", text)

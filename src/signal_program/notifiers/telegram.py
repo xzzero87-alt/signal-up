@@ -2,17 +2,23 @@
 
 M7 범위: sendMessage(텍스트)만. sendPhoto(차트) 및 fallback은 M8에서 추가.
 """
+
 from __future__ import annotations
 
 import asyncio
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import httpx
 import structlog
-from pydantic import SecretStr
 
 from signal_program.enums import SignalDirection, SignalStrength, StrategyMode
-from signal_program.models import Signal
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from pydantic import SecretStr
+
+    from signal_program.models import Signal
 
 log = structlog.get_logger()
 
@@ -106,7 +112,7 @@ class TelegramNotifier:
         payload = {"chat_id": self._chat_id, "text": text}
         await self._send_with_retry(url, payload)
 
-    async def _send_with_retry(self, url: str, payload: dict) -> None:
+    async def _send_with_retry(self, url: str, payload: dict[str, str]) -> None:
         client = self._client or httpx.AsyncClient()
         for attempt in range(1, self._max_retries + 1):
             try:
