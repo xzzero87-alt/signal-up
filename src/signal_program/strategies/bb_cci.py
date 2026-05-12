@@ -74,41 +74,67 @@ class BbCciStrategy:
 
         signals: list[Signal] = []
 
-        buy = self._check_buy(close_last, bb_lower, cci_val, volume_ratio)
-        if buy is not None:
+        # ── 모드 A: 평균회귀 ──────────────────────────────────────────────────
+        buy_a = self._check_buy(close_last, bb_lower, cci_val, volume_ratio)
+        if buy_a is not None:
             signals.append(
                 self._build_signal(
-                    market,
-                    buy,
-                    close_last,
-                    dt,
-                    bb_upper,
-                    bb_middle,
-                    bb_lower,
-                    bb_width,
-                    bb_pct_b,
-                    cci_val,
-                    volume_ratio,
+                    market, buy_a, close_last, dt,
+                    bb_upper, bb_middle, bb_lower, bb_width, bb_pct_b,
+                    cci_val, volume_ratio, bb_width_quantile=None,
+                    mode=StrategyMode.MEAN_REVERSION,
                 )
             )
 
-        sell = self._check_sell(close_last, bb_upper, cci_val, volume_ratio)
-        if sell is not None:
+        sell_a = self._check_sell(close_last, bb_upper, cci_val, volume_ratio)
+        if sell_a is not None:
             signals.append(
                 self._build_signal(
-                    market,
-                    sell,
-                    close_last,
-                    dt,
-                    bb_upper,
-                    bb_middle,
-                    bb_lower,
-                    bb_width,
-                    bb_pct_b,
-                    cci_val,
-                    volume_ratio,
+                    market, sell_a, close_last, dt,
+                    bb_upper, bb_middle, bb_lower, bb_width, bb_pct_b,
+                    cci_val, volume_ratio, bb_width_quantile=None,
+                    mode=StrategyMode.MEAN_REVERSION,
                 )
             )
+
+        # ── 모드 B: 스퀴즈 돌파 (충분한 데이터 있을 때만) ─────────────────────
+        min_len_b = self.squeeze_lookback + self.volume_lookback
+        if len(candles) >= min_len_b:
+            bb_widths = bb_df["bb_width"]
+            recent = bb_widths.iloc[-self.squeeze_lookback :]
+            sq_thresh = float(recent.quantile(self.squeeze_quantile))
+            is_squeeze = bb_width <= sq_thresh
+            bb_width_quantile = float(recent.rank(pct=True).iloc[-1])
+
+            buy_b = self._check_squeeze_buy(
+                close_last, bb_upper, cci_val, volume_ratio,
+                is_squeeze, bb_width, recent,
+            )
+            if buy_b is not None:
+                signals.append(
+                    self._build_signal(
+                        market, buy_b, close_last, dt,
+                        bb_upper, bb_middle, bb_lower, bb_width, bb_pct_b,
+                        cci_val, volume_ratio,
+                        bb_width_quantile=bb_width_quantile,
+                        mode=StrategyMode.SQUEEZE_BREAKOUT,
+                    )
+                )
+
+            sell_b = self._check_squeeze_sell(
+                close_last, bb_lower, cci_val, volume_ratio,
+                is_squeeze, bb_width, recent,
+            )
+            if sell_b is not None:
+                signals.append(
+                    self._build_signal(
+                        market, sell_b, close_last, dt,
+                        bb_upper, bb_middle, bb_lower, bb_width, bb_pct_b,
+                        cci_val, volume_ratio,
+                        bb_width_quantile=bb_width_quantile,
+                        mode=StrategyMode.SQUEEZE_BREAKOUT,
+                    )
+                )
 
         return signals
 
@@ -152,6 +178,56 @@ class BbCciStrategy:
         )
         return (SignalDirection.SELL, strength)
 
+    def _check_squeeze_buy(
+        self,
+        close: float,
+        bb_upper: float,
+        cci_val: float,
+        volume_ratio: float,
+        is_squeeze: bool,
+        bb_width: float,
+        recent_widths: pd.Series,  # type: ignore[type-arg]
+    ) -> tuple[SignalDirection, SignalStrength] | None:
+        if not (
+            is_squeeze
+            and close > bb_upper
+            and cci_val > self.cci_threshold_normal
+            and volume_ratio >= self.volume_ratio_min_b
+        ):
+            return None
+        q10 = float(recent_widths.quantile(0.10))
+        strength = (
+            SignalStrength.STRONG
+            if volume_ratio >= 2.5 or bb_width <= q10
+            else SignalStrength.NORMAL
+        )
+        return (SignalDirection.BUY, strength)
+
+    def _check_squeeze_sell(
+        self,
+        close: float,
+        bb_lower: float,
+        cci_val: float,
+        volume_ratio: float,
+        is_squeeze: bool,
+        bb_width: float,
+        recent_widths: pd.Series,  # type: ignore[type-arg]
+    ) -> tuple[SignalDirection, SignalStrength] | None:
+        if not (
+            is_squeeze
+            and close < bb_lower
+            and cci_val < -self.cci_threshold_normal
+            and volume_ratio >= self.volume_ratio_min_b
+        ):
+            return None
+        q10 = float(recent_widths.quantile(0.10))
+        strength = (
+            SignalStrength.STRONG
+            if volume_ratio >= 2.5 or bb_width <= q10
+            else SignalStrength.NORMAL
+        )
+        return (SignalDirection.SELL, strength)
+
     def _build_signal(
         self,
         market: str,
@@ -165,6 +241,8 @@ class BbCciStrategy:
         bb_pct_b: float,
         cci_val: float,
         volume_ratio: float,
+        bb_width_quantile: float | None,
+        mode: StrategyMode,
     ) -> Signal:
         direction, strength = direction_strength
         dt: datetime = triggered_at  # type: ignore[assignment]
@@ -172,7 +250,7 @@ class BbCciStrategy:
         return Signal(
             market=market,
             timeframe=Timeframe.HOUR_1,
-            mode=StrategyMode.MEAN_REVERSION,
+            mode=mode,
             direction=direction,
             strength=strength,
             price=price,
@@ -185,6 +263,6 @@ class BbCciStrategy:
                 bb_pct_b=bb_pct_b,
                 cci=cci_val,
                 volume_ratio=volume_ratio,
-                bb_width_quantile=None,
+                bb_width_quantile=bb_width_quantile,
             ),
         )
