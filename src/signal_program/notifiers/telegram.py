@@ -4,13 +4,63 @@ M7 범위: sendMessage(텍스트)만. sendPhoto(차트) 및 fallback은 M8에서
 """
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    import httpx
-    from pydantic import SecretStr
-    from signal_program.models import Signal
+import httpx
+import structlog
+from pydantic import SecretStr
+
+from signal_program.enums import SignalDirection, SignalStrength, StrategyMode
+from signal_program.models import Signal
+
+log = structlog.get_logger()
+
+_BASE_URL = "https://api.telegram.org"
+_MAX_TEXT_LEN = 4096
+
+_MODE_LABEL: dict[str, str] = {
+    StrategyMode.MEAN_REVERSION.value: "평균회귀",
+    StrategyMode.SQUEEZE_BREAKOUT.value: "스퀴즈 돌파",
+}
+_EMOJI: dict[tuple[str, str], str] = {
+    (SignalDirection.BUY.value, SignalStrength.NORMAL.value): "🟢",
+    (SignalDirection.BUY.value, SignalStrength.STRONG.value): "🟢🟢",
+    (SignalDirection.SELL.value, SignalStrength.NORMAL.value): "🔴",
+    (SignalDirection.SELL.value, SignalStrength.STRONG.value): "🔴🔴",
+}
+
+
+def format_message(signal: Signal) -> str:
+    """Signal → 텔레그램 텍스트 변환. 순수 함수(I/O 없음).
+
+    DESIGN.md §5.3 포맷 준수. 4096자 초과 시 말줄임.
+    """
+    emoji = _EMOJI[(signal.direction.value, signal.strength.value)]
+    mode_label = _MODE_LABEL[signal.mode.value]
+    ts_kst = signal.triggered_at.strftime("%Y-%m-%d %H:%M")
+    ind = signal.indicators
+
+    lines = [
+        (
+            f"{emoji} [{signal.direction.value.upper()}-{signal.strength.value.capitalize()}]"
+            f" {signal.market} (1h) — Mode {signal.mode.value}({mode_label})"
+        ),
+        f"가격: {signal.price:,.0f} KRW",
+        f"BB: 위치 {ind.bb_pct_b:.2f}σ",
+        f"CCI(20): {ind.cci:.0f}",
+        f"거래량: 평균의 {ind.volume_ratio:.1f}배",
+        f"시각: {ts_kst} KST",
+        "",
+        "📊 차트 첨부 (M8 예정)",
+        "ℹ️ 참고용 시그널 — 매매는 직접 판단",
+    ]
+
+    text = "\n".join(lines)
+    if len(text) > _MAX_TEXT_LEN:
+        log.warning("telegram.message_truncated", original_len=len(text))
+        text = text[: _MAX_TEXT_LEN - 3] + "..."
+    return text
 
 
 class TelegramNotifier:
@@ -22,17 +72,76 @@ class TelegramNotifier:
 
     def __init__(
         self,
-        bot_token: "SecretStr",
+        bot_token: SecretStr,
         chat_id: str,
         *,
         dry_run: bool = False,
         timeout: float = 10.0,
         max_retries: int = 3,
-        http_client: "httpx.AsyncClient | None" = None,
+        http_client: httpx.AsyncClient | None = None,
         _retry_wait_multiplier: float = 1.0,
     ) -> None:
-        raise NotImplementedError
+        self._token = bot_token
+        self._chat_id = chat_id
+        self._dry_run = dry_run
+        self._timeout = timeout
+        self._max_retries = max_retries
+        self._client = http_client
+        self._retry_mult = _retry_wait_multiplier
 
-    async def send_signal(self, signal: "Signal", chart_path: Path | None = None) -> None:
+    async def send_signal(self, signal: Signal, chart_path: Path | None = None) -> None:
         """시그널 텔레그램 전송. 실패 시 예외 없이 로깅(§5.5)."""
-        raise NotImplementedError
+        if self._dry_run:
+            log.info(
+                "dry_run_skip_send",
+                market=signal.market,
+                direction=signal.direction.value,
+            )
+            return
+
+        # TODO(M8): chart_path → sendPhoto 분기 추가
+        text = format_message(signal)
+        # 토큰은 URL 구성 시에만 꺼냄 — 로그·예외에 절대 출력 금지
+        url = f"{_BASE_URL}/bot{self._token.get_secret_value()}/sendMessage"
+        payload = {"chat_id": self._chat_id, "text": text}
+        await self._send_with_retry(url, payload)
+
+    async def _send_with_retry(self, url: str, payload: dict) -> None:
+        client = self._client or httpx.AsyncClient()
+        for attempt in range(1, self._max_retries + 1):
+            try:
+                resp = await client.post(url, json=payload, timeout=self._timeout)
+                if resp.status_code == 200:
+                    return
+                if 500 <= resp.status_code < 600:
+                    log.warning(
+                        "telegram.5xx",
+                        attempt=attempt,
+                        status=resp.status_code,
+                        chat_id=self._chat_id,
+                    )
+                    if attempt < self._max_retries:
+                        await asyncio.sleep(self._retry_mult * (2 ** (attempt - 1)))
+                    continue
+                # 4xx — 재시도 없음
+                log.warning(
+                    "telegram.client_error",
+                    status=resp.status_code,
+                    chat_id=self._chat_id,
+                )
+                return
+            except (httpx.NetworkError, httpx.TimeoutException) as exc:
+                log.warning(
+                    "telegram.network_error",
+                    attempt=attempt,
+                    exc=type(exc).__name__,
+                    chat_id=self._chat_id,
+                )
+                if attempt < self._max_retries:
+                    await asyncio.sleep(self._retry_mult * (2 ** (attempt - 1)))
+
+        log.error(
+            "telegram.send_exhausted",
+            max_retries=self._max_retries,
+            chat_id=self._chat_id,
+        )
