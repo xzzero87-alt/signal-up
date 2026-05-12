@@ -242,7 +242,10 @@ def test_reload_matches_disk(tmp_path: Path) -> None:
 
 # ─── Phase 3: 파일 권한 (Unix only) ─────────────────────────────────────────
 
-@pytest.mark.skipif(platform.system() == "Windows", reason="Unix 권한 테스트")
+@pytest.mark.skipif(
+    platform.system() == "Windows",
+    reason="Unix only — Windows ACL은 chmod 600 미지원 (ADR-0009: Windows는 직접 쓰기로 우회)",
+)
 def test_file_permissions_600(tmp_path: Path) -> None:
     """mark_sent 후 cooldown.json 권한이 600이어야 한다."""
     path = tmp_path / "perm.json"
