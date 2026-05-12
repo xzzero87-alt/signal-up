@@ -6,6 +6,12 @@ from zoneinfo import ZoneInfo
 
 import httpx
 import structlog
+from tenacity import (
+    AsyncRetrying,
+    retry_if_exception,
+    stop_after_attempt,
+    wait_exponential,
+)
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -16,6 +22,14 @@ if TYPE_CHECKING:
 log = structlog.get_logger()
 _BASE_URL = "https://api.upbit.com"
 _KST = ZoneInfo("Asia/Seoul")
+
+
+def _is_retryable(exc: BaseException) -> bool:
+    if isinstance(exc, httpx.NetworkError):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code in {429, 500, 502, 503, 504}
+    return False
 
 
 def _log_rate_limit(resp: httpx.Response, market: str = "") -> None:
@@ -37,11 +51,27 @@ class UpbitClient:
         self._client = _client or httpx.AsyncClient(base_url=_BASE_URL, timeout=10.0)
         self._sem = asyncio.Semaphore(5)
 
+    async def _get(
+        self, path: str, *, _market_tag: str = "", **params: Any
+    ) -> httpx.Response:
+        """세마포어 + 지수 백오프 재시도로 GET 요청."""
+        async for attempt in AsyncRetrying(
+            stop=stop_after_attempt(3),
+            wait=wait_exponential(multiplier=1, min=1, max=10),
+            retry=retry_if_exception(_is_retryable),
+            reraise=True,
+        ):
+            with attempt:
+                async with self._sem:
+                    resp = await self._client.get(path, params=params)
+                    _log_rate_limit(resp, market=_market_tag)
+                    if resp.status_code in {429, 500, 502, 503, 504}:
+                        resp.raise_for_status()
+                    return resp
+        raise AssertionError("unreachable")  # reraise=True guarantees exception propagation
+
     async def list_krw_markets(self) -> list[str]:
-        async with self._sem:
-            resp = await self._client.get("/v1/market/all", params={"isDetails": "false"})
-            resp.raise_for_status()
-            _log_rate_limit(resp)
+        resp = await self._get("/v1/market/all", isDetails="false")
         return [item["market"] for item in resp.json() if item["market"].startswith("KRW-")]
 
     async def fetch_candles(
@@ -60,11 +90,7 @@ class UpbitClient:
             params["to"] = to.strftime("%Y-%m-%dT%H:%M:%S")
 
         unit = str(timeframe)  # Timeframe.HOUR_1 → "60"
-
-        async with self._sem:
-            resp = await self._client.get(f"/v1/candles/minutes/{unit}", params=params)
-            resp.raise_for_status()
-            _log_rate_limit(resp, market=market)
+        resp = await self._get(f"/v1/candles/minutes/{unit}", _market_tag=market, **params)
 
         return [
             CandleModel(
