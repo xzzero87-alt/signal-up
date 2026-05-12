@@ -145,8 +145,79 @@ def run(
         bool, typer.Option("--dry-run", help="텔레그램 송출 없이 로직만 검증")
     ] = False,
 ) -> None:
-    """라이브 시그널 루프 실행 (헤드리스). [마일스톤 9에서 구현 예정]"""
-    raise NotImplementedError("마일스톤 9에서 구현")
+    """라이브 시그널 루프 실행 (헤드리스)."""
+    import asyncio
+
+    try:
+        settings = Settings()
+    except SystemExit as exc:
+        typer.echo(f"설정 오류: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    if dry_run:
+        settings = settings.model_copy(update={"dry_run": True})
+
+    import contextlib
+
+    with contextlib.suppress(KeyboardInterrupt):
+        asyncio.run(_run_async(settings))
+
+
+async def _run_async(settings: Settings) -> None:
+    """RunnerService 조립 후 run_forever 실행."""
+    import asyncio
+    from datetime import timedelta
+
+    import httpx
+    from pydantic import SecretStr
+
+    from signal_program.exchanges.upbit import UpbitClient
+    from signal_program.notifiers.telegram import TelegramNotifier
+    from signal_program.runner import RunnerService
+    from signal_program.state.cooldown import CooldownStore
+    from signal_program.state.signal_log import SignalLog
+    from signal_program.strategies.bb_cci import BbCciStrategy
+
+    configure_logging(settings)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
+    strategy = BbCciStrategy(
+        bb_period=settings.bb_period,
+        bb_std_mult=settings.bb_std_mult,
+        cci_period=settings.cci_period,
+        cci_threshold_normal=settings.cci_threshold_normal,
+        cci_threshold_strong=settings.cci_threshold_strong,
+        volume_ratio_min_a=settings.volume_ratio_min_a,
+        volume_ratio_min_b=settings.volume_ratio_min_b,
+        squeeze_lookback=settings.squeeze_lookback,
+        squeeze_quantile=settings.squeeze_quantile,
+    )
+    cooldown = CooldownStore(
+        path=settings.signals_log_path.parent / "cooldown.json",
+        cooldown=timedelta(hours=settings.cooldown_hours),
+    )
+    signal_log = SignalLog(path=settings.signals_log_path)
+
+    async with httpx.AsyncClient(timeout=10.0) as http:
+        exchange = UpbitClient(_client=http)
+        notifier = TelegramNotifier(
+            bot_token=SecretStr(settings.telegram_bot_token),
+            chat_id=settings.telegram_chat_id,
+            dry_run=settings.dry_run,
+        )
+        runner = RunnerService(
+            settings=settings,
+            exchange=exchange,
+            strategy=strategy,
+            cooldown=cooldown,
+            notifier=notifier,
+            signal_log=signal_log,
+            charts_dir=settings.charts_dir,
+        )
+        import contextlib
+
+        with contextlib.suppress(asyncio.CancelledError):
+            await runner.run_forever()
 
 
 @app.command()

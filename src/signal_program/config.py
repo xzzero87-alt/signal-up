@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from pydantic import field_validator
@@ -103,6 +104,12 @@ class Settings(BaseSettings):
 
     # 송출 정책
     cooldown_hours: int = 2
+
+    # 러너 스케줄
+    cycle_delay_seconds: int = 30
+    cycle_timeout_seconds: int = 120
+    signals_log_path: Path = Path("state/signals.jsonl")
+    charts_dir: Path = Path("state/charts")
 
     # 운영
     log_level: str = "INFO"
