@@ -63,6 +63,15 @@ def test_put_settings_validates_field_constraints(client: TestClient) -> None:
     assert resp.status_code == 422
 
 
+def test_put_settings_returns_korean_validation_messages(client: TestClient) -> None:
+    resp = client.put("/api/settings", json={"bb_period": 0})
+    assert resp.status_code == 422
+    detail = resp.json()["detail"]
+    assert isinstance(detail, list)
+    messages = [e["message"] for e in detail]
+    assert any("이상이어야 합니다" in m for m in messages)
+
+
 def test_put_settings_valid_update_returns_200(client: TestClient) -> None:
     resp = client.put("/api/settings", json={"bb_period": 25, "dry_run": True})
     assert resp.status_code == 200
