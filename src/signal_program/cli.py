@@ -375,7 +375,7 @@ async def _fetch_candles_async(market: str, from_date: str, to_date: str | None)
     console = Console()
     all_candles = []
 
-    async with httpx.AsyncClient(timeout=30.0) as http:
+    async with httpx.AsyncClient(base_url="https://api.upbit.com", timeout=30.0) as http:
         client = UpbitClient(_client=http)
         fetch_to = end
 
