@@ -360,6 +360,140 @@ async def _backtest_async(
         typer.echo(f"HTML 리포트 저장: {report_path}")
 
 
+@app.command()
+def walkforward(
+    market: Annotated[str, typer.Option("--market", "-m", help="마켓 코드")],
+    from_date: Annotated[str, typer.Option("--from", help="시작일 (YYYY-MM-DD)")],
+    to_date: Annotated[str, typer.Option("--to", help="종료일 (YYYY-MM-DD)")],
+    train_months: Annotated[int, typer.Option("--train-months", help="학습 기간 (개월)")] = 8,
+    validate_months: Annotated[int, typer.Option("--validate-months", help="검증 기간 (개월)")] = 2,
+    grid: Annotated[
+        str, typer.Option("--grid", help="파라미터 그리드 (예: bb_std_mult:1.5,2.0,2.5)")
+    ] = "bb_std_mult:1.5,2.0,2.5",
+    report_html: Annotated[
+        str, typer.Option("--report-html", help="HTML 리포트 출력 경로")
+    ] = "",
+) -> None:
+    """워크포워드 파라미터 검증 실행. 학습/검증 슬라이딩 윈도우 + 그리드 서치."""
+    import asyncio
+
+    report_path = Path(report_html) if report_html else None
+
+    try:
+        settings = Settings()
+    except SystemExit as exc:
+        typer.echo(f"설정 오류: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    configure_logging(settings)
+    asyncio.run(_walkforward_async(settings, market, from_date, to_date,
+                                   train_months, validate_months, grid, report_path))
+
+
+async def _walkforward_async(
+    settings: Settings,
+    market: str,
+    from_date: str,
+    to_date: str,
+    train_months: int,
+    validate_months: int,
+    grid_str: str,
+    report_path: Path | None,
+) -> None:
+    from datetime import datetime as _dt
+    from datetime import timedelta as _td
+    from zoneinfo import ZoneInfo
+
+    from signal_program.backtest.engine import BacktestEngine
+    from signal_program.backtest.report import walkforward_render_html
+    from signal_program.backtest.walkforward import (
+        WalkforwardEngine,
+        parse_grid,
+    )
+    from signal_program.strategies.bb_cci import BbCciStrategy
+
+    kst = ZoneInfo("Asia/Seoul")
+    period_from = _dt.strptime(from_date, "%Y-%m-%d").replace(tzinfo=kst)
+    period_to = _dt.strptime(to_date, "%Y-%m-%d").replace(tzinfo=kst) + _td(days=1)
+
+    param_grid = parse_grid(grid_str)
+    console = Console()
+    total_months = train_months + validate_months
+    console.print(f"[cyan]그리드 {len(param_grid)}개 파라미터 조합 × {total_months}개월 윈도우[/cyan]")  # noqa: E501
+
+    base_strategy = BbCciStrategy(
+        bb_std_mult=settings.bb_std_mult,
+        cci_threshold_normal=settings.cci_threshold_normal,
+        volume_ratio_min_a=settings.volume_ratio_min_a,
+    )
+    base_engine = BacktestEngine(strategy=base_strategy)
+
+    cache_root = Path("data/candles")
+    wf_engine = WalkforwardEngine(
+        backtest_engine=base_engine,
+        candles_cache_root=cache_root,
+        param_grid=param_grid,
+    )
+
+    wf_result = wf_engine.run(
+        market=market,
+        period_from=period_from,
+        period_to=period_to,
+        train_months=train_months,
+        validate_months=validate_months,
+    )
+
+    # 콘솔: fold별 요약
+    fold_table = Table(title=f"워크포워드 Fold별 결과 — {market}",
+                       show_header=True, header_style="bold cyan")
+    fold_table.add_column("Fold", min_width=5)
+    fold_table.add_column("Validate 기간", min_width=24)
+    fold_table.add_column("최적 bb_std", min_width=10)
+    fold_table.add_column("Train Sharpe", min_width=12)
+    fold_table.add_column("Val. Sharpe", min_width=12)
+    fold_table.add_column("Val. Cum.", min_width=12)
+
+    for fold in wf_result.folds:
+        val_sharpe = fold.validate_result.sharpe_annualized
+        val_cum = fold.validate_result.cumulative_return_pct
+        fold_table.add_row(
+            str(fold.fold_index),
+            f"{fold.validate_period_from:%Y-%m-%d} ~ {fold.validate_period_to:%Y-%m-%d}",
+            str(fold.best_params.bb_std_mult),
+            f"{fold.train_result.sharpe_annualized:.2f}",
+            f"[{'green' if val_sharpe >= 0 else 'red'}]{val_sharpe:.2f}[/]",
+            f"[{'green' if val_cum >= 0 else 'red'}]{val_cum:+.2%}[/]",
+        )
+
+    console.print(fold_table)
+
+    # 콘솔: OOS 합본 요약
+    oos = wf_result.out_of_sample_combined
+    oos_table = Table(title="Out-of-Sample 합본 결과", show_header=True, header_style="bold green")
+    oos_table.add_column("항목", style="dim", min_width=22)
+    oos_table.add_column("값", min_width=16)
+    oos_table.add_row("거래 횟수 (OOS)", str(len(oos.trades)))
+    oos_table.add_row("승률", f"{oos.win_rate:.1%}")
+    oos_table.add_row("평균 수익률", f"{oos.avg_pnl_pct:+.2%}")
+    oos_table.add_row("누적 수익률 (OOS)", f"{oos.cumulative_return_pct:+.2%}")
+    oos_table.add_row("MDD (OOS)", f"{abs(oos.mdd_pct):.2%}")
+    oos_table.add_row("샤프 (연환산, OOS)", f"{oos.sharpe_annualized:.2f}")
+    oos_table.add_row("평균 보유봉", f"{oos.avg_bars_held:.1f}")
+    console.print(oos_table)
+
+    if report_path is not None:
+        html = walkforward_render_html(
+            wf_result,
+            market=market,
+            mode_label=f"A,B (grid={grid_str})",
+            generated_at=_dt.now(tz=kst),
+            template_dir=Path("templates"),
+        )
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(html, encoding="utf-8")
+        typer.echo(f"HTML 리포트 저장: {report_path}")
+
+
 @app.command(name="fetch-candles")
 def fetch_candles(
     market: Annotated[str, typer.Option("--market", "-m", help="마켓 코드")],

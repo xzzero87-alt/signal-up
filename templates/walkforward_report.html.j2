@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>워크포워드 리포트 — {{ market }}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      margin: 0; padding: 2rem; color: #222; background: #fafafa;
+    }
+    h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+    .meta { color: #555; font-size: 0.875rem; margin-bottom: 1.5rem; }
+    h2 { font-size: 1.1rem; margin-top: 2rem; margin-bottom: 0.75rem; border-bottom: 1px solid #ddd; padding-bottom: 0.25rem; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; font-size: 0.85rem; }
+    th, td { padding: 0.45rem 0.8rem; text-align: left; border: 1px solid #e0e0e0; }
+    thead th { background: #f0f0f0; font-weight: 600; }
+    tbody tr:nth-child(even) { background: #f9f9f9; }
+    .metric-val { font-weight: 600; font-variant-numeric: tabular-nums; }
+    .pos { color: #2e7d32; }
+    .neg { color: #c62828; }
+    .chart-wrap { margin-bottom: 1.5rem; }
+    .chart-wrap img { max-width: 100%; height: auto; border: 1px solid #e0e0e0; border-radius: 4px; }
+    .warning-box {
+      background: #fff8e1; border: 1px solid #f9a825; border-radius: 4px;
+      padding: 0.75rem 1rem; margin-bottom: 1.5rem; font-size: 0.875rem; color: #5d4037;
+    }
+    .label-insample { color: #888; font-size: 0.8rem; }
+    .label-oos { color: #1565C0; font-size: 0.8rem; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<h1>워크포워드 리포트 — {{ market }}</h1>
+<div class="meta">
+  전체 기간: {{ wf.period_from.strftime("%Y-%m-%d") }} ~ {{ wf.period_to.strftime("%Y-%m-%d") }}
+  &nbsp;|&nbsp; Fold: {{ wf.folds | length }}개
+  &nbsp;|&nbsp; Train: {{ wf.train_window_days }}일 / Validate: {{ wf.validate_window_days }}일
+  &nbsp;|&nbsp; 모드: {{ mode_label }}
+  &nbsp;|&nbsp; 생성: {{ generated_at.strftime("%Y-%m-%d %H:%M") }} KST
+</div>
+
+{% if low_trades_warning %}
+<div class="warning-box">
+  &#9888; <strong>통계 신뢰성 경고</strong>: fold당 평균 {{ "%.1f" % avg_trades_per_fold }}건 거래.
+  30건 미만이면 통계 신뢰성이 낮습니다. 백테스트 기간 확장 또는 그리드 다양화를 고려하세요.
+</div>
+{% endif %}
+
+<h2>Out-of-Sample 합본 메트릭 <span class="label-oos">&#9658; 신뢰 값</span></h2>
+<table>
+  <thead><tr><th>항목</th><th>값</th></tr></thead>
+  <tbody>
+    <tr><td>거래 횟수 (OOS 합본)</td><td class="metric-val">{{ wf.out_of_sample_combined.trades | length }}</td></tr>
+    <tr><td>승률</td><td class="metric-val">{{ fmt_win_rate }}</td></tr>
+    <tr>
+      <td>평균 수익률</td>
+      <td class="metric-val {% if wf.out_of_sample_combined.avg_pnl_pct >= 0 %}pos{% else %}neg{% endif %}">{{ fmt_avg_pnl }}</td>
+    </tr>
+    <tr>
+      <td>누적 수익률 (OOS)</td>
+      <td class="metric-val {% if wf.out_of_sample_combined.cumulative_return_pct >= 0 %}pos{% else %}neg{% endif %}">{{ fmt_cumulative }}</td>
+    </tr>
+    <tr><td>MDD (OOS)</td><td class="metric-val neg">{{ fmt_mdd }}</td></tr>
+    <tr>
+      <td>샤프 (연환산, OOS)</td>
+      <td class="metric-val {% if wf.out_of_sample_combined.sharpe_annualized >= 0 %}pos{% else %}neg{% endif %}">{{ fmt_sharpe }}</td>
+    </tr>
+    <tr><td>평균 보유봉</td><td class="metric-val">{{ fmt_avg_bars }}</td></tr>
+  </tbody>
+</table>
+
+<h2>Fold별 상세 <span class="label-insample">(Train = in-sample 참고용 / Validate = out-of-sample)</span></h2>
+<table>
+  <thead>
+    <tr>
+      <th>Fold</th>
+      <th>Train 기간</th>
+      <th>Validate 기간</th>
+      <th>최적 파라미터</th>
+      <th>Train Sharpe</th>
+      <th>Validate Sharpe</th>
+      <th>Validate Cum</th>
+      <th>Validate MDD</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for fold in wf.folds %}
+    <tr>
+      <td class="metric-val">{{ fold.fold_index }}</td>
+      <td>{{ fold.train_period_from.strftime("%Y-%m-%d") }} ~ {{ fold.train_period_to.strftime("%Y-%m-%d") }}</td>
+      <td>{{ fold.validate_period_from.strftime("%Y-%m-%d") }} ~ {{ fold.validate_period_to.strftime("%Y-%m-%d") }}</td>
+      <td>bb_std={{ fold.best_params.bb_std_mult }}<br>cci={{ fold.best_params.cci_threshold_normal }}</td>
+      <td class="metric-val label-insample">{{ "%.2f" % fold.train_result.sharpe_annualized }}</td>
+      <td class="metric-val {% if fold.validate_result.sharpe_annualized >= 0 %}pos{% else %}neg{% endif %}">
+        {{ "%.2f" % fold.validate_result.sharpe_annualized }}
+      </td>
+      <td class="metric-val {% if fold.validate_result.cumulative_return_pct >= 0 %}pos{% else %}neg{% endif %}">
+        {{ "%+.2f%%" % (fold.validate_result.cumulative_return_pct * 100) }}
+      </td>
+      <td class="metric-val neg">{{ "%.2f%%" % (fold.validate_result.mdd_pct | abs * 100) }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Equity Curve (OOS 합본)</h2>
+<div class="chart-wrap">
+  <img src="data:image/png;base64,{{ equity_curve_b64 }}" alt="OOS Equity Curve">
+</div>
+
+<h2>Drawdown (OOS 합본)</h2>
+<div class="chart-wrap">
+  <img src="data:image/png;base64,{{ drawdown_b64 }}" alt="OOS Drawdown">
+</div>
+
+</body>
+</html>
