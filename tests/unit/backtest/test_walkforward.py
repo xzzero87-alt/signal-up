@@ -14,6 +14,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 import pytest
+from dateutil.relativedelta import relativedelta
 
 from signal_program.backtest.metrics import BacktestResult, TradeRecord
 from signal_program.backtest.walkforward import (
@@ -348,3 +349,65 @@ def test_walkforward_html_is_self_contained() -> None:
     )
     for banned in ("https://", "http://", "cdn.", "googleapis", "gstatic"):
         assert banned not in html, f"외부 URL 발견: {banned}"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Phase 3 — Hypothesis property + 결정성 회귀
+# ══════════════════════════════════════════════════════════════════════════════
+
+from hypothesis import given, settings as h_settings
+from hypothesis import strategies as st
+
+
+@given(
+    n_folds=st.integers(min_value=1, max_value=6),
+    pnl=st.floats(min_value=-0.05, max_value=0.05, allow_nan=False, allow_infinity=False),
+)
+@h_settings(max_examples=20, deadline=5000)
+def test_hypothesis_oos_trades_count_equals_validate_sum(n_folds: int, pnl: float) -> None:
+    wf = _make_wf_result(n_folds)
+    total_val_trades = sum(len(f.validate_result.trades) for f in wf.folds)
+    assert len(wf.out_of_sample_combined.trades) == total_val_trades
+
+
+@given(
+    train_months=st.integers(min_value=3, max_value=12),
+    validate_months=st.integers(min_value=1, max_value=4),
+)
+@h_settings(max_examples=20, deadline=5000)
+def test_hypothesis_generate_folds_train_to_equals_validate_from(
+    train_months: int, validate_months: int
+) -> None:
+    # 충분한 기간 보장
+    period_from = _FROM
+    total_months = train_months + validate_months + validate_months  # 최소 1 fold
+    period_to = period_from + relativedelta(months=total_months)
+
+    try:
+        folds = _generate_folds(period_from, period_to, train_months, validate_months)
+    except WalkforwardDataError:
+        return  # 기간 부족 — 정상
+
+    for train_from, train_to, validate_from, validate_to in folds:
+        # 핵심 불변: train_to == validate_from (구간 연속성)
+        assert train_to == validate_from, f"Gap: train_to={train_to}, validate_from={validate_from}"
+
+
+def test_determinism_same_input_same_result() -> None:
+    """같은 그리드 + 같은 mock → 같은 WalkforwardFold 선택."""
+    sharpe_map = {1.5: -1.0, 2.0: 0.8, 2.5: 0.3}
+
+    def mock_factory(params: StrategyParams) -> MagicMock:
+        eng = MagicMock()
+        eng.run.return_value = _fake_result(sharpe=sharpe_map.get(params.bb_std_mult, 0.0))
+        return eng
+
+    grid = (
+        StrategyParams(bb_std_mult=1.5),
+        StrategyParams(bb_std_mult=2.0),
+        StrategyParams(bb_std_mult=2.5),
+    )
+
+    best1, _ = _grid_search("KRW-BTC", pd.DataFrame(), grid, mock_factory, lambda r: r.sharpe_annualized)
+    best2, _ = _grid_search("KRW-BTC", pd.DataFrame(), grid, mock_factory, lambda r: r.sharpe_annualized)
+    assert best1 == best2  # 결정성
