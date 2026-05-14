@@ -328,7 +328,7 @@ async def _backtest_async(
     table.add_row("승률", f"{result.win_rate:.1%}")
     table.add_row("평균 수익률", f"{result.avg_pnl_pct:+.2%}")
     table.add_row("누적 수익률", f"{result.cumulative_return_pct:+.2%}")
-    table.add_row("MDD", f"{result.mdd_pct:.2%}")
+    table.add_row("MDD", f"{abs(result.mdd_pct):.2%}")
     table.add_row("샤프 (연환산)", f"{result.sharpe_annualized:.2f}")
     table.add_row("평균 보유봉", f"{result.avg_bars_held:.1f}")
 

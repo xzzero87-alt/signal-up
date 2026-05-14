@@ -17,13 +17,17 @@ import 사용처:
 
 from __future__ import annotations
 
-import statistics
 from datetime import datetime  # noqa: TC003
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
-from signal_program.backtest.metrics import BacktestResult, TradeRecord
+from signal_program.backtest.metrics import (
+    BacktestResult,
+    TradeRecord,
+    calculate_mdd_pct,
+    calculate_sharpe_annualized,
+)
 from signal_program.enums import SignalDirection
 
 if TYPE_CHECKING:
@@ -152,26 +156,8 @@ class BacktestEngine:
             equity_curve.append(equity)
         cumulative_return_pct = equity - 1.0
 
-        # MDD
-        peak = equity_curve[0]
-        mdd = 0.0
-        for eq in equity_curve:
-            if eq > peak:
-                peak = eq
-            dd = (peak - eq) / peak if peak > 0 else 0.0
-            if dd > mdd:
-                mdd = dd
-
-        # 샤프 (연환산, 1h봉 기준 8760h/년)
-        if len(pnls) < 2:
-            sharpe = 0.0
-        else:
-            std = statistics.stdev(pnls)
-            sharpe = (
-                0.0
-                if std == 0.0
-                else (statistics.mean(pnls) / std) * (8760**0.5)
-            )
+        mdd = calculate_mdd_pct(equity_curve)
+        sharpe = calculate_sharpe_annualized(tuple(trades), period_from, period_to)
 
         avg_bars = sum(t.bars_held for t in trades) / len(trades)
 
