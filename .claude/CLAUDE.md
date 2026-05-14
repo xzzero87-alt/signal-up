@@ -9,8 +9,9 @@
 
 1. [`../PRD.md`](../PRD.md) — Product Requirements (v2.2)
 2. [`../DESIGN.md`](../DESIGN.md) — 기술 명세서 (v2.0)
-3. [`../docs/adr/README.md`](../docs/adr/README.md) — Architecture Decision Records 인덱스 (0001~0008)
+3. [`../docs/adr/README.md`](../docs/adr/README.md) — Architecture Decision Records 인덱스 (0001~0009)
 4. [`../docs/CLAUDE_CODE_PROMPTS.md`](../docs/CLAUDE_CODE_PROMPTS.md) — **마일스톤별 Claude Code 지시문** (1~16 + 일반 패턴)
+5. [`../docs/runbook.md`](../docs/runbook.md) — **운영 플레이북** (Severity·시나리오 대응·회고 체크리스트)
 
 ## 변경 금지 영역 (Hard Lines)
 

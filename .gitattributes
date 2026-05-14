@@ -1,0 +1,22 @@
+# EOL 정책: 모든 텍스트 파일을 LF로 통일 (Windows CRLF 자동 변환 차단)
+# ADR-0009와 무관 — git 측 정규화. 코드 파일 시스템에는 영향 없음.
+* text=auto eol=lf
+
+# 명시: Python·문서·설정·YAML 카세트 모두 LF
+*.py     text eol=lf
+*.md     text eol=lf
+*.toml   text eol=lf
+*.yaml   text eol=lf
+*.yml    text eol=lf
+*.json   text eol=lf
+*.lock   text eol=lf
+*.env    text eol=lf
+*.env.*  text eol=lf
+.env.example text eol=lf
+
+# 바이너리는 명시적 제외
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.pdf    binary
+*.parquet binary

@@ -298,7 +298,9 @@ uv run pip-audit                      # 의존성 취약점 검사
 |------|------|
 | [`PRD.md`](PRD.md) | 제품 요구사항, 사용자 스토리, 성공 지표, ADR 인덱스 |
 | [`DESIGN.md`](DESIGN.md) | 기술 명세, 아키텍처, 도메인 모델, REST API, 마일스톤 |
-| [`docs/adr/`](docs/adr/) | Architecture Decision Records 8건 |
+| [`docs/adr/`](docs/adr/) | Architecture Decision Records 9건 |
+| [`docs/runbook.md`](docs/runbook.md) | 운영 플레이북 — Severity·시나리오 10건·회고 체크리스트 |
+| [`docs/CLAUDE_CODE_PROMPTS.md`](docs/CLAUDE_CODE_PROMPTS.md) | 마일스톤별 Claude Code 인계 지시문 |
 | [`.claude/CLAUDE.md`](.claude/CLAUDE.md) | Claude Code 진입점·변경 금지 영역 |
 
 ---
