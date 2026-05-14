@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -39,7 +39,7 @@ def test_round_trip_200_candles(tmp_path: pytest.TempPathFactory) -> None:
     loaded = load_candles(path)
 
     assert len(loaded) == 200
-    for orig, lc in zip(candles, loaded):
+    for orig, lc in zip(candles, loaded, strict=True):
         assert orig.market == lc.market
         assert orig.opened_at.timestamp() == pytest.approx(lc.opened_at.timestamp())
         assert orig.open == pytest.approx(lc.open)

@@ -39,11 +39,13 @@ from signal_program.backtest.metrics import (
 
 # ── 예외 ─────────────────────────────────────────────────────────────────────
 
+
 class WalkforwardDataError(Exception):
     """워크포워드 기간 또는 데이터 부족 오류."""
 
 
 # ── StrategyParams ────────────────────────────────────────────────────────────
+
 
 class StrategyParams(BaseModel):
     """그리드 서치 대상 파라미터. 기본값은 Settings 기본값과 일치.
@@ -81,6 +83,7 @@ class StrategyParams(BaseModel):
 
 # ── 도메인 모델 ───────────────────────────────────────────────────────────────
 
+
 class WalkforwardFold(BaseModel):
     """한 fold의 학습 + 검증 결과."""
 
@@ -110,6 +113,7 @@ class WalkforwardResult(BaseModel):
 
 
 # ── 내부 헬퍼 ─────────────────────────────────────────────────────────────────
+
 
 def _generate_folds(
     period_from: datetime,
@@ -303,6 +307,7 @@ def parse_grid(grid_str: str) -> tuple[StrategyParams, ...]:
 
 
 # ── WalkforwardEngine ─────────────────────────────────────────────────────────
+
 
 def _default_objective(r: BacktestResult) -> float:
     return r.sharpe_annualized

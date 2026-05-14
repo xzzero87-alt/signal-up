@@ -67,9 +67,7 @@ class BacktestEngine:
         for i in range(len(candles_df)):
             if position is None:
                 signals = self.strategy.evaluate(market, candles_df.iloc[: i + 1])
-                buy_sig = next(
-                    (s for s in signals if s.direction == SignalDirection.BUY), None
-                )
+                buy_sig = next((s for s in signals if s.direction == SignalDirection.BUY), None)
                 if buy_sig is not None and i + 1 < len(candles_df):
                     position = {
                         "signal_bar_idx": i,

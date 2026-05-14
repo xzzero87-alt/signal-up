@@ -1,0 +1,58 @@
+/* 업비트 시그널 프로그램 v2.0 — app.css (외부 CDN 없음) */
+*, *::before, *::after { box-sizing: border-box; }
+
+:root {
+  --color-bg: #fafafa; --color-surface: #fff; --color-border: #e0e0e0;
+  --color-text: #222; --color-muted: #666;
+  --color-primary: #1565C0; --color-success: #2e7d32;
+  --color-danger: #c62828; --color-nav: #1565C0;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --radius: 4px;
+}
+
+body { font-family: var(--font); background: var(--color-bg); color: var(--color-text); margin: 0; padding: 0; font-size: 14px; }
+
+.nav { background: var(--color-nav); color: #fff; display: flex; align-items: center; padding: 0 1.5rem; height: 48px; gap: 2rem; }
+.nav-brand { font-weight: 700; }
+.nav-links { list-style: none; margin: 0; padding: 0; display: flex; gap: 1.5rem; }
+.nav-links a { color: rgba(255,255,255,0.85); text-decoration: none; }
+.nav-links a:hover, .nav-links a.active { color: #fff; text-decoration: underline; }
+.nav-disabled { color: rgba(255,255,255,0.45); cursor: default; font-size: 0.85rem; }
+
+.main { padding: 1.5rem 2rem; max-width: 1200px; }
+.footer { padding: 1rem 2rem; color: var(--color-muted); font-size: 0.8rem; border-top: 1px solid var(--color-border); }
+
+.page-header { margin-bottom: 1.5rem; }
+.page-header h1 { margin: 0 0 0.5rem; font-size: 1.3rem; }
+.header-info { display: flex; gap: 1.5rem; font-size: 0.85rem; color: var(--color-muted); flex-wrap: wrap; align-items: center; }
+.header-info strong { color: var(--color-text); }
+
+.info-box  { background: #e3f2fd; border: 1px solid #90caf9; border-radius: var(--radius); padding: 0.5rem 1rem; font-size: 0.85rem; margin-top: 0.5rem; }
+.error-box { background: #ffebee; border: 1px solid #ef9a9a; border-radius: var(--radius); padding: 0.5rem 1rem; font-size: 0.85rem; color: var(--color-danger); }
+.toast { position: fixed; top: 1rem; right: 1rem; background: var(--color-success); color: #fff; padding: 0.6rem 1.2rem; border-radius: var(--radius); z-index: 999; }
+
+.filter-bar { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: flex-end; }
+.filter-bar label { display: flex; flex-direction: column; font-size: 0.8rem; color: var(--color-muted); gap: 2px; }
+.filter-bar select { border: 1px solid var(--color-border); border-radius: var(--radius); padding: 4px 8px; }
+
+.signal-table { border-collapse: collapse; width: 100%; }
+.signal-table th, .signal-table td { border: 1px solid var(--color-border); padding: 0.4rem 0.7rem; text-align: left; font-size: 0.85rem; }
+.signal-table thead th { background: #f0f0f0; font-weight: 600; white-space: nowrap; }
+.signal-table tbody tr:nth-child(even) { background: #f9f9f9; }
+.empty-row { text-align: center; color: var(--color-muted); padding: 2rem; }
+
+.settings-section { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.25rem; }
+.settings-section h2 { margin: 0 0 1rem; font-size: 1rem; color: var(--color-primary); }
+.field-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+.field-row label { min-width: 200px; font-size: 0.875rem; }
+.field-row input[type="number"], .field-row input[type="text"], .field-row input[type="password"] { border: 1px solid var(--color-border); border-radius: var(--radius); padding: 4px 8px; font-size: 0.875rem; width: 160px; }
+.input-wide { width: 400px !important; }
+.field-row-check label { display: flex; align-items: center; gap: 0.5rem; min-width: unset; }
+.field-error { color: var(--color-danger); font-size: 0.8rem; }
+.help { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; background: #bbb; color: #fff; border-radius: 50%; font-size: 10px; cursor: help; flex-shrink: 0; }
+
+.form-actions { display: flex; gap: 0.75rem; margin-top: 1rem; }
+.btn-primary { background: var(--color-primary); color: #fff; border: none; border-radius: var(--radius); padding: 0.5rem 1.25rem; cursor: pointer; font-size: 0.9rem; }
+.btn-primary:hover { background: #0d47a1; }
+.btn-secondary { background: #fff; color: var(--color-text); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 0.5rem 1.25rem; cursor: pointer; font-size: 0.9rem; }
+.btn-sm { background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius); padding: 2px 10px; cursor: pointer; font-size: 0.8rem; }

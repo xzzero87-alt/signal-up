@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}설정{% endblock %}
+
+{% block content %}
+<h1>설정</h1>
+<div id="save-toast" class="toast" style="display:none"></div>
+<div id="form-errors" class="error-box" style="display:none"></div>
+
+<form id="settings-form" onsubmit="saveSettings(event)">
+
+  <section class="settings-section">
+    <h2>텔레그램</h2>
+
+    <div class="field-row">
+      <label for="telegram_bot_token">봇 토큰
+        <span class="help" title="{{ help.telegram_bot_token }}">?</span>
+      </label>
+      <input id="telegram_bot_token" name="telegram_bot_token" type="password"
+             placeholder="비워두면 기존 값 유지" value="">
+    </div>
+
+    <div class="field-row">
+      <label for="telegram_chat_id">Chat ID
+        <span class="help" title="{{ help.telegram_chat_id }}">?</span>
+      </label>
+      <input id="telegram_chat_id" name="telegram_chat_id" type="text"
+             value="{{ settings.telegram_chat_id or '' }}">
+    </div>
+
+    <div class="field-row field-row-check">
+      <label>
+        <input id="dry_run" name="dry_run" type="checkbox"
+               {% if settings.dry_run %}checked{% endif %}>
+        dry_run — 텔레그램 송출 안 함 (테스트용)
+        <span class="help" title="{{ help.dry_run }}">?</span>
+      </label>
+    </div>
+  </section>
+
+  <section class="settings-section">
+    <h2>전략 파라미터</h2>
+    {% for field_name, label in [
+      ('bb_period', 'BB Period'),
+      ('bb_std_mult', 'BB Std Mult'),
+      ('cci_period', 'CCI Period'),
+      ('cci_threshold_normal', 'CCI Threshold (Normal)'),
+      ('cci_threshold_strong', 'CCI Threshold (Strong)'),
+      ('volume_ratio_min_a', 'Volume Ratio Min A'),
+      ('volume_ratio_min_b', 'Volume Ratio Min B'),
+      ('squeeze_lookback', 'Squeeze Lookback'),
+      ('squeeze_quantile', 'Squeeze Quantile'),
+    ] %}
+    <div class="field-row">
+      <label for="{{ field_name }}">{{ label }}
+        <span class="help" title="{{ help[field_name] }}">?</span>
+      </label>
+      <input id="{{ field_name }}" name="{{ field_name }}" type="number" step="any"
+             value="{{ settings[field_name] }}" data-field="{{ field_name }}">
+      <span class="field-error" id="err-{{ field_name }}"></span>
+    </div>
+    {% endfor %}
+  </section>
+
+  <section class="settings-section">
+    <h2>운영</h2>
+    <div class="field-row">
+      <label for="cooldown_hours">쿨다운 (시간)
+        <span class="help" title="{{ help.cooldown_hours }}">?</span>
+      </label>
+      <input id="cooldown_hours" name="cooldown_hours" type="number"
+             value="{{ settings.cooldown_hours }}" data-field="cooldown_hours">
+      <span class="field-error" id="err-cooldown_hours"></span>
+    </div>
+    <div class="field-row">
+      <label for="whitelist_markets">화이트리스트
+        <span class="help" title="{{ help.whitelist_markets }}">?</span>
+      </label>
+      <input id="whitelist_markets" name="whitelist_markets" type="text"
+             value="{{ settings.whitelist_markets | join(',') }}"
+             data-field="whitelist_markets" class="input-wide">
+      <span class="field-error" id="err-whitelist_markets"></span>
+    </div>
+  </section>
+
+  <div class="form-actions">
+    <button type="submit" class="btn-primary">저장</button>
+    <button type="button" class="btn-secondary" onclick="resetToDefaults()">기본값 초기화</button>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/settings.js"></script>
+{% endblock %}

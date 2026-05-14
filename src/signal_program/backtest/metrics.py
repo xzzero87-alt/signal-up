@@ -40,7 +40,7 @@ class BacktestResult(BaseModel):
     win_rate: float
     avg_pnl_pct: float
     cumulative_return_pct: float
-    mdd_pct: float          # 음수 또는 0 (peak-to-trough drawdown)
+    mdd_pct: float  # 음수 또는 0 (peak-to-trough drawdown)
     sharpe_annualized: float
     avg_bars_held: float
 

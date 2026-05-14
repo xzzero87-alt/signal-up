@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}대시보드{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>시그널 대시보드</h1>
+  <div class="header-info">
+    <span class="daemon-status">데몬: <strong id="daemon-status-text">확인 중...</strong></span>
+    <span class="last-signal">최근 시그널: <strong id="last-signal-text">—</strong></span>
+    <span class="countdown">마지막 갱신: <span id="last-update">—</span></span>
+  </div>
+  <div class="daemon-note info-box">
+    데몬 제어는 M16에서 활성화됩니다.
+    현재는 <a href="/settings">설정 페이지</a>에서 dry_run 설정을 확인하세요.
+  </div>
+</div>
+
+<div class="filter-bar">
+  <label>코인
+    <select id="filter-market" onchange="applyFilters()">
+      <option value="">전체</option>
+    </select>
+  </label>
+  <label>방향
+    <select id="filter-direction" onchange="applyFilters()">
+      <option value="">전체</option>
+      <option value="buy">BUY</option>
+      <option value="sell">SELL</option>
+    </select>
+  </label>
+  <label>모드
+    <select id="filter-mode" onchange="applyFilters()">
+      <option value="">전체</option>
+      <option value="A">A (평균회귀)</option>
+      <option value="B">B (스퀴즈)</option>
+    </select>
+  </label>
+  <label>강도
+    <select id="filter-strength" onchange="applyFilters()">
+      <option value="">전체</option>
+      <option value="normal">NORMAL</option>
+      <option value="strong">STRONG</option>
+    </select>
+  </label>
+</div>
+
+<div id="error-msg" class="error-box" style="display:none"></div>
+
+<table class="signal-table" id="signal-table">
+  <thead>
+    <tr>
+      <th>시각 (KST)</th><th>코인</th><th>모드</th><th>방향</th>
+      <th>강도</th><th>가격 (KRW)</th><th>BB 위치</th><th>CCI</th><th>거래량비</th>
+    </tr>
+  </thead>
+  <tbody id="signal-tbody">
+    <tr><td colspan="9" class="empty-row">시그널 없음 — 데몬 실행 후 시그널이 수신되면 여기에 표시됩니다.</td></tr>
+  </tbody>
+</table>
+{% endblock %}
+
+{% block scripts %}
+<script>const POLL_INTERVAL_MS = 30_000;</script>
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

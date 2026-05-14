@@ -396,9 +396,7 @@ def walkforward(
     grid: Annotated[
         str, typer.Option("--grid", help="파라미터 그리드 (예: bb_std_mult:1.5,2.0,2.5)")
     ] = "bb_std_mult:1.5,2.0,2.5",
-    report_html: Annotated[
-        str, typer.Option("--report-html", help="HTML 리포트 출력 경로")
-    ] = "",
+    report_html: Annotated[str, typer.Option("--report-html", help="HTML 리포트 출력 경로")] = "",
 ) -> None:
     """워크포워드 파라미터 검증 실행. 학습/검증 슬라이딩 윈도우 + 그리드 서치."""
     import asyncio
@@ -412,8 +410,11 @@ def walkforward(
         raise typer.Exit(1) from exc
 
     configure_logging(settings)
-    asyncio.run(_walkforward_async(settings, market, from_date, to_date,
-                                   train_months, validate_months, grid, report_path))
+    asyncio.run(
+        _walkforward_async(
+            settings, market, from_date, to_date, train_months, validate_months, grid, report_path
+        )
+    )
 
 
 async def _walkforward_async(
@@ -445,7 +446,9 @@ async def _walkforward_async(
     param_grid = parse_grid(grid_str)
     console = Console()
     total_months = train_months + validate_months
-    console.print(f"[cyan]그리드 {len(param_grid)}개 파라미터 조합 × {total_months}개월 윈도우[/cyan]")  # noqa: E501
+    console.print(
+        f"[cyan]그리드 {len(param_grid)}개 파라미터 조합 × {total_months}개월 윈도우[/cyan]"
+    )  # noqa: E501
 
     base_strategy = BbCciStrategy(
         bb_std_mult=settings.bb_std_mult,
@@ -470,8 +473,9 @@ async def _walkforward_async(
     )
 
     # 콘솔: fold별 요약
-    fold_table = Table(title=f"워크포워드 Fold별 결과 — {market}",
-                       show_header=True, header_style="bold cyan")
+    fold_table = Table(
+        title=f"워크포워드 Fold별 결과 — {market}", show_header=True, header_style="bold cyan"
+    )
     fold_table.add_column("Fold", min_width=5)
     fold_table.add_column("Validate 기간", min_width=24)
     fold_table.add_column("최적 bb_std", min_width=10)
@@ -524,9 +528,7 @@ async def _walkforward_async(
 def fetch_candles(
     market: Annotated[str, typer.Option("--market", "-m", help="마켓 코드")],
     from_date: Annotated[str, typer.Option("--from", help="시작일 (YYYY-MM-DD)")],
-    to_date: Annotated[
-        str, typer.Option("--to", help="종료일 (YYYY-MM-DD, 기본: 오늘)")
-    ] = "",
+    to_date: Annotated[str, typer.Option("--to", help="종료일 (YYYY-MM-DD, 기본: 오늘)")] = "",
 ) -> None:
     """업비트에서 1시간봉 캔들을 다운로드해 data/candles/ 에 월 단위 parquet으로 저장한다."""
     import asyncio
@@ -572,9 +574,7 @@ async def _fetch_candles_async(market: str, from_date: str, to_date: str | None)
             task = progress.add_task(f"Fetching {market}...", total=None)
 
             while True:
-                batch = await client.fetch_candles(
-                    market, Timeframe.HOUR_1, count=200, to=fetch_to
-                )
+                batch = await client.fetch_candles(market, Timeframe.HOUR_1, count=200, to=fetch_to)
                 if not batch:
                     break
 
@@ -605,4 +605,6 @@ async def _fetch_candles_async(market: str, from_date: str, to_date: str | None)
         saved_total += len(month_list)
 
     end_label = to_date or "오늘"
-    console.print(f"\n[green]완료[/green] {market}: 총 {saved_total:,} 봉 저장 ({from_date} ~ {end_label})")  # noqa: E501
+    console.print(
+        f"\n[green]완료[/green] {market}: 총 {saved_total:,} 봉 저장 ({from_date} ~ {end_label})"
+    )  # noqa: E501

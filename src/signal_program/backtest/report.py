@@ -35,6 +35,7 @@ from signal_program.backtest.walkforward import WalkforwardResult  # noqa: TC001
 
 # ── 차트 헬퍼 ────────────────────────────────────────────────────────────────
 
+
 def _empty_png_base64() -> str:
     """빈 차트 → base64 PNG (trades 없을 때 안전 폴백)."""
     fig, ax = plt.subplots(figsize=(8, 4), dpi=80)
@@ -129,6 +130,7 @@ def drawdown_png_base64(trades: tuple[TradeRecord, ...]) -> str:
 
 # ── 렌더러 ───────────────────────────────────────────────────────────────────
 
+
 @dataclass(frozen=True)
 class BacktestReportRenderer:
     """Jinja2 기반 HTML 리포트 렌더러. autoescape=True 강제로 XSS 방어."""
@@ -171,6 +173,7 @@ class BacktestReportRenderer:
 
 
 # ── 워크포워드 렌더러 ─────────────────────────────────────────────────────────
+
 
 def walkforward_render_html(
     wf_result: WalkforwardResult,

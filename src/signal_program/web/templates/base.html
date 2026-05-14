@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}업비트 시그널{% endblock %} — 업비트 시그널 프로그램</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+<nav class="nav">
+  <span class="nav-brand">&#128202; 업비트 시그널</span>
+  <ul class="nav-links">
+    <li><a href="/" {% if active == 'dashboard' %}class="active"{% endif %}>대시보드</a></li>
+    <li><a href="/settings" {% if active == 'settings' %}class="active"{% endif %}>설정</a></li>
+    <li><span class="nav-disabled" title="M15에서 활성화">백테스트</span></li>
+    <li><span class="nav-disabled" title="데몬 제어는 M16에서 활성화됩니다">데몬 제어 (M16)</span></li>
+  </ul>
+</nav>
+<main class="main">
+  {% block content %}{% endblock %}
+</main>
+<footer class="footer">
+  <small>업비트 시그널 프로그램 v2.0 — 참고용 시그널. 자동매매 아님.</small>
+</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>
