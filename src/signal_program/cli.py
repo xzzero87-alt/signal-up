@@ -223,11 +223,37 @@ async def _run_async(settings: Settings) -> None:
 
 @app.command()
 def serve(
-    port: Annotated[int, typer.Option("--port", help="웹 서버 포트")] = 8765,
-    bind: Annotated[str, typer.Option("--bind", help="바인드 주소")] = "127.0.0.1",
+    port: Annotated[int | None, typer.Option("--port", help="웹 서버 포트")] = None,
+    bind: Annotated[str | None, typer.Option("--bind", help="바인드 주소")] = None,
 ) -> None:
-    """웹 대시보드 + 백그라운드 데몬 실행. [마일스톤 13에서 구현 예정]"""
-    raise NotImplementedError("마일스톤 13에서 구현")
+    """FastAPI 웹 대시보드 서버를 기동한다. 기본: http://127.0.0.1:8765/"""
+    import uvicorn
+
+    from signal_program.state.settings_store import SettingsStore
+    from signal_program.web.app import create_app
+    from signal_program.web.security import assert_safe_bind
+
+    try:
+        settings = Settings()
+    except SystemExit as exc:
+        typer.echo(f"설정 오류: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    store = SettingsStore(path=Path("state/settings.json"), env_settings=settings)
+    current = store.load()
+
+    actual_bind = bind or current.web_bind
+    actual_port = port or current.web_port
+
+    assert_safe_bind(actual_bind, current.web_auth_password)
+
+    configure_logging(current)
+    app_instance = create_app(
+        settings_path=Path("state/settings.json"),
+        env_settings=settings,
+    )
+    typer.echo(f"서버 기동: http://{actual_bind}:{actual_port}/")
+    uvicorn.run(app_instance, host=actual_bind, port=actual_port)
 
 
 @app.command(name="scan-once")
