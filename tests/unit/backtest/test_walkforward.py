@@ -393,6 +393,139 @@ def test_hypothesis_generate_folds_train_to_equals_validate_from(
         assert train_to == validate_from, f"Gap: train_to={train_to}, validate_from={validate_from}"
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# 추가 커버리지 — validator / exception / load / engine end-to-end
+# ══════════════════════════════════════════════════════════════════════════════
+
+def test_strategy_params_invalid_bb_std_mult() -> None:
+    with pytest.raises(Exception):
+        StrategyParams(bb_std_mult=-1.0)
+
+
+def test_strategy_params_invalid_cci_threshold() -> None:
+    with pytest.raises(Exception):
+        StrategyParams(cci_threshold_normal=-50)
+
+
+def test_strategy_params_invalid_volume_ratio() -> None:
+    with pytest.raises(Exception):
+        StrategyParams(volume_ratio_min_a=0.0)
+
+
+def test_grid_search_all_exceptions_returns_first_param() -> None:
+    """모든 파라미터가 예외를 던지면 첫 번째 파라미터를 반환한다."""
+    def failing_factory(params: StrategyParams) -> MagicMock:
+        eng = MagicMock()
+        eng.run.side_effect = ValueError("no data")
+        return eng
+
+    grid = (StrategyParams(bb_std_mult=1.5), StrategyParams(bb_std_mult=2.0))
+    best, result = _grid_search("KRW-BTC", pd.DataFrame(), grid, failing_factory, lambda r: r.sharpe_annualized)
+    assert best == grid[0]
+
+
+def test_load_candles_df_creates_df_from_parquet(tmp_path: pytest.TempPathFactory) -> None:
+    from datetime import timezone
+    from signal_program.backtest.candles_io import save_candles
+    from signal_program.backtest.walkforward import _load_candles_df
+    from signal_program.models import Candle
+
+    kst = _KST
+    base = datetime(2025, 1, 1, 0, 0, 0, tzinfo=kst)
+    candles = [
+        Candle(
+            market="KRW-TEST",
+            opened_at=base + timedelta(hours=i),
+            open=50_000_000.0,
+            high=50_100_000.0,
+            low=49_900_000.0,
+            close=50_050_000.0,
+            volume=10.0,
+            quote_volume=500_000_000.0,
+        )
+        for i in range(24)
+    ]
+
+    cache_root = tmp_path  # type: ignore[arg-type]
+    path = cache_root / "KRW-TEST" / "60" / "2025-01.parquet"
+    save_candles(candles, path)
+
+    df = _load_candles_df("KRW-TEST", base, base + timedelta(hours=24), cache_root)
+    assert len(df) == 24
+    assert list(df.columns) == sorted(df.columns.tolist()) or "opened_at" in df.columns
+
+
+def test_load_candles_df_missing_cache_returns_empty(tmp_path: pytest.TempPathFactory) -> None:
+    from signal_program.backtest.walkforward import _load_candles_df
+
+    df = _load_candles_df("KRW-MISSING", _FROM, _TO, tmp_path)  # type: ignore[arg-type]
+    assert len(df) == 0
+
+
+def test_walkforward_engine_run_end_to_end(tmp_path: pytest.TempPathFactory) -> None:
+    """WalkforwardEngine.run() 전체 흐름을 mock 캔들로 검증한다."""
+    from datetime import timedelta
+    from signal_program.backtest.candles_io import save_candles
+    from signal_program.backtest.engine import BacktestEngine
+    from signal_program.backtest.walkforward import WalkforwardEngine, StrategyParams, parse_grid
+    from signal_program.models import Candle
+    from signal_program.strategies.bb_cci import BbCciStrategy
+
+    kst = _KST
+    cache_root = tmp_path  # type: ignore[arg-type]
+
+    # 10개월치 합성 캔들 생성 (period: Jan~Oct 2025)
+    base = datetime(2025, 1, 1, 0, 0, 0, tzinfo=kst)
+    from dateutil.relativedelta import relativedelta as rd
+
+    for month_offset in range(10):
+        month_start = base + rd(months=month_offset)
+        month_end = base + rd(months=month_offset + 1)
+        hours = int((month_end - month_start).total_seconds() / 3600)
+        candles = [
+            Candle(
+                market="KRW-MOCK",
+                opened_at=month_start + timedelta(hours=i),
+                open=50_000_000.0 + i * 1_000,
+                high=50_100_000.0 + i * 1_000,
+                low=49_900_000.0 + i * 1_000,
+                close=50_050_000.0 + i * 1_000,
+                volume=10.0,
+                quote_volume=500_000_000.0,
+            )
+            for i in range(hours)
+        ]
+        month_str = month_start.strftime("%Y-%m")
+        save_candles(candles, cache_root / "KRW-MOCK" / "60" / f"{month_str}.parquet")
+
+    base_strategy = BbCciStrategy()
+    base_engine = BacktestEngine(strategy=base_strategy)
+    grid = (StrategyParams(bb_std_mult=2.0), StrategyParams(bb_std_mult=2.5))
+
+    wf_engine = WalkforwardEngine(
+        backtest_engine=base_engine,
+        candles_cache_root=cache_root,
+        param_grid=grid,
+    )
+
+    period_from = base
+    period_to = base + rd(months=10)
+
+    result = wf_engine.run(
+        market="KRW-MOCK",
+        period_from=period_from,
+        period_to=period_to,
+        train_months=6,
+        validate_months=2,
+    )
+
+    assert len(result.folds) >= 1
+    for fold in result.folds:
+        # train 기간 내 거래만 있는지 확인 (OOS leakage 없음)
+        for trade in result.out_of_sample_combined.trades:
+            assert trade.entry_at >= result.folds[0].validate_period_from
+
+
 def test_determinism_same_input_same_result() -> None:
     """같은 그리드 + 같은 mock → 같은 WalkforwardFold 선택."""
     sharpe_map = {1.5: -1.0, 2.0: 0.8, 2.5: 0.3}
