@@ -106,7 +106,8 @@ class BacktestEngine:
     ) -> TradeRecord:
         cost = self.fee_rate + self.slippage_rate
         entry_price: float = position["entry_price"]
-        pnl_pct = exit_close * (1 - cost) / (entry_price * (1 + cost)) - 1
+        denom = entry_price * (1 + cost)
+        pnl_pct = exit_close * (1 - cost) / denom - 1 if denom != 0.0 else 0.0
         return TradeRecord(
             market=market,
             mode=position["mode"],

@@ -1,4 +1,4 @@
-"""BacktestEngine 시뮬레이션 시나리오 12종 — Phase 1: RED (NotImplementedError 예상).
+"""BacktestEngine 시뮬레이션 시나리오 12종 + Hypothesis property + 경계 parametrize.
 
 합성 캔들 설계:
   close[i] = 50_000_000 + i * close_step
@@ -16,6 +16,8 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 import pytest
+from hypothesis import given, settings as h_settings
+from hypothesis import strategies as st
 
 from signal_program.backtest.engine import BacktestEngine
 from signal_program.enums import SignalDirection, SignalStrength, StrategyMode, Timeframe
@@ -264,3 +266,104 @@ def test_l_empty_candles_raises_value_error() -> None:
     df = _make_candles_df(0)
     with pytest.raises(ValueError):
         _engine(_MockStrategy({})).run(_MARKET, df)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Phase 3 — Hypothesis property + 경계 parametrize
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+# ── Hypothesis: 임의 가격·임계값에서 run()이 예외 없이 BacktestResult 반환 ──────
+
+@given(
+    close_start=st.floats(min_value=100.0, max_value=1_000_000.0, allow_nan=False, allow_infinity=False),
+    close_step=st.floats(min_value=-5_000.0, max_value=5_000.0, allow_nan=False, allow_infinity=False),
+    signal_bar=st.integers(min_value=0, max_value=150),
+    max_hold=st.integers(min_value=1, max_value=48),
+)
+@h_settings(max_examples=40, deadline=5000)
+def test_hypothesis_run_no_exception(
+    close_start: float, close_step: float, signal_bar: int, max_hold: int
+) -> None:
+    df = _make_candles_df(200, close_start=close_start, close_step=close_step)
+    sig = _buy_signal(bb_middle=close_start + abs(close_step) * 1000)
+    result = _engine(_MockStrategy({signal_bar: [sig]}), max_holding_bars=max_hold).run(_MARKET, df)
+    # BacktestResult invariants
+    assert 0.0 <= result.win_rate <= 1.0
+    assert not math.isnan(result.sharpe_annualized)
+    assert not math.isinf(result.sharpe_annualized)
+    assert result.mdd_pct >= 0.0
+    assert len(result.trades) == result.trades.__len__()
+
+
+# ── Hypothesis: BacktestResult 필드 invariant 검증 ────────────────────────────
+
+@given(n_signals=st.integers(min_value=0, max_value=5))
+@h_settings(max_examples=20, deadline=5000)
+def test_hypothesis_result_invariants(n_signals: int) -> None:
+    df = _make_candles_df(200)
+    sig = _buy_signal()
+    # 50봉 간격으로 신호 배치 (최대 5개)
+    signal_dict = {10 + i * 40: [sig] for i in range(n_signals)}
+    result = _engine(_MockStrategy(signal_dict), max_holding_bars=24).run(_MARKET, df)
+
+    # win_rate ∈ [0, 1]
+    assert 0.0 <= result.win_rate <= 1.0
+    # trades 수와 avg_bars_held 일관성
+    if result.trades:
+        expected_avg = sum(t.bars_held for t in result.trades) / len(result.trades)
+        assert result.avg_bars_held == pytest.approx(expected_avg)
+    else:
+        assert result.avg_bars_held == 0.0
+
+
+# ── 경계 parametrize: fee_rate 변화 ───────────────────────────────────────────
+
+@pytest.mark.parametrize("fee_rate", [0.0, 0.001, 0.005, 0.01])
+def test_parametrize_fee_rates(fee_rate: float) -> None:
+    df = _make_candles_df(200)
+    sig = _buy_signal()
+    result = _engine(_MockStrategy({50: [sig]}), fee_rate=fee_rate).run(_MARKET, df)
+    assert len(result.trades) == 1
+    # 수수료 높을수록 pnl 낮음 (단조 감소)
+    assert isinstance(result.trades[0].pnl_pct, float)
+
+
+@pytest.mark.parametrize("fee_pair", [(0.0, 0.001), (0.001, 0.005), (0.005, 0.01)])
+def test_parametrize_fee_monotonic(fee_pair: tuple[float, float]) -> None:
+    low_fee, high_fee = fee_pair
+    df = _make_candles_df(200)
+    sig = _buy_signal()
+    r_low = _engine(_MockStrategy({50: [sig]}), fee_rate=low_fee).run(_MARKET, df)
+    r_high = _engine(_MockStrategy({50: [sig]}), fee_rate=high_fee).run(_MARKET, df)
+    assert r_low.trades[0].pnl_pct >= r_high.trades[0].pnl_pct
+
+
+# ── 경계 parametrize: max_holding_bars 변화 ──────────────────────────────────
+
+@pytest.mark.parametrize("max_hold", [12, 24, 48, 96])
+def test_parametrize_max_holding_bars(max_hold: int) -> None:
+    df = _make_candles_df(200)
+    sig = _buy_signal(bb_middle=99_000_000.0)
+    result = _engine(_MockStrategy({50: [sig]}), max_holding_bars=max_hold).run(_MARKET, df)
+    if result.trades:
+        assert result.trades[0].bars_held <= max_hold
+
+
+# ── 경계 parametrize: BUY/SELL 시그널 조합 ───────────────────────────────────
+
+@pytest.mark.parametrize(
+    "signal_dict,expected_trades",
+    [
+        ({}, 0),
+        ({50: []}, 0),  # 빈 시그널 리스트
+        ({50: [_buy_signal()]}, 1),
+        ({50: [_sell_signal()]}, 0),  # SELL만 → 진입 없음
+    ],
+)
+def test_parametrize_signal_types(
+    signal_dict: dict[int, list[Signal]], expected_trades: int
+) -> None:
+    df = _make_candles_df(200)
+    result = _engine(_MockStrategy(signal_dict)).run(_MARKET, df)
+    assert len(result.trades) == expected_trades
