@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Annotated, Any
 
 import httpx
@@ -243,9 +244,15 @@ def backtest(
     from_date: Annotated[str, typer.Option("--from", help="시작일 (YYYY-MM-DD)")],
     to_date: Annotated[str, typer.Option("--to", help="종료일 (YYYY-MM-DD)")],
     mode: Annotated[str, typer.Option("--mode", help="전략 모드 (A / B / A,B)")] = "A,B",
+    report_html: Annotated[
+        str,
+        typer.Option("--report-html", help="HTML 리포트 출력 경로 (미지정 시 콘솔만)"),
+    ] = "",
 ) -> None:
     """저장된 parquet 캔들로 백테스트를 실행하고 결과를 표로 출력한다."""
     import asyncio
+
+    report_path = Path(report_html) if report_html else None
 
     try:
         settings = Settings()
@@ -254,7 +261,7 @@ def backtest(
         raise typer.Exit(1) from exc
 
     configure_logging(settings)
-    asyncio.run(_backtest_async(settings, market, from_date, to_date, mode))
+    asyncio.run(_backtest_async(settings, market, from_date, to_date, mode, report_path))
 
 
 async def _backtest_async(
@@ -263,6 +270,7 @@ async def _backtest_async(
     from_date: str,
     to_date: str,
     mode_str: str,
+    report_path: Path | None = None,
 ) -> None:
     from datetime import datetime as _dt
     from datetime import timedelta as _td
@@ -333,6 +341,23 @@ async def _backtest_async(
     table.add_row("평균 보유봉", f"{result.avg_bars_held:.1f}")
 
     console.print(table)
+
+    if report_path is not None:
+        from datetime import datetime as _dt2
+        from zoneinfo import ZoneInfo as _ZI
+
+        from signal_program.backtest.report import BacktestReportRenderer
+
+        renderer = BacktestReportRenderer(template_dir=Path("templates"))
+        html = renderer.render_html(
+            result,
+            market=market,
+            mode_label=mode_str,
+            generated_at=_dt2.now(tz=_ZI("Asia/Seoul")),
+        )
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(html, encoding="utf-8")
+        typer.echo(f"HTML 리포트 저장: {report_path}")
 
 
 @app.command(name="fetch-candles")

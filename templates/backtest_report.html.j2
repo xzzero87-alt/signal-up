@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>백테스트 리포트 — {{ market }}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      margin: 0; padding: 2rem; color: #222; background: #fafafa;
+    }
+    h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+    .meta { color: #555; font-size: 0.875rem; margin-bottom: 2rem; }
+    h2 { font-size: 1.1rem; margin-top: 2rem; margin-bottom: 0.75rem; border-bottom: 1px solid #ddd; padding-bottom: 0.25rem; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 1rem; }
+    th, td { padding: 0.5rem 1rem; text-align: left; border: 1px solid #e0e0e0; font-size: 0.9rem; }
+    thead th { background: #f0f0f0; font-weight: 600; }
+    tbody tr:nth-child(even) { background: #f9f9f9; }
+    .metric-val { font-weight: 600; font-variant-numeric: tabular-nums; }
+    .pos { color: #2e7d32; }
+    .neg { color: #c62828; }
+    .chart-wrap { margin-bottom: 1.5rem; }
+    .chart-wrap img { max-width: 100%; height: auto; border: 1px solid #e0e0e0; border-radius: 4px; }
+    .trade-table td:nth-child(5), .trade-table td:nth-child(6) { text-align: right; }
+  </style>
+</head>
+<body>
+
+<h1>백테스트 리포트 — {{ market }}</h1>
+<div class="meta">
+  기간: {{ result.period_from.strftime("%Y-%m-%d") }} ~ {{ result.period_to.strftime("%Y-%m-%d") }}
+  &nbsp;|&nbsp; 모드: {{ mode_label }}
+  &nbsp;|&nbsp; 생성: {{ generated_at.strftime("%Y-%m-%d %H:%M") }} KST
+</div>
+
+<h2>핵심 메트릭</h2>
+<table>
+  <thead><tr><th>항목</th><th>값</th></tr></thead>
+  <tbody>
+    <tr><td>거래 횟수</td><td class="metric-val">{{ result.trades | length }}</td></tr>
+    <tr><td>승률</td><td class="metric-val">{{ fmt_win_rate }}</td></tr>
+    <tr>
+      <td>평균 수익률</td>
+      <td class="metric-val {% if result.avg_pnl_pct >= 0 %}pos{% else %}neg{% endif %}">{{ fmt_avg_pnl }}</td>
+    </tr>
+    <tr>
+      <td>누적 수익률</td>
+      <td class="metric-val {% if result.cumulative_return_pct >= 0 %}pos{% else %}neg{% endif %}">{{ fmt_cumulative }}</td>
+    </tr>
+    <tr><td>MDD</td><td class="metric-val neg">{{ fmt_mdd }}</td></tr>
+    <tr>
+      <td>샤프 (연환산)</td>
+      <td class="metric-val {% if result.sharpe_annualized >= 0 %}pos{% else %}neg{% endif %}">{{ fmt_sharpe }}</td>
+    </tr>
+    <tr><td>평균 보유봉</td><td class="metric-val">{{ fmt_avg_bars }}</td></tr>
+  </tbody>
+</table>
+
+<h2>Equity Curve</h2>
+<div class="chart-wrap">
+  <img src="data:image/png;base64,{{ equity_curve_b64 }}" alt="Equity Curve">
+</div>
+
+<h2>Drawdown</h2>
+<div class="chart-wrap">
+  <img src="data:image/png;base64,{{ drawdown_b64 }}" alt="Drawdown">
+</div>
+
+<h2>거래 목록 ({{ result.trades | length }}건)</h2>
+{% if result.trades %}
+<table class="trade-table">
+  <thead>
+    <tr>
+      <th>진입시각</th><th>청산시각</th><th>모드</th><th>방향</th><th>보유봉</th><th>PnL</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in result.trades %}
+    <tr>
+      <td>{{ t.entry_at.strftime("%Y-%m-%d %H:%M") }}</td>
+      <td>{{ t.exit_at.strftime("%Y-%m-%d %H:%M") }}</td>
+      <td>{{ t.mode }}</td>
+      <td>{{ t.direction }}</td>
+      <td>{{ t.bars_held }}</td>
+      <td class="metric-val {% if t.pnl_pct >= 0 %}pos{% else %}neg{% endif %}">
+        {{ "%+.2f%%" % (t.pnl_pct * 100) }}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p style="color:#999">거래 없음</p>
+{% endif %}
+
+</body>
+</html>
