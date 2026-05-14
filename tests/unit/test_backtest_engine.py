@@ -245,7 +245,7 @@ def test_j_mdd_with_losing_trades() -> None:
     result = _engine(strat, max_holding_bars=24).run(_MARKET, df)
     assert len(result.trades) == 3
     assert all(t.pnl_pct < 0 for t in result.trades)
-    assert result.mdd_pct > 0.0
+    assert result.mdd_pct < 0.0  # MDD 부호 컨벤션: 음수
 
 
 # ── k) 샤프 비율 — 단일 거래 (std=0) → division-by-zero 안전 ─────────────────
@@ -292,7 +292,7 @@ def test_hypothesis_run_no_exception(
     assert 0.0 <= result.win_rate <= 1.0
     assert not math.isnan(result.sharpe_annualized)
     assert not math.isinf(result.sharpe_annualized)
-    assert result.mdd_pct >= 0.0
+    assert result.mdd_pct <= 0.0  # MDD 부호 컨벤션: 음수 또는 0
     assert len(result.trades) == result.trades.__len__()
 
 
