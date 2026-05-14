@@ -14,3 +14,7 @@ htmlcov/
 # GateGuard (靹胳厴 雼渼 靸來儨, 搿滌滑 牍勴櫆靹表檾 毵堨护)
 .claude/.gateguard-state.json
 .claude/.gateguard-off
+
+# Claude Code 肺拿 磊悼 积己 颇老
+.claude/settings.local.json
+.claude/checkpoints.log
