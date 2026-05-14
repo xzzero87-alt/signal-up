@@ -244,14 +244,180 @@ def backtest(
     to_date: Annotated[str, typer.Option("--to", help="종료일 (YYYY-MM-DD)")],
     mode: Annotated[str, typer.Option("--mode", help="전략 모드 (A / B / A,B)")] = "A,B",
 ) -> None:
-    """백테스트 실행. [마일스톤 10에서 구현 예정]"""
-    raise NotImplementedError("마일스톤 10에서 구현")
+    """저장된 parquet 캔들로 백테스트를 실행하고 결과를 표로 출력한다."""
+    import asyncio
+
+    try:
+        settings = Settings()
+    except SystemExit as exc:
+        typer.echo(f"설정 오류: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    configure_logging(settings)
+    asyncio.run(_backtest_async(settings, market, from_date, to_date, mode))
+
+
+async def _backtest_async(
+    settings: Settings,
+    market: str,
+    from_date: str,
+    to_date: str,
+    mode_str: str,
+) -> None:
+    from datetime import datetime as _dt
+    from datetime import timedelta as _td
+    from pathlib import Path
+    from zoneinfo import ZoneInfo
+
+    import pandas as pd
+
+    from signal_program.backtest.candles_io import load_candles
+    from signal_program.backtest.engine import BacktestEngine
+    from signal_program.strategies.bb_cci import BbCciStrategy
+
+    kst = ZoneInfo("Asia/Seoul")
+    start = _dt.strptime(from_date, "%Y-%m-%d").replace(tzinfo=kst)
+    end = _dt.strptime(to_date, "%Y-%m-%d").replace(tzinfo=kst) + _td(days=1)
+
+    # 월 단위 parquet 로드
+    all_candles = []
+    cur = start.replace(day=1)
+    while cur < end:
+        month_str = cur.strftime("%Y-%m")
+        path = Path(f"data/candles/{market}/60/{month_str}.parquet")
+        if path.exists():
+            all_candles.extend(load_candles(path))
+        cur = (cur + _td(days=32)).replace(day=1)
+
+    candles = [c for c in all_candles if start <= c.opened_at < end]
+    candles.sort(key=lambda c: c.opened_at)
+
+    if not candles:
+        msg = f"[yellow]캔들 없음: {market} {from_date}~{to_date}. fetch-candles 먼저 실행하세요.[/yellow]"  # noqa: E501
+        Console().print(msg)
+        return
+
+    df = pd.DataFrame([c.model_dump() for c in candles])
+
+    strategy = BbCciStrategy(
+        bb_period=settings.bb_period,
+        bb_std_mult=settings.bb_std_mult,
+        cci_period=settings.cci_period,
+        cci_threshold_normal=settings.cci_threshold_normal,
+        cci_threshold_strong=settings.cci_threshold_strong,
+        volume_ratio_min_a=settings.volume_ratio_min_a,
+        volume_ratio_min_b=settings.volume_ratio_min_b,
+        squeeze_lookback=settings.squeeze_lookback,
+        squeeze_quantile=settings.squeeze_quantile,
+    )
+    engine = BacktestEngine(strategy=strategy)
+    result = engine.run(market, df)
+
+    console = Console()
+    table = Table(
+        title=f"백테스트 결과 — {market} ({from_date} ~ {to_date})",
+        show_header=True,
+        header_style="bold cyan",
+    )
+    table.add_column("항목", style="dim", min_width=22)
+    table.add_column("값", min_width=16)
+
+    table.add_row("기간", f"{result.period_from:%Y-%m-%d} ~ {result.period_to:%Y-%m-%d}")
+    table.add_row("캔들 수", f"{len(candles):,}")
+    table.add_row("거래 횟수", str(len(result.trades)))
+    table.add_row("승률", f"{result.win_rate:.1%}")
+    table.add_row("평균 수익률", f"{result.avg_pnl_pct:+.2%}")
+    table.add_row("누적 수익률", f"{result.cumulative_return_pct:+.2%}")
+    table.add_row("MDD", f"{result.mdd_pct:.2%}")
+    table.add_row("샤프 (연환산)", f"{result.sharpe_annualized:.2f}")
+    table.add_row("평균 보유봉", f"{result.avg_bars_held:.1f}")
+
+    console.print(table)
 
 
 @app.command(name="fetch-candles")
 def fetch_candles(
     market: Annotated[str, typer.Option("--market", "-m", help="마켓 코드")],
     from_date: Annotated[str, typer.Option("--from", help="시작일 (YYYY-MM-DD)")],
+    to_date: Annotated[
+        str, typer.Option("--to", help="종료일 (YYYY-MM-DD, 기본: 오늘)")
+    ] = "",
 ) -> None:
-    """캔들 데이터 사전 다운로드. [마일스톤 10에서 구현 예정]"""
-    raise NotImplementedError("마일스톤 10에서 구현")
+    """업비트에서 1시간봉 캔들을 다운로드해 data/candles/ 에 월 단위 parquet으로 저장한다."""
+    import asyncio
+
+    asyncio.run(_fetch_candles_async(market, from_date, to_date or None))
+
+
+async def _fetch_candles_async(market: str, from_date: str, to_date: str | None) -> None:
+    import asyncio
+    from datetime import datetime as _dt
+    from datetime import timedelta as _td
+    from itertools import groupby
+    from pathlib import Path
+    from zoneinfo import ZoneInfo
+
+    import httpx
+    from rich.progress import Progress, SpinnerColumn, TextColumn
+
+    from signal_program.backtest.candles_io import save_candles
+    from signal_program.enums import Timeframe
+    from signal_program.exchanges.upbit import UpbitClient
+
+    kst = ZoneInfo("Asia/Seoul")
+    start = _dt.strptime(from_date, "%Y-%m-%d").replace(tzinfo=kst)
+    end = (
+        _dt.strptime(to_date, "%Y-%m-%d").replace(tzinfo=kst) + _td(days=1)
+        if to_date
+        else _dt.now(tz=kst)
+    )
+
+    console = Console()
+    all_candles = []
+
+    async with httpx.AsyncClient(timeout=30.0) as http:
+        client = UpbitClient(_client=http)
+        fetch_to = end
+
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task(f"Fetching {market}...", total=None)
+
+            while True:
+                batch = await client.fetch_candles(
+                    market, Timeframe.HOUR_1, count=200, to=fetch_to
+                )
+                if not batch:
+                    break
+
+                all_candles.extend(batch)
+                earliest = min(c.opened_at for c in batch)
+                desc = f"{market}: {len(all_candles)} 봉 수집 (현재 {earliest:%Y-%m-%d %H:%M})"
+                progress.update(task, description=desc)
+
+                if earliest <= start:
+                    break
+
+                fetch_to = earliest
+                await asyncio.sleep(0.12)  # rate limit 여유
+
+    candles = [c for c in all_candles if start <= c.opened_at < end]
+    candles.sort(key=lambda c: c.opened_at)
+
+    def _month_key(c: Any) -> str:
+        result: str = c.opened_at.strftime("%Y-%m")
+        return result
+
+    saved_total = 0
+    for month_str, group in groupby(candles, key=_month_key):
+        month_list = list(group)
+        path = Path(f"data/candles/{market}/60/{month_str}.parquet")
+        save_candles(month_list, path)
+        console.print(f"  saved {len(month_list):>4} candles → {path}")
+        saved_total += len(month_list)
+
+    end_label = to_date or "오늘"
+    console.print(f"\n[green]완료[/green] {market}: 총 {saved_total:,} 봉 저장 ({from_date} ~ {end_label})")  # noqa: E501
