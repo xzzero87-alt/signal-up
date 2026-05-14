@@ -19,6 +19,7 @@ dependencies = [
     "typer>=0.13,<1.0",
     "rich>=13.9,<14.0",
     "matplotlib>=3.9,<4.0",
+    "pyarrow>=18.0,<22.0",
     "tzdata>=2024.1",
 ]
 
@@ -64,6 +65,10 @@ warn_unused_configs = true
 [[tool.mypy.overrides]]
 # stub 부재 라이브러리 — 마일스톤 진행 시 여기에 추가
 module = ["structlog.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["pyarrow.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

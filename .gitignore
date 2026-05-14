@@ -15,6 +15,6 @@ htmlcov/
 .claude/.gateguard-state.json
 .claude/.gateguard-off
 
-# Claude Code 로컬 자동 생성 파일
+# Claude Code auto-generated files
 .claude/settings.local.json
 .claude/checkpoints.log
