@@ -64,7 +64,7 @@ def test_auth_uses_constant_time_comparison() -> None:
     """middleware.py 소스에 secrets.compare_digest 호출이 있어야 한다."""
     import pathlib
 
-    src = pathlib.Path(__file__).parents[3] / "src" / "signal_program" / "web" / "middleware.py"
+    src = pathlib.Path(__file__).parents[2] / "src" / "signal_program" / "web" / "middleware.py"
     assert src.exists(), "middleware.py 파일이 없습니다"
     text = src.read_text(encoding="utf-8")
     assert "secrets.compare_digest" in text, "timing-safe 비교가 없습니다"

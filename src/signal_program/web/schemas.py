@@ -103,6 +103,8 @@ class DaemonStatus(BaseModel):
     model_config = ConfigDict(extra="forbid")
     running: bool
     started_at: datetime | None = None
+    last_signal_at: datetime | None = None
+    next_poll_at: datetime | None = None
 
 
 class DashboardView(BaseModel):

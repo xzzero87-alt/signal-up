@@ -133,7 +133,7 @@ async def test_last_signal_at_updates_when_runner_emits(tmp_path: Path) -> None:
     from signal_program.state.signal_history import SignalHistory
 
     history = SignalHistory(tmp_path / "signal_history.jsonl")
-    history.append({"market": "KRW-BTC", "direction": "buy"})
+    history.append({"market": "KRW-BTC", "direction": "buy", "sent_at": "2025-01-01T10:00:00+09:00"})
 
     handle = RunnerHandle(runner_factory=_sleeping_runner, history=history)
     await handle.start()

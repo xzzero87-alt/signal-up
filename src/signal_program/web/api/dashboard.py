@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 
 from signal_program.state.settings_store import SettingsStore  # noqa: TC001
 from signal_program.web.api.signals import recent_signals
@@ -13,7 +13,10 @@ router = APIRouter(tags=["dashboard"])
 
 
 @router.get("/api/dashboard", response_model=DashboardView)
-def dashboard_view(store: SettingsStore = Depends(get_settings_store)) -> DashboardView:
+def dashboard_view(
+    request: Request,
+    store: SettingsStore = Depends(get_settings_store),
+) -> DashboardView:
     s = store.load()
     signals = recent_signals(limit=50)
 
@@ -24,8 +27,11 @@ def dashboard_view(store: SettingsStore = Depends(get_settings_store)) -> Dashbo
         "whitelist_count": len(s.whitelist_markets),
     }
 
+    handle = getattr(request.app.state, "runner_handle", None)
+    daemon_running = handle.status().running if handle is not None else False
+
     return DashboardView(
-        daemon_status="stopped",
+        daemon_status="running" if daemon_running else "stopped",
         next_evaluation_at=None,
         recent_signals=list(signals),  # type: ignore[arg-type]
         settings_summary=settings_summary,

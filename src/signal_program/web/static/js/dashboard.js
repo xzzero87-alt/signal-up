@@ -37,13 +37,43 @@ function buildFilterParams() {
 }
 
 function renderHeader(data) {
+  const running = data.daemon_status === 'running';
   const el = document.getElementById('daemon-status-text');
-  if (el) el.textContent = data.daemon_status === 'running' ? '실행 중' : '중지됨';
+  if (el) el.textContent = running ? '실행 중' : '중지됨';
+
+  // nav 데몬 토글 버튼 업데이트
+  const statusEl = document.getElementById('nav-daemon-status');
+  const btnEl = document.getElementById('nav-daemon-btn');
+  if (statusEl) {
+    statusEl.innerHTML = '데몬: <strong>' + (running ? '실행 중' : '정지됨') + '</strong>';
+    statusEl.className = 'daemon-indicator ' + (running ? 'running' : 'stopped');
+  }
+  if (btnEl) {
+    btnEl.textContent = running ? '정지' : '시작';
+    btnEl.disabled = false;
+  }
+
   const sigs = data.recent_signals || [];
   const lastEl = document.getElementById('last-signal-text');
   if (lastEl && sigs.length > 0) {
     const s = sigs[sigs.length - 1].signal || {};
     lastEl.textContent = (s.market || '—') + ' ' + (s.direction || '') + ' ' + (s.triggered_at || '').slice(0, 16);
+  }
+}
+
+async function toggleDaemon() {
+  const btn = document.getElementById('nav-daemon-btn');
+  const running = (btn && btn.textContent === '정지');
+  if (btn) btn.disabled = true;
+  try {
+    const res = await fetch('/api/daemon/' + (running ? 'stop' : 'start'), { method: 'POST' });
+    if (res.status === 409) {
+      const d = await res.json();
+      alert((d.detail && d.detail.message) || '상태 충돌');
+    }
+    fetchDashboard();
+  } catch (e) {
+    if (btn) btn.disabled = false;
   }
 }
 

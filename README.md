@@ -163,34 +163,47 @@ GUI에서 저장하는 모든 설정은 `state/settings.json`에 영속화됩니
 
 ---
 
-## ⚠️ 보안 경고
+## 보안
 
-### 기본값 — 안전
+이 도구는 **자가설치 + 단일 사용자**를 가정합니다.
 
-```ini
-WEB_BIND=127.0.0.1   # localhost 전용. 외부 접속 차단
-WEB_AUTH_PASSWORD=   # (비어 있어도 OK)
-```
-
-이 기본값으로는 같은 PC 사용자만 대시보드에 접속할 수 있습니다.
-
-### LAN 노출 — 비밀번호 필수
+### 기본 (안전)
 
 ```ini
-WEB_BIND=0.0.0.0
-WEB_AUTH_PASSWORD=<강한 비밀번호>
+WEB_BIND=127.0.0.1   # 기본값 — 본인 PC에서만 접속 가능
+WEB_AUTH_PASSWORD=   # 비어도 됨 (localhost는 인증 불필요)
 ```
 
-> **`WEB_BIND`가 `127.0.0.1`이 아닌데 `WEB_AUTH_PASSWORD`가 비어 있으면 시작 거부됩니다.** 시크릿 노출 방지 가드.
+`WEB_BIND=127.0.0.1` 상태에서는 같은 PC에서만 대시보드에 접속할 수 있습니다 — 가장 안전합니다.
 
-### 인터넷 노출은 비추천
+### LAN 노출 (조심)
 
-본 프로젝트는 **자가설치 단일 사용자**를 가정합니다. 인터넷에 직접 노출하지 마세요. 멀티유저/SaaS가 필요하면 별도 v3 프로젝트로 분리될 예정입니다([ADR-0006](docs/adr/0006-self-hosted-distribution.md)).
+같은 네트워크의 다른 기기에서 접속하려면:
 
-### 시크릿 마스킹
+1. `.env`에 `WEB_BIND=0.0.0.0` 설정
+2. **반드시** `WEB_AUTH_PASSWORD=긴_랜덤_문자열_16자_이상` 설정
+3. 비밀번호 미설정 시 시작 거부됩니다
 
-- 텔레그램 토큰은 GUI 응답에서 `••••••••XXXX` 형태로 마스킹
-- 로그에도 마스킹 적용
+권장 비밀번호 생성:
+
+```python
+import secrets; print(secrets.token_urlsafe(24))
+```
+
+비밀번호가 설정된 경우 브라우저 접속 시 HTTP Basic Auth 창이 나타납니다 (사용자명: `admin`).
+
+> **`WEB_BIND`가 `127.0.0.1`이 아닌데 `WEB_AUTH_PASSWORD`가 비어 있으면 시작 거부됩니다.**
+
+### 인터넷 노출 (비권장)
+
+이 도구는 HTTPS·OAuth·다중 사용자 인증을 지원하지 않습니다. 인터넷에 직접 노출하지 마세요.
+SaaS·멀티유저는 별도 v3 프로젝트입니다 ([ADR-0006](docs/adr/0006-self-hosted-distribution.md)).
+
+### 시크릿 관리
+
+- `state/settings.json`은 자동으로 권한 600(Linux/macOS) / 사용자 단독(Windows) 설정됩니다
+- 텔레그램 토큰은 GUI 응답에서 `••••••••XXXX`로 마스킹됩니다
+- `.env`는 절대 git에 커밋하지 마세요 (`.gitignore`에 이미 포함)
 - 토큰 유출 의심 시: 텔레그램 [@BotFather](https://t.me/BotFather) → `/revoke` → 새 토큰 발급
 
 ---

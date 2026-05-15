@@ -143,6 +143,8 @@ def test_daemon_start_returns_202(client: TestClient) -> None:
 
 
 def test_daemon_stop_returns_202(client: TestClient) -> None:
+    # 실행 중이어야 정지 가능 → start 후 stop
+    client.post("/api/daemon/start")
     resp = client.post("/api/daemon/stop")
     assert resp.status_code == 202
 

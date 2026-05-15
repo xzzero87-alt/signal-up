@@ -13,8 +13,11 @@
     <li><a href="/" {% if active == 'dashboard' %}class="active"{% endif %}>대시보드</a></li>
     <li><a href="/settings" {% if active == 'settings' %}class="active"{% endif %}>설정</a></li>
     <li><a href="/backtest" {% if active == 'backtest' %}class="active"{% endif %}>백테스트</a></li>
-    <li><span class="nav-disabled" title="데몬 제어는 M16에서 활성화됩니다">데몬 제어 (M16)</span></li>
   </ul>
+  <div class="nav-daemon" id="nav-daemon">
+    <span id="nav-daemon-status" class="daemon-indicator">데몬: <strong>확인 중</strong></span>
+    <button id="nav-daemon-btn" class="btn-daemon" onclick="toggleDaemon()">—</button>
+  </div>
 </nav>
 <main class="main">
   {% block content %}{% endblock %}

@@ -24,8 +24,10 @@ def test_cleanup_keeps_latest_n_files(tmp_path: Path) -> None:
     jobs_dir = tmp_path / "reports" / "jobs"
     jobs_dir.mkdir(parents=True)
     for i in range(60):
+        # mtime_offset_days=i+1: 모두 1일 이상 오래된 파일 (days 정책 적용 안 됨)
         _make_html(jobs_dir, f"job_{i:03d}", mtime_offset_days=i + 1)
-    deleted = cleanup_old_jobs(jobs_dir, keep_count=50, keep_days=9999)
+    # keep_days=0: 오늘 이후만 days 보호 → 모든 파일이 1일+ 오래됨 → count 정책만 적용
+    deleted = cleanup_old_jobs(jobs_dir, keep_count=50, keep_days=0)
     remaining = list(jobs_dir.glob("*.html"))
     assert deleted == 10
     assert len(remaining) == 50

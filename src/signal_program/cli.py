@@ -225,12 +225,15 @@ async def _run_async(settings: Settings) -> None:
 def serve(
     port: Annotated[int | None, typer.Option("--port", help="웹 서버 포트")] = None,
     bind: Annotated[str | None, typer.Option("--bind", help="바인드 주소")] = None,
+    start_daemon: Annotated[
+        bool,
+        typer.Option("--start-daemon", help="기동 시 자동으로 라이브 데몬도 함께 시작"),
+    ] = False,
 ) -> None:
     """FastAPI 웹 대시보드 서버를 기동한다. 기본: http://127.0.0.1:8765/"""
-    import uvicorn
+    import asyncio
 
     from signal_program.state.settings_store import SettingsStore
-    from signal_program.web.app import create_app
     from signal_program.web.security import assert_safe_bind
 
     try:
@@ -248,12 +251,120 @@ def serve(
     assert_safe_bind(actual_bind, current.web_auth_password)
 
     configure_logging(current)
+    typer.echo(f"서버 기동: http://{actual_bind}:{actual_port}/")
+
+    import contextlib
+
+    with contextlib.suppress(KeyboardInterrupt):
+        asyncio.run(_serve_async(settings, actual_bind, actual_port, start_daemon))
+
+
+async def _serve_async(
+    settings: Settings,
+    bind: str,
+    port: int,
+    start_daemon: bool,
+) -> None:
+    """task supervisor 패턴 — runner 죽어도 web 생존."""
+    import asyncio
+
+    import uvicorn
+
+    from signal_program.state.job_retention import cleanup_old_jobs
+    from signal_program.state.signal_history import SignalHistory
+    from signal_program.web.app import create_app
+    from signal_program.web.runner_handle import RunnerHandle
+
+    history = SignalHistory(Path("state/signal_history.jsonl"))
+
+    def _runner_factory():  # type: ignore[no-untyped-def]
+        return _run_live_coro(settings)
+
+    handle = RunnerHandle(runner_factory=_runner_factory, history=history)
+
+    if start_daemon:
+        await handle.start()
+        typer.echo("데몬 자동 시작 완료")
+
+    reports_dir = Path("reports")
     app_instance = create_app(
         settings_path=Path("state/settings.json"),
         env_settings=settings,
+        runner_handle=handle,
     )
-    typer.echo(f"서버 기동: http://{actual_bind}:{actual_port}/")
-    uvicorn.run(app_instance, host=actual_bind, port=actual_port)
+
+    config = uvicorn.Config(app_instance, host=bind, port=port, log_config=None)
+    server = uvicorn.Server(config)
+
+    # retention 1회 실행 후 24h 주기
+    _jobs_dir = reports_dir / "jobs"
+    cleanup_old_jobs(_jobs_dir)
+
+    async def _retention_loop() -> None:
+        import asyncio as _asyncio
+
+        while True:
+            await _asyncio.sleep(86400)
+            cleanup_old_jobs(_jobs_dir)
+
+    retention_task = asyncio.create_task(_retention_loop())
+    web_task = asyncio.create_task(server.serve())
+    try:
+        await web_task
+    finally:
+        await handle.stop_if_running()
+        retention_task.cancel()
+
+
+async def _run_live_coro(settings: Settings) -> None:
+    """runner.py 라이브 루프 코루틴. RunnerHandle의 factory로 사용."""
+    from datetime import timedelta
+    from pathlib import Path
+
+    import httpx
+    from pydantic import SecretStr
+
+    from signal_program.exchanges.upbit import UpbitClient
+    from signal_program.notifiers.telegram import TelegramNotifier
+    from signal_program.runner import RunnerService
+    from signal_program.state.cooldown import CooldownStore
+    from signal_program.state.signal_log import SignalLog
+    from signal_program.strategies.bb_cci import BbCciStrategy
+
+    strategy = BbCciStrategy(
+        bb_period=settings.bb_period,
+        bb_std_mult=settings.bb_std_mult,
+        cci_period=settings.cci_period,
+        cci_threshold_normal=settings.cci_threshold_normal,
+        cci_threshold_strong=settings.cci_threshold_strong,
+        volume_ratio_min_a=settings.volume_ratio_min_a,
+        volume_ratio_min_b=settings.volume_ratio_min_b,
+        squeeze_lookback=settings.squeeze_lookback,
+        squeeze_quantile=settings.squeeze_quantile,
+    )
+    cooldown = CooldownStore(
+        path=Path("state/cooldown.json"),
+        cooldown=timedelta(hours=settings.cooldown_hours),
+    )
+    signal_log = SignalLog(path=settings.signals_log_path)
+
+    async with httpx.AsyncClient(timeout=10.0) as http:
+        exchange = UpbitClient(_client=http)
+        notifier = TelegramNotifier(
+            bot_token=SecretStr(settings.telegram_bot_token),
+            chat_id=settings.telegram_chat_id,
+            dry_run=settings.dry_run,
+        )
+        runner = RunnerService(
+            settings=settings,
+            exchange=exchange,
+            strategy=strategy,
+            cooldown=cooldown,
+            notifier=notifier,
+            signal_log=signal_log,
+            charts_dir=settings.charts_dir,
+        )
+        await runner.run_forever()
 
 
 @app.command(name="scan-once")

@@ -12,7 +12,14 @@
 
 body { font-family: var(--font); background: var(--color-bg); color: var(--color-text); margin: 0; padding: 0; font-size: 14px; }
 
-.nav { background: var(--color-nav); color: #fff; display: flex; align-items: center; padding: 0 1.5rem; height: 48px; gap: 2rem; }
+.nav { background: var(--color-nav); color: #fff; display: flex; align-items: center; padding: 0 1.5rem; height: 48px; gap: 2rem; flex-wrap: wrap; }
+.nav-daemon { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; }
+.daemon-indicator { color: rgba(255,255,255,0.85); }
+.daemon-indicator.running { color: #a5d6a7; }
+.daemon-indicator.stopped { color: rgba(255,255,255,0.6); }
+.btn-daemon { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: var(--radius); padding: 3px 10px; cursor: pointer; font-size: 0.8rem; white-space: nowrap; }
+.btn-daemon:hover { background: rgba(255,255,255,0.25); }
+.btn-daemon:disabled { opacity: 0.5; cursor: default; }
 .nav-brand { font-weight: 700; }
 .nav-links { list-style: none; margin: 0; padding: 0; display: flex; gap: 1.5rem; }
 .nav-links a { color: rgba(255,255,255,0.85); text-decoration: none; }

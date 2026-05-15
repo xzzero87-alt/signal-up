@@ -22,6 +22,19 @@ from signal_program.web.security import friendly_validation_errors
 
 _STATIC_DIR = Path(__file__).parent / "static"
 
+# 순환 참조 방지 — TYPE_CHECKING 블록 내 실제 타입
+from typing import TYPE_CHECKING  # noqa: E402
+
+if TYPE_CHECKING:
+    from signal_program.web.runner_handle import RunnerHandle
+
+
+async def _noop_runner() -> None:
+    """RunnerHandle 기본 stub (데몬 미기동)."""
+    import asyncio
+
+    await asyncio.sleep(1e9)
+
 
 def create_app(
     settings_path: Path | None = None,
@@ -30,6 +43,7 @@ def create_app(
     reports_dir: Path | None = None,
     candles_cache_root: Path | None = None,
     _job_executor: Callable[..., None] | None = None,
+    runner_handle: RunnerHandle | None = None,
 ) -> FastAPI:
     """FastAPI 앱 생성."""
     _settings_path = settings_path or Path("state/settings.json")
@@ -42,6 +56,7 @@ def create_app(
     @asynccontextmanager
     async def _lifespan(app: FastAPI):  # type: ignore[no-untyped-def]
         from signal_program.web.jobs import BacktestJobManager
+        from signal_program.web.runner_handle import RunnerHandle as _RH
 
         store = get_settings_store()
         manager = BacktestJobManager(
@@ -52,7 +67,14 @@ def create_app(
         )
         await manager.start()
         app.state.job_manager = manager
+
+        # RunnerHandle: 외부 주입 또는 기본 stub
+        _handle: _RH = runner_handle or _RH(runner_factory=_noop_runner)
+        app.state.runner_handle = _handle
+
         yield
+
+        await _handle.stop_if_running()
         await manager.stop()
 
     app = FastAPI(
