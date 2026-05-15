@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}백테스트{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>백테스트</h1>
+  <p class="header-subtitle">현재 설정 페이지의 파라미터로 저장된 캔들 데이터를 기반으로 백테스트를 실행합니다.</p>
+</div>
+
+<div class="settings-section">
+  <h2>기본 실행</h2>
+  <form id="backtest-form" onsubmit="return false;">
+    <div class="field-row">
+      <label for="market">코인 마켓</label>
+      <select id="market" name="market">
+        {% for m in whitelist_markets %}
+          <option value="{{ m }}">{{ m }}</option>
+        {% else %}
+          <option value="KRW-BTC">KRW-BTC</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field-row">
+      <label for="period_from">시작일</label>
+      <input type="date" id="period_from" name="period_from" value="">
+    </div>
+    <div class="field-row">
+      <label for="period_to">종료일</label>
+      <input type="date" id="period_to" name="period_to" value="">
+    </div>
+    <div class="field-row">
+      <label for="mode">전략 모드</label>
+      <select id="mode" name="mode">
+        <option value="both" selected>A + B (모두)</option>
+        <option value="A">A (평균회귀)</option>
+        <option value="B">B (스퀴즈 돌파)</option>
+      </select>
+      <span class="help" title="A: BB 하단 + CCI 과매도 / B: BB 스퀴즈 돌파">?</span>
+    </div>
+    <div class="form-actions">
+      <button class="btn-primary" onclick="submitJob(false)">현재 설정 그대로 실행</button>
+    </div>
+    <p class="field-note">다른 파라미터(BB period, CCI threshold 등)는 <a href="/settings">설정 페이지</a>에서 조정하세요.</p>
+  </form>
+</div>
+
+<details class="settings-section advanced-section">
+  <summary><h2 style="display:inline">고급 — 워크포워드 검증</h2></summary>
+  <div style="margin-top:1rem;">
+    <div class="field-row">
+      <label for="train_months">학습 기간 (개월)</label>
+      <input type="number" id="train_months" name="train_months" value="8" min="1" max="24">
+    </div>
+    <div class="field-row">
+      <label for="validate_months">검증 기간 (개월)</label>
+      <input type="number" id="validate_months" name="validate_months" value="2" min="1" max="12">
+    </div>
+    <div class="field-row">
+      <label for="grid_str">파라미터 그리드</label>
+      <input type="text" id="grid_str" name="grid_str" class="input-wide"
+             placeholder="예: bb_std_mult:1.5,2.0,2.5" value="bb_std_mult:1.5,2.0,2.5">
+      <span class="help" title="파라미터명:값1,값2,... 형식. 세미콜론으로 여러 파라미터 조합 가능">?</span>
+    </div>
+    <div class="form-actions">
+      <button class="btn-secondary" onclick="submitJob(true)">워크포워드 실행</button>
+    </div>
+  </div>
+</details>
+
+<div id="job-errors" class="error-box" style="display:none;margin-bottom:1rem;"></div>
+<div id="save-toast" class="toast" style="display:none;"></div>
+
+<div class="settings-section">
+  <h2>잡 목록</h2>
+  <table class="signal-table" id="jobs-table">
+    <thead>
+      <tr>
+        <th>제출 시각</th><th>종류</th><th>마켓</th><th>기간</th>
+        <th>상태</th><th>실행 시간</th><th>결과</th>
+      </tr>
+    </thead>
+    <tbody id="jobs-tbody">
+      <tr><td colspan="7" class="empty-row">잡 없음 — 실행 버튼을 눌러 백테스트를 시작하세요.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div id="result-section" style="display:none;" class="settings-section">
+  <h2>결과 리포트</h2>
+  <iframe id="result-frame" src="" sandbox="allow-same-origin"
+          style="width:100%;min-height:600px;border:1px solid var(--color-border);border-radius:4px;"></iframe>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/backtest.js"></script>
+{% endblock %}

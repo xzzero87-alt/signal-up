@@ -21,9 +21,19 @@ def tmp_settings_path(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def client(tmp_settings_path: Path) -> TestClient:
-    app = create_app(settings_path=tmp_settings_path)
-    return TestClient(app)
+def client(tmp_settings_path: Path, tmp_path: Path):  # type: ignore[no-untyped-def]
+    def _noop(spec: object, output_path: Path) -> None:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text("<html>ok</html>", encoding="utf-8")
+
+    app = create_app(
+        settings_path=tmp_settings_path,
+        reports_dir=tmp_path / "reports",
+        candles_cache_root=tmp_path / "candles",
+        _job_executor=_noop,
+    )
+    with TestClient(app) as c:
+        yield c
 
 
 # ── Health ─────────────────────────────────────────────────────────────────
@@ -107,8 +117,7 @@ def test_backtest_post_returns_202_with_job_id(client: TestClient) -> None:
         "market": "KRW-BTC",
         "period_from": "2025-01-01",
         "period_to": "2025-06-30",
-        "modes": ["A"],
-        "overrides": {},
+        "mode": "both",
     }
     resp = client.post("/api/backtest/jobs", json=payload)
     assert resp.status_code == 202

@@ -33,6 +33,9 @@ import matplotlib.pyplot as plt
 from signal_program.backtest.metrics import BacktestResult, TradeRecord  # noqa: TC001
 from signal_program.backtest.walkforward import WalkforwardResult  # noqa: TC001
 
+# 프로젝트 루트 templates/ 절대 경로 (GUI/CLI 공용)
+_TEMPLATE_DIR = Path(__file__).parents[3] / "templates"
+
 # ── 차트 헬퍼 ────────────────────────────────────────────────────────────────
 
 

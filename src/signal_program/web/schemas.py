@@ -9,10 +9,10 @@ partial-update 형태로 구현. 구현 현실을 §8.7로 추가 예정.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class SettingsView(BaseModel):
@@ -63,14 +63,40 @@ class HealthResponse(BaseModel):
     version: str
 
 
+class BacktestJobSubmit(BaseModel):
+    """POST /api/backtest/jobs 요청 바디."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["backtest", "walkforward"] = "backtest"
+    market: str
+    period_from: date
+    period_to: date
+    mode: Literal["A", "B", "both"] = "both"
+    train_months: int | None = Field(default=None, ge=1, le=24)
+    validate_months: int | None = Field(default=None, ge=1, le=12)
+    grid_str: str | None = None
+
+    @model_validator(mode="after")
+    def check_period(self) -> BacktestJobSubmit:
+        if self.period_to <= self.period_from:
+            raise ValueError("period_to는 period_from 이후여야 합니다")
+        return self
+
+
 class JobView(BaseModel):
     model_config = ConfigDict(extra="forbid")
     job_id: str
+    kind: str = "backtest"
     status: Literal["queued", "running", "succeeded", "failed"]
     submitted_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
     market: str
     period_from: str
     period_to: str
+    result_path: str | None = None
+    error_message: str | None = None
 
 
 class DaemonStatus(BaseModel):

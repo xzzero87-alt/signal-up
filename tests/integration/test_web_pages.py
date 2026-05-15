@@ -11,9 +11,19 @@ from signal_program.web.app import create_app
 
 
 @pytest.fixture
-def client(tmp_path: Path) -> TestClient:
-    app = create_app(settings_path=tmp_path / "settings.json")
-    return TestClient(app)
+def client(tmp_path: Path):  # type: ignore[no-untyped-def]
+    def _noop(spec: object, output_path: Path) -> None:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_text("<html>ok</html>", encoding="utf-8")
+
+    app = create_app(
+        settings_path=tmp_path / "settings.json",
+        reports_dir=tmp_path / "reports",
+        candles_cache_root=tmp_path / "candles",
+        _job_executor=_noop,
+    )
+    with TestClient(app) as c:
+        yield c
 
 
 def test_get_root_returns_dashboard_html(client: TestClient) -> None:

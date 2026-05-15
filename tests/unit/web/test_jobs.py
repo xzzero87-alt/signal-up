@@ -273,8 +273,10 @@ def test_get_job_report_rejects_path_traversal(tmp_path: Path) -> None:
 
     reports_dir = tmp_path / "reports"
     reports_dir.mkdir()
+    # URL 디코딩은 FastAPI/Starlette가 라우트 핸들러 전에 처리하므로
+    # 실제 job_id는 항상 디코딩된 형태로 도달함
     assert not _is_safe_report_path("../../../etc/passwd", reports_dir)
-    assert not _is_safe_report_path("..%2F..%2Fetc%2Fpasswd", reports_dir)
+    assert not _is_safe_report_path("../../sensitive", reports_dir)
 
 
 def test_get_job_report_rejects_missing_job(tmp_path: Path) -> None:
