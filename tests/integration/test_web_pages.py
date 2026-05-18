@@ -100,6 +100,24 @@ def test_settings_html_loads_only_settings_js(client: TestClient) -> None:
     assert "backtest.js" not in resp.text
 
 
+def test_settings_page_has_err_span_for_every_input(client: TestClient) -> None:
+    """결함 회귀 CLICK-006b: settings.html의 모든 input id에 대응하는 err- span이 있어야 한다."""
+    import re as _re
+
+    resp = client.get("/settings")
+    html = resp.text
+
+    # input id 추출 (checkbox dry_run 제외 — 필드 에러 span 불필요)
+    input_ids = set(_re.findall(r'<input[^>]+id="([^"]+)"', html))
+    input_ids.discard("dry_run")  # checkbox
+
+    # err- span id 추출
+    err_ids = set(_re.findall(r'id="err-([^"]+)"', html))
+
+    missing = input_ids - err_ids
+    assert not missing, f"err- span 없는 input 필드: {sorted(missing)}"
+
+
 def test_dashboard_js_no_duplicate_const_declaration() -> None:
     """결함 1 회귀: dashboard.js에 POLL_INTERVAL_MS const 중복 선언이 없어야 한다."""
     import pathlib

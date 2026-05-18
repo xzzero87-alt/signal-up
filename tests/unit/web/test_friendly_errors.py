@@ -122,3 +122,50 @@ def test_handles_unknown_prefix_gracefully() -> None:
     }])
     errors = friendly_validation_errors(exc)
     assert errors[0]["field"] == "foo.bar"
+
+
+# ── 타입 mismatch 한국어 변환 (M16 follow-up v3) ─────────────────────────────
+
+
+def test_string_type_returns_korean_message() -> None:
+    """string_type 에러 → '문자열로 입력해야 합니다'."""
+    exc = _MockExc([{
+        "loc": ("telegram_chat_id",),
+        "type": "string_type",
+        "msg": "Input should be a valid string",
+    }])
+    errors = friendly_validation_errors(exc)
+    assert errors[0]["message"] == "문자열로 입력해야 합니다"
+
+
+def test_int_type_returns_korean_message() -> None:
+    """int_type 에러 → '정수로 입력해야 합니다'."""
+    exc = _MockExc([{
+        "loc": ("bb_period",),
+        "type": "int_type",
+        "msg": "Input should be a valid integer",
+    }])
+    errors = friendly_validation_errors(exc)
+    assert errors[0]["message"] == "정수로 입력해야 합니다"
+
+
+def test_float_type_returns_korean_message() -> None:
+    """float_type 에러 → '숫자로 입력해야 합니다'."""
+    exc = _MockExc([{
+        "loc": ("bb_std_mult",),
+        "type": "float_type",
+        "msg": "Input should be a valid number",
+    }])
+    errors = friendly_validation_errors(exc)
+    assert errors[0]["message"] == "숫자로 입력해야 합니다"
+
+
+def test_bool_type_returns_korean_message() -> None:
+    """bool_type 에러 → '참/거짓 값으로 입력해야 합니다'."""
+    exc = _MockExc([{
+        "loc": ("dry_run",),
+        "type": "bool_type",
+        "msg": "Input should be a valid boolean",
+    }])
+    errors = friendly_validation_errors(exc)
+    assert errors[0]["message"] == "참/거짓 값으로 입력해야 합니다"

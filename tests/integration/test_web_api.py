@@ -92,6 +92,21 @@ def test_put_settings_response_field_has_no_body_prefix(client: TestClient) -> N
     assert not any(f.startswith("body.") for f in fields), f"body. prefix 포함: {fields}"
 
 
+def test_put_settings_accepts_string_chat_id(client: TestClient) -> None:
+    """결함 회귀 CLICK-006a: telegram_chat_id를 string으로 PUT → 200."""
+    resp = client.put("/api/settings", json={"telegram_chat_id": "535411696"})
+    assert resp.status_code == 200
+
+
+def test_put_settings_rejects_int_chat_id_with_korean(client: TestClient) -> None:
+    """결함 회귀 CLICK-006a: telegram_chat_id를 int로 PUT → 422 + 한국어 메시지."""
+    resp = client.put("/api/settings", json={"telegram_chat_id": 535411696})
+    assert resp.status_code == 422
+    detail = resp.json()["detail"]
+    messages = [e["message"] for e in detail]
+    assert any("문자열" in m for m in messages), f"한국어 메시지 없음: {messages}"
+
+
 def test_put_settings_valid_update_returns_200(client: TestClient) -> None:
     resp = client.put("/api/settings", json={"bb_period": 25, "dry_run": True})
     assert resp.status_code == 200
