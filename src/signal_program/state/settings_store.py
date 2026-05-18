@@ -34,7 +34,7 @@ class SettingsStore:
             return self._env_settings
 
         try:
-            data: dict[str, Any] = json.loads(self._path.read_text(encoding="utf-8"))
+            data: dict[str, Any] = json.loads(self._path.read_text(encoding="utf-8-sig"))
             base = self._env_settings.model_dump()
             base.update(data)
             return Settings.model_validate(base)

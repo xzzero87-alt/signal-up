@@ -255,8 +255,9 @@ def serve(
 
     import contextlib
 
+    _pw = current.web_auth_password
     with contextlib.suppress(KeyboardInterrupt):
-        asyncio.run(_serve_async(settings, actual_bind, actual_port, start_daemon))
+        asyncio.run(_serve_async(settings, actual_bind, actual_port, start_daemon, _pw))
 
 
 async def _serve_async(
@@ -264,6 +265,7 @@ async def _serve_async(
     bind: str,
     port: int,
     start_daemon: bool,
+    web_auth_password: str = "",
 ) -> None:
     """task supervisor 패턴 — runner 죽어도 web 생존."""
     import asyncio
@@ -291,6 +293,8 @@ async def _serve_async(
         settings_path=Path("state/settings.json"),
         env_settings=settings,
         runner_handle=handle,
+        bind=bind,
+        web_auth_password=web_auth_password,
     )
 
     config = uvicorn.Config(app_instance, host=bind, port=port, log_config=None)

@@ -88,9 +88,11 @@ def friendly_validation_errors(exc: Any) -> list[dict[str, str]]:
             case "bool_type" | "bool_parsing":
                 messages.append({"field": field, "message": "참/거짓 값으로 입력해야 합니다"})
             case "string_too_short":
-                messages.append({"field": field, "message": f"최소 {ctx.get('min_length')}자 이상 입력해야 합니다"})
+                min_len = ctx.get("min_length")
+                messages.append({"field": field, "message": f"최소 {min_len}자 이상 입력하세요"})
             case "string_too_long":
-                messages.append({"field": field, "message": f"최대 {ctx.get('max_length')}자 이하로 입력해야 합니다"})
+                max_len = ctx.get("max_length")
+                messages.append({"field": field, "message": f"최대 {max_len}자 이하로 입력하세요"})
             case _:
                 messages.append({"field": field, "message": err["msg"]})
     return messages

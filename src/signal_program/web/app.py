@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from signal_program.config import Settings
 from signal_program.web.api import backtest, daemon, dashboard, health, pages, settings, signals
 from signal_program.web.deps import get_settings_store, init_settings_store
+from signal_program.web.middleware import BasicAuthMiddleware
 from signal_program.web.security import friendly_validation_errors
 
 _STATIC_DIR = Path(__file__).parent / "static"
@@ -44,6 +45,8 @@ def create_app(
     candles_cache_root: Path | None = None,
     _job_executor: Callable[..., None] | None = None,
     runner_handle: RunnerHandle | None = None,
+    bind: str = "127.0.0.1",
+    web_auth_password: str | None = None,
 ) -> FastAPI:
     """FastAPI 앱 생성."""
     _settings_path = settings_path or Path("state/settings.json")
@@ -105,5 +108,8 @@ def create_app(
 
     # HTML 페이지 라우터 (나중 등록)
     app.include_router(pages.router)
+
+    # 비-localhost 바인드 시 BasicAuth 장착 (settings.web_auth_password로 호출자가 전달)
+    app.add_middleware(BasicAuthMiddleware, bind=bind, password=web_auth_password)
 
     return app
