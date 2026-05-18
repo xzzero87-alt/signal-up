@@ -64,3 +64,61 @@ def test_friendly_errors_field_path_includes_nested_keys() -> None:
     exc = _make_error(_TestModel, {"value_ge": 0, "value_gt": 1.0, "value_le": 50, "name": "x"})
     errors = friendly_validation_errors(exc)
     assert any("value_ge" in e["field"] for e in errors)
+
+
+# ── Location prefix 제거 테스트 (M16 follow-up v2) ───────────────────────────
+
+
+class _MockExc:
+    """ValidationError를 흉내 내는 테스트 더블. loc를 직접 주입할 수 있다."""
+
+    def __init__(self, raw_errors: list[dict]) -> None:
+        self._raw = raw_errors
+
+    def errors(self) -> list[dict]:
+        return self._raw
+
+
+def test_strips_body_prefix_from_field_path() -> None:
+    """FastAPI body 검증 loc ('body', 'bb_period') → field='bb_period'."""
+    exc = _MockExc([{
+        "loc": ("body", "bb_period"),
+        "type": "greater_than_equal",
+        "ctx": {"ge": 2},
+        "msg": "Input should be greater than or equal to 2",
+    }])
+    errors = friendly_validation_errors(exc)
+    assert errors[0]["field"] == "bb_period"
+
+
+def test_strips_query_prefix_from_field_path() -> None:
+    """FastAPI query 파라미터 검증 loc ('query', 'market') → field='market'."""
+    exc = _MockExc([{
+        "loc": ("query", "market"),
+        "type": "missing",
+        "msg": "Field required",
+    }])
+    errors = friendly_validation_errors(exc)
+    assert errors[0]["field"] == "market"
+
+
+def test_preserves_nested_field_paths() -> None:
+    """중첩 경로 ('body', 'nested', 'key') → field='nested.key' — 첫 요소만 제거."""
+    exc = _MockExc([{
+        "loc": ("body", "nested", "key"),
+        "type": "missing",
+        "msg": "Field required",
+    }])
+    errors = friendly_validation_errors(exc)
+    assert errors[0]["field"] == "nested.key"
+
+
+def test_handles_unknown_prefix_gracefully() -> None:
+    """알 수 없는 prefix ('foo', 'bar') → field='foo.bar' — 변환 없음."""
+    exc = _MockExc([{
+        "loc": ("foo", "bar"),
+        "type": "missing",
+        "msg": "Field required",
+    }])
+    errors = friendly_validation_errors(exc)
+    assert errors[0]["field"] == "foo.bar"

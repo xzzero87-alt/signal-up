@@ -82,6 +82,16 @@ def test_put_settings_returns_korean_validation_messages(client: TestClient) -> 
     assert any("이상이어야 합니다" in m for m in messages)
 
 
+def test_put_settings_response_field_has_no_body_prefix(client: TestClient) -> None:
+    """결함 회귀: 422 응답의 field 값에 'body.' prefix가 없어야 한다."""
+    resp = client.put("/api/settings", json={"bb_period": 0})
+    assert resp.status_code == 422
+    detail = resp.json()["detail"]
+    fields = [e["field"] for e in detail]
+    assert any(f == "bb_period" for f in fields), f"field='bb_period' 기대, 실제: {fields}"
+    assert not any(f.startswith("body.") for f in fields), f"body. prefix 포함: {fields}"
+
+
 def test_put_settings_valid_update_returns_200(client: TestClient) -> None:
     resp = client.put("/api/settings", json={"bb_period": 25, "dry_run": True})
     assert resp.status_code == 200
