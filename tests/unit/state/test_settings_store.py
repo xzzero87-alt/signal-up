@@ -60,3 +60,17 @@ def test_update_rejects_invalid_constraint(store: SettingsStore) -> None:
 
     with pytest.raises((ValidationError, ValueError)):
         SettingsUpdate(bb_period=0)  # ge=2 위반
+
+
+def test_load_resilient_to_utf8_bom(tmp_path: Path, env_settings: Settings) -> None:
+    """결함 회귀: PS5.x Set-Content -Encoding utf8 는 BOM 추가 — 로드 실패 없어야 한다."""
+    path = tmp_path / "settings.json"
+    bom = b"\xef\xbb\xbf"
+    content = json.dumps({"web_auth_password": "test1234567890ab"}).encode("utf-8")
+    path.write_bytes(bom + content)
+
+    store = SettingsStore(path=path, env_settings=env_settings)
+    loaded = store.load()
+    assert loaded.web_auth_password == "test1234567890ab", (
+        "BOM이 포함된 settings.json 로드 실패 — PS5.x 호환성 결함"
+    )

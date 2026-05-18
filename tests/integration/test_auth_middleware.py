@@ -68,3 +68,55 @@ def test_auth_uses_constant_time_comparison() -> None:
     assert src.exists(), "middleware.py 파일이 없습니다"
     text = src.read_text(encoding="utf-8")
     assert "secrets.compare_digest" in text, "timing-safe 비교가 없습니다"
+
+
+# ── create_app 미들웨어 자동 장착 (M16 Follow-up v4) ──────────────────────────
+
+
+def test_create_app_with_external_bind_requires_auth(tmp_path: "Path") -> None:
+    """결함 회귀: create_app(bind='0.0.0.0') → BasicAuthMiddleware가 자동 장착되어 401 반환."""
+    from pathlib import Path
+
+    from signal_program.web.app import create_app
+
+    app = create_app(
+        settings_path=tmp_path / "settings.json",
+        bind="0.0.0.0",
+        web_auth_password="secret123",
+    )
+    with TestClient(app) as client:
+        resp = client.get("/api/health")
+        assert resp.status_code == 401, (
+            "비-localhost bind 시 인증 없는 요청은 401이어야 한다 (BasicAuthMiddleware 미장착)"
+        )
+
+
+def test_create_app_with_external_bind_accepts_correct_password(tmp_path: "Path") -> None:
+    """결함 회귀: create_app(bind='0.0.0.0') + 올바른 비번 → 200."""
+    from pathlib import Path
+
+    from signal_program.web.app import create_app
+
+    app = create_app(
+        settings_path=tmp_path / "settings.json",
+        bind="0.0.0.0",
+        web_auth_password="secret123",
+    )
+    with TestClient(app) as client:
+        resp = client.get(
+            "/api/health",
+            headers={"Authorization": _basic_header("admin", "secret123")},
+        )
+        assert resp.status_code == 200
+
+
+def test_create_app_localhost_bind_no_auth_required(tmp_path: "Path") -> None:
+    """기본 localhost bind → BasicAuthMiddleware 비활성 → 인증 없어도 200."""
+    from pathlib import Path
+
+    from signal_program.web.app import create_app
+
+    app = create_app(settings_path=tmp_path / "settings.json")
+    with TestClient(app) as client:
+        resp = client.get("/api/health")
+        assert resp.status_code == 200
