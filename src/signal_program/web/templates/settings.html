@@ -17,6 +17,7 @@
       </label>
       <input id="telegram_bot_token" name="telegram_bot_token" type="password"
              placeholder="비워두면 기존 값 유지" value="">
+      <span class="field-error" id="err-telegram_bot_token"></span>
     </div>
 
     <div class="field-row">
@@ -25,6 +26,7 @@
       </label>
       <input id="telegram_chat_id" name="telegram_chat_id" type="text"
              value="{{ settings.telegram_chat_id or '' }}">
+      <span class="field-error" id="err-telegram_chat_id"></span>
     </div>
 
     <div class="field-row field-row-check">

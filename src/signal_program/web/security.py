@@ -79,6 +79,18 @@ def friendly_validation_errors(exc: Any) -> list[dict[str, str]]:
                 messages.append({"field": field, "message": "필수 항목입니다"})
             case "string_pattern_mismatch":
                 messages.append({"field": field, "message": "형식이 올바르지 않습니다"})
+            case "string_type":
+                messages.append({"field": field, "message": "문자열로 입력해야 합니다"})
+            case "int_type" | "int_parsing":
+                messages.append({"field": field, "message": "정수로 입력해야 합니다"})
+            case "float_type" | "float_parsing" | "decimal_type" | "decimal_parsing":
+                messages.append({"field": field, "message": "숫자로 입력해야 합니다"})
+            case "bool_type" | "bool_parsing":
+                messages.append({"field": field, "message": "참/거짓 값으로 입력해야 합니다"})
+            case "string_too_short":
+                messages.append({"field": field, "message": f"최소 {ctx.get('min_length')}자 이상 입력해야 합니다"})
+            case "string_too_long":
+                messages.append({"field": field, "message": f"최대 {ctx.get('max_length')}자 이하로 입력해야 합니다"})
             case _:
                 messages.append({"field": field, "message": err["msg"]})
     return messages

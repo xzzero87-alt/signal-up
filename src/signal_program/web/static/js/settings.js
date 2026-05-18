@@ -1,6 +1,23 @@
 // settings.js — 설정 저장 + 422 처리 + 토스트 (Vanilla JS)
 'use strict';
 
+// 시크릿/식별자 필드: 항상 string. Number 변환 금지
+const STRING_FIELDS = new Set([
+  'telegram_bot_token',
+  'telegram_chat_id',
+]);
+
+// 정수 필드
+const INT_FIELDS = new Set([
+  'bb_period', 'cci_period', 'cci_threshold_normal', 'cci_threshold_strong',
+  'squeeze_lookback', 'cooldown_hours',
+]);
+
+// 부동소수 필드
+const FLOAT_FIELDS = new Set([
+  'bb_std_mult', 'volume_ratio_min_a', 'volume_ratio_min_b', 'squeeze_quantile',
+]);
+
 async function saveSettings(event) {
   event.preventDefault();
   clearErrors();
@@ -15,9 +32,16 @@ async function saveSettings(event) {
       body[key] = val.split(',').map(v => v.trim()).filter(Boolean);
     } else if (key === 'dry_run') {
       body[key] = true;
+    } else if (STRING_FIELDS.has(key)) {
+      body[key] = val;
+    } else if (INT_FIELDS.has(key)) {
+      const n = parseInt(val, 10);
+      body[key] = isNaN(n) ? val : n;
+    } else if (FLOAT_FIELDS.has(key)) {
+      const n = parseFloat(val);
+      body[key] = isNaN(n) ? val : n;
     } else {
-      const num = Number(val);
-      body[key] = isNaN(num) ? val : num;
+      body[key] = val;
     }
   }
   if (!body.dry_run) body.dry_run = false;
