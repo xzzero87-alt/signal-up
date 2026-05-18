@@ -1,7 +1,7 @@
 // dashboard.js — 30초 폴링 + 필터 + 카운트다운 (외부 프레임워크 없음)
 'use strict';
 
-const POLL_INTERVAL_MS = 30_000;
+// POLL_INTERVAL_MS 는 index.html 인라인 <script>에서 선언됨 (전역 상수)
 let lastUpdateAt = null;
 
 async function fetchDashboard() {
