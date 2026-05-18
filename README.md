@@ -165,46 +165,54 @@ GUI에서 저장하는 모든 설정은 `state/settings.json`에 영속화됩니
 
 ## 보안
 
-이 도구는 **자가설치 + 단일 사용자**를 가정합니다.
+이 도구는 자가설치 + 단일 사용자를 가정합니다.
 
 ### 기본 (안전)
-
-```ini
-WEB_BIND=127.0.0.1   # 기본값 — 본인 PC에서만 접속 가능
-WEB_AUTH_PASSWORD=   # 비어도 됨 (localhost는 인증 불필요)
-```
-
-`WEB_BIND=127.0.0.1` 상태에서는 같은 PC에서만 대시보드에 접속할 수 있습니다 — 가장 안전합니다.
+- `state/settings.json`의 `web_bind: "127.0.0.1"`이면 본인 컴퓨터에서만 접속 가능 — 가장 안전
+- 비밀번호 불필요
 
 ### LAN 노출 (조심)
-
 같은 네트워크의 다른 기기에서 접속하려면:
 
-1. `.env`에 `WEB_BIND=0.0.0.0` 설정
-2. **반드시** `WEB_AUTH_PASSWORD=긴_랜덤_문자열_16자_이상` 설정
-3. 비밀번호 미설정 시 시작 거부됩니다
+**방법 1 — `state/settings.json` 직접 편집 (권장):**
 
-권장 비밀번호 생성:
+\`\`\`json
+{
+  "web_bind": "0.0.0.0",
+  "web_auth_password": "긴_랜덤_문자열_16자_이상",
+  ...
+}
+\`\`\`
 
-```python
-import secrets; print(secrets.token_urlsafe(24))
-```
+**방법 2 — 첫 실행 전 `.env` 사용:**
 
-비밀번호가 설정된 경우 브라우저 접속 시 HTTP Basic Auth 창이 나타납니다 (사용자명: `admin`).
+`state/settings.json`이 아직 없을 때(GUI 첫 저장 전) `.env`에:
 
-> **`WEB_BIND`가 `127.0.0.1`이 아닌데 `WEB_AUTH_PASSWORD`가 비어 있으면 시작 거부됩니다.**
+\`\`\`
+WEB_BIND=0.0.0.0
+WEB_AUTH_PASSWORD=긴_랜덤_문자열_16자_이상
+\`\`\`
+
+→ GUI 첫 저장 시 `state/settings.json`으로 자동 부트스트랩됨.
+
+⚠️ `state/settings.json` 생성 후에는 `.env`가 무시됩니다. 그 후 비번 변경은 **settings.json 직접 편집**.
+
+비번 미설정 + 비-localhost 바인드 → 시작 거부됩니다.
+
+**권장 비밀번호 생성:**
+
+\`\`\`bash
+uv run python -c "import secrets; print(secrets.token_urlsafe(24))"
+\`\`\`
 
 ### 인터넷 노출 (비권장)
-
-이 도구는 HTTPS·OAuth·다중 사용자 인증을 지원하지 않습니다. 인터넷에 직접 노출하지 마세요.
-SaaS·멀티유저는 별도 v3 프로젝트입니다 ([ADR-0006](docs/adr/0006-self-hosted-distribution.md)).
+이 도구는 HTTPS·OAuth·다중 사용자 인증을 지원하지 않습니다. 인터넷에 노출하지 마세요. SaaS는 별도 프로젝트(v3)로 분리되어 있습니다.
 
 ### 시크릿 관리
-
-- `state/settings.json`은 자동으로 권한 600(Linux/macOS) / 사용자 단독(Windows) 설정됩니다
-- 텔레그램 토큰은 GUI 응답에서 `••••••••XXXX`로 마스킹됩니다
-- `.env`는 절대 git에 커밋하지 마세요 (`.gitignore`에 이미 포함)
-- 토큰 유출 의심 시: 텔레그램 [@BotFather](https://t.me/BotFather) → `/revoke` → 새 토큰 발급
+- `state/settings.json`은 자동으로 권한 600 (Linux/macOS) / 사용자 단독 ACL (Windows) 설정
+- 텔레그램 봇 토큰은 API 응답에서 `••••••••XXXX`로 마스킹 (디스크에는 평문)
+- `.env`는 절대 git에 커밋 X (`.gitignore`에 이미 포함)
+- `state/`, `reports/`, `data/` 디렉토리 전체가 `.gitignore`에 포함되어 평문 시크릿이 git에 들어가지 않음
 
 ---
 

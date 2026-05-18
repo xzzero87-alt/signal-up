@@ -63,8 +63,12 @@ def backtest_page(
     store: SettingsStore = Depends(get_settings_store),
 ) -> HTMLResponse:
     settings_data = store.load()
-    html = _env().get_template("backtest.html").render(
-        active="backtest",
-        whitelist_markets=list(settings_data.whitelist_markets),
+    html = (
+        _env()
+        .get_template("backtest.html")
+        .render(
+            active="backtest",
+            whitelist_markets=list(settings_data.whitelist_markets),
+        )
     )
     return HTMLResponse(content=html)

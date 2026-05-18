@@ -115,5 +115,3 @@ def get_job_report(
         raise HTTPException(status_code=404, detail="Report file not found")
 
     return FileResponse(path=str(safe_path), media_type="text/html")
-
-

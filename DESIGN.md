@@ -832,5 +832,52 @@ htmlcov/
 ```
 
 ---
+---
+
+### 8.7 워크포워드 결과 모델 (v2.0 — M12)
+
+> M12에서 도입. §8.5 `BacktestResult`를 재사용하면서 fold별 + 합본 결과를 추가 모델로 표현. 이 모델들은 `walkforward.py`에서만 정의되며 다른 §8.x 영역과 독립.
+
+\`\`\`python
+# src/signal_program/backtest/walkforward.py
+from dataclasses import dataclass
+from datetime import datetime
+from pydantic import BaseModel, ConfigDict
+
+@dataclass(frozen=True, slots=True)
+class StrategyParams:
+    """그리드 서치 대상 파라미터. v2.0은 BB·CCI·거래량 일부만 시작."""
+    bb_std_mult: float
+    cci_threshold_normal: int = 100
+    volume_ratio_min_a: float = 1.0
+
+class WalkforwardFold(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    fold_index: int                       # 0부터 시작
+    train_period_from: datetime           # KST tz-aware
+    train_period_to: datetime
+    validate_period_from: datetime
+    validate_period_to: datetime
+    best_params: StrategyParams           # 학습 구간 그리드 서치 결과
+    train_result: BacktestResult          # 학습 구간 (참고용, in-sample)
+    validate_result: BacktestResult       # 검증 구간 (out-of-sample, 신뢰값)
+
+class WalkforwardResult(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+    period_from: datetime                 # 전체 데이터 시작
+    period_to: datetime                   # 전체 데이터 끝
+    train_window_days: int                # 명시: 240 (8개월)
+    validate_window_days: int             # 명시: 60 (2개월)
+    folds: tuple[WalkforwardFold, ...]
+    out_of_sample_combined: BacktestResult  # 검증 구간 trades만 합본
+\`\`\`
+
+**불변 규칙 (§8.5와 동일 레벨):**
+- 위 세 모델의 필드 이름/타입/순서 변경 금지
+- 새 필드 추가는 follow-up PR로
+- `WalkforwardResult.out_of_sample_combined`는 검증 구간 trades 합본만. **학습 trades 절대 섞이지 않음** (data leakage 차단)
+- `WalkforwardResult.period_from/to`는 전체 데이터 기간. `out_of_sample_combined.period_from/to`는 첫 fold validate_from ~ 마지막 fold validate_to
+- MDD/Sharpe 컨벤션 §8.5 그대로 — 모델은 음수, 표시는 `abs()` / Sharpe는 부호 유지
+
 
 > **이 문서는 살아있는 명세서다.** 변경 시 PR과 함께 PRD·DESIGN·README를 동기화한다.

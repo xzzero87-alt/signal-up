@@ -18,3 +18,5 @@ htmlcov/
 # Claude Code auto-generated files
 .claude/settings.local.json
 .claude/checkpoints.log
+
+.coverage
