@@ -46,14 +46,25 @@ def assert_safe_bind(bind: str, password: str | None) -> None:
         sys.exit(1)
 
 
+_REQUEST_LOCATION_PREFIXES: frozenset[str] = frozenset(
+    {"body", "query", "path", "header", "cookie"}
+)
+
+
 def friendly_validation_errors(exc: Any) -> list[dict[str, str]]:
     """Pydantic ValidationError → 한국어 필드별 메시지.
+
+    FastAPI request 검증 시 loc 첫 요소는 'body'/'query'/'path' 등 위치 prefix.
+    응답에는 필드 이름만 노출 (예: "bb_period", "nested.key").
 
     반환: [{"field": "bb_period", "message": "2 이상이어야 합니다"}]
     """
     messages = []
     for err in exc.errors():
-        field = ".".join(str(p) for p in err["loc"])
+        loc = list(err["loc"])
+        if loc and isinstance(loc[0], str) and loc[0] in _REQUEST_LOCATION_PREFIXES:
+            loc = loc[1:]
+        field = ".".join(str(p) for p in loc)
         ctx = err.get("ctx", {})
         match err["type"]:
             case "greater_than_equal":

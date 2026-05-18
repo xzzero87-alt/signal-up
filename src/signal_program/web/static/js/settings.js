@@ -88,11 +88,19 @@ function showGlobalError(msg) {
 }
 
 function showFieldErrors(errors) {
+  let matchedCount = 0;
   for (const { field, message } of errors) {
-    const el = document.getElementById('err-' + field);
-    if (el) el.textContent = message;
-    const input = document.getElementById(field);
+    // 안전망: 옛 응답 형식 호환 — "body.bb_period" → "bb_period"
+    const fieldName = (field || '').replace(/^(body|query|path|header|cookie)\./, '');
+    const el = document.getElementById('err-' + fieldName);
+    if (el) { el.textContent = message; matchedCount++; }
+    const input = document.getElementById(fieldName);
     if (input) input.style.borderColor = '#c62828';
+  }
+  // 매칭 0건 = silent failure 차단 — 글로벌 에러로 fallback
+  if (matchedCount === 0 && errors.length > 0) {
+    const summary = errors.map(e => `${(e.field || '').replace(/^[^.]+\./, '')}: ${e.message}`).join(' / ');
+    showGlobalError('입력값을 확인하세요 — ' + summary);
   }
 }
 
