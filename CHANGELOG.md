@@ -5,6 +5,16 @@
 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/)를 따르고,
 이 프로젝트는 [Semantic Versioning](https://semver.org/lang/ko/)을 준수합니다.
 
+## [2.0.1] — 2026-05-19
+
+### 수정
+- **runner의 업비트 API URL 결함** — `_run_live_coro` / `_run_async`에서 `httpx.AsyncClient`에
+  `base_url` 없이 `UpbitClient`에 전달하여 매시 폴링 시 19/19 마켓 모두
+  `"Request URL is missing 'http://' or 'https://' protocol"` 에러로 실패
+  (`signal doctor`는 전체 URL 직접 호출로 정상, `signal run` / `--start-daemon` 경로만 영향)
+
+---
+
 ## [2.0.0] — 2026-05-18
 
 ### 추가

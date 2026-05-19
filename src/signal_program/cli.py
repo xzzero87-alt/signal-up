@@ -199,7 +199,7 @@ async def _run_async(settings: Settings) -> None:
     )
     signal_log = SignalLog(path=settings.signals_log_path)
 
-    async with httpx.AsyncClient(timeout=10.0) as http:
+    async with httpx.AsyncClient(base_url="https://api.upbit.com", timeout=10.0) as http:
         exchange = UpbitClient(_client=http)
         notifier = TelegramNotifier(
             bot_token=SecretStr(settings.telegram_bot_token),
@@ -352,7 +352,7 @@ async def _run_live_coro(settings: Settings) -> None:
     )
     signal_log = SignalLog(path=settings.signals_log_path)
 
-    async with httpx.AsyncClient(timeout=10.0) as http:
+    async with httpx.AsyncClient(base_url="https://api.upbit.com", timeout=10.0) as http:
         exchange = UpbitClient(_client=http)
         notifier = TelegramNotifier(
             bot_token=SecretStr(settings.telegram_bot_token),
