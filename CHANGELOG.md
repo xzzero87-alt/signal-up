@@ -5,6 +5,18 @@
 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/)를 따르고,
 이 프로젝트는 [Semantic Versioning](https://semver.org/lang/ko/)을 준수합니다.
 
+## [2.0.2] — 2026-05-19
+
+### 수정
+- **설정 GUI 화이트리스트 저장 결함** — `SettingsUpdate.whitelist_markets`가 `tuple[str,...] | None`으로 선언되어
+  JSON list가 tuple로 coerce → `Settings._parse_whitelist`가 tuple을 거부
+  → `"Value error, 화이트리스트를 파싱할 수 없음: tuple"` 422 에러로 저장 불가
+  - `config.py` `_parse_whitelist`: tuple 입력 정상 처리 + 빈 목록 한국어 메시지 거부
+  - `schemas.py` `SettingsUpdate.whitelist_markets`: `list[str] | None`으로 수정
+  - `security.py` `friendly_validation_errors`: `value_error` 케이스 추가 ("Value error, " 영어 prefix 제거)
+
+---
+
 ## [2.0.1] — 2026-05-19
 
 ### 수정
