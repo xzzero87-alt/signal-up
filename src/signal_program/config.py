@@ -126,9 +126,12 @@ class Settings(BaseSettings):
         """직접 인스턴스화 시 쉼표 구분 문자열을 리스트로 변환한다."""
         if isinstance(v, str):
             return [m.strip() for m in v.split(",") if m.strip()]
-        if isinstance(v, list):
-            return [str(item) for item in v]
-        raise ValueError(f"화이트리스트를 파싱할 수 없음: {type(v).__name__}")
+        if isinstance(v, (list, tuple)):
+            result = [str(item) for item in v]
+            if not result:
+                raise ValueError("화이트리스트는 최소 1개 마켓이 필요합니다")
+            return result
+        raise ValueError(f"화이트리스트를 파싱할 수 없음: {type(v).__name__}")  # noqa: EM102
 
     def model_post_init(self, __context: Any) -> None:
         """비-localhost 바인드 + 빈 비밀번호 조합을 거부한다 (DESIGN.md §10)."""

@@ -43,7 +43,7 @@ class SettingsUpdate(BaseModel):
 
     telegram_bot_token: str | None = None
     telegram_chat_id: str | None = None
-    whitelist_markets: tuple[str, ...] | None = None
+    whitelist_markets: list[str] | None = None
     bb_period: int | None = Field(default=None, ge=2, le=200)
     bb_std_mult: float | None = Field(default=None, gt=0, le=5)
     cci_period: int | None = Field(default=None, ge=2, le=200)

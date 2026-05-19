@@ -93,6 +93,10 @@ def friendly_validation_errors(exc: Any) -> list[dict[str, str]]:
             case "string_too_long":
                 max_len = ctx.get("max_length")
                 messages.append({"field": field, "message": f"최대 {max_len}자 이하로 입력하세요"})
+            case "value_error":
+                # ValueError에서 "Value error, " prefix 제거하고 한국어 메시지만 표시
+                raw = str(ctx.get("error", err["msg"]))
+                messages.append({"field": field, "message": raw})
             case _:
                 messages.append({"field": field, "message": err["msg"]})
     return messages
