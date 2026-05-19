@@ -27,10 +27,13 @@ async function saveSettings(event) {
   const body = {};
 
   for (const [key, val] of fd.entries()) {
-    if (val === '' || val == null) continue;
+    // whitelist_markets: 빈 입력도 backend에 명시적으로 전달 (검증은 backend v2.0.2가 담당)
     if (key === 'whitelist_markets') {
-      body[key] = val.split(',').map(v => v.trim()).filter(Boolean);
-    } else if (key === 'dry_run') {
+      body[key] = (val ?? '').split(',').map(v => v.trim()).filter(Boolean);
+      continue;
+    }
+    if (val === '' || val == null) continue;
+    if (key === 'dry_run') {
       body[key] = true;
     } else if (STRING_FIELDS.has(key)) {
       body[key] = val;
