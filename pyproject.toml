@@ -80,6 +80,12 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "unit: 외부 의존성 없는 순수 단위 테스트",
+    "integration: FastAPI TestClient + 파일 I/O",
+    "e2e: 실 운영 데이터 또는 실 API 의존 (D+7 게이트 전용)",
+    "slow: 백테스트 엔진 등 수 초 이상 소요",
+]
 
 [tool.coverage.run]
 source = ["src"]
@@ -87,5 +93,5 @@ branch = true
 omit = ["src/signal_program/cli.py"]
 
 [tool.coverage.report]
-fail_under = 70
+fail_under = 90
 show_missing = true

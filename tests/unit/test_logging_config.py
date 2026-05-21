@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import logging
+import logging.handlers
+import sys
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -54,3 +58,35 @@ def test_contextvars_roundtrip() -> None:
     ctx_after = structlog.contextvars.get_contextvars()
     assert "cycle_id" not in ctx_after
     assert "market" not in ctx_after
+
+
+def test_attach_file_handler_creates_rotating_handler(tmp_path: Path) -> None:
+    """attach_file_handler가 RotatingFileHandler를 루트 로거에 부착한다 (ADR-0013)."""
+    from signal_program.logging_config import attach_file_handler
+
+    log_file = tmp_path / "logs" / "daemon.log"
+    root = logging.getLogger()
+    handlers_before = list(root.handlers)
+
+    try:
+        attach_file_handler(log_file)
+
+        assert log_file.parent.exists()
+        rotating = [
+            h for h in root.handlers if isinstance(h, logging.handlers.RotatingFileHandler)
+        ]
+        assert len(rotating) >= 1
+        rh = rotating[-1]
+        assert rh.maxBytes == 5 * 1024 * 1024
+        assert rh.backupCount == 7
+    finally:
+        # 핸들러 원상 복구 (다른 테스트 격리)
+        for h in root.handlers:
+            if h not in handlers_before:
+                h.close()
+        root.handlers = handlers_before
+        # structlog PrintLoggerFactory 원상 복구
+        structlog.configure(
+            logger_factory=structlog.PrintLoggerFactory(sys.stdout),
+            cache_logger_on_first_use=True,
+        )

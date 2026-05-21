@@ -12,18 +12,19 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import logging
 from collections.abc import Awaitable, Callable  # noqa: TC003
 from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
+import structlog
+
 if TYPE_CHECKING:
     from signal_program.state.signal_history import SignalHistory
 
 _KST = ZoneInfo("Asia/Seoul")
-_log = logging.getLogger(__name__)
+_slog = structlog.get_logger(__name__)
 
 
 class RunnerStateError(Exception):
@@ -120,7 +121,11 @@ class RunnerHandle:
             await self._factory()
         except asyncio.CancelledError:
             raise
-        except Exception:
-            _log.exception("runner_crashed — web continues")
+        except Exception as exc:
+            _slog.error(
+                "daemon_crashed",
+                exc_type=type(exc).__name__,
+                exc_msg=str(exc),
+            )
         finally:
             self._running = False

@@ -56,6 +56,7 @@ def test_update_applies_patch_and_persists(store: SettingsStore) -> None:
 
 def test_update_rejects_invalid_constraint(store: SettingsStore) -> None:
     from pydantic import ValidationError
+
     from signal_program.web.schemas import SettingsUpdate
 
     with pytest.raises((ValidationError, ValueError)):

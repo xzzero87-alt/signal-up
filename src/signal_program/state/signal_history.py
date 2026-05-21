@@ -1,7 +1,7 @@
-"""SignalHistory — 시그널 이력 JSONL 영속화 (state/signal_history.jsonl).
+"""SignalHistory — 시그널 이력 JSONL 영속화 (state/signals.jsonl, ADR-0012).
 
 각 줄: {"signal": {...}, "sent_at": "<iso8601_kst>"}
-1MB 초과 시 signal_history.1.jsonl 로 rotate.
+1MB 초과 시 signals.1.jsonl 로 rotate.
 
 import 사용처:
   - web/api/signals.py (set_signal_history → read_recent)

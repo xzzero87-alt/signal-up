@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-
 # ── 헬퍼 ────────────────────────────────────────────────────────────────────
 
 
@@ -244,7 +243,7 @@ async def test_walkforward_kind_uses_walkforward_engine(tmp_path: Path) -> None:
     wf_called: dict[str, bool] = {"called": False}
 
     def wf_executor(spec: object, output_path: Path) -> None:
-        assert getattr(spec, "kind") == JobKind.WALKFORWARD
+        assert spec.kind == JobKind.WALKFORWARD
         wf_called["called"] = True
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text("<html>wf ok</html>", encoding="utf-8")

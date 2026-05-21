@@ -20,6 +20,8 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
+from signal_program.constants import STATE_DIR, STATE_SIGNALS_FILE
+
 if TYPE_CHECKING:
     from pydantic.fields import FieldInfo
 
@@ -108,7 +110,7 @@ class Settings(BaseSettings):
     # 러너 스케줄
     cycle_delay_seconds: int = 30
     cycle_timeout_seconds: int = 120
-    signals_log_path: Path = Path("state/signals.jsonl")
+    signals_log_path: Path = Path(STATE_DIR) / STATE_SIGNALS_FILE
     charts_dir: Path = Path("state/charts")
 
     # 운영

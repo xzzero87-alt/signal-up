@@ -6,6 +6,7 @@ configure_logging(settings)을 CLI 진입 시점에 한 번 호출한다.
 from __future__ import annotations
 
 import logging
+import logging.handlers
 import re
 import sys
 import zoneinfo
@@ -16,6 +17,7 @@ import structlog
 
 if TYPE_CHECKING:
     from collections.abc import MutableMapping
+    from pathlib import Path
 
     from signal_program.config import Settings
 
@@ -84,3 +86,35 @@ def configure_logging(settings: Settings) -> None:
     )
 
     logging.basicConfig(format="%(message)s", level=log_level, force=True)
+
+
+def attach_file_handler(
+    log_file: Path,
+    max_bytes: int = 5 * 1024 * 1024,
+    backup_count: int = 7,
+) -> None:
+    """RotatingFileHandler를 루트 로거에 부착한다 (ADR-0013).
+
+    configure_logging() 호출 후 --start-daemon 시 추가 호출.
+    structlog → stdlib 라우팅으로 전환해 파일에도 기록.
+    5MB 로테이션 × 7개 보존 (최대 35MB).
+
+    Args:
+        log_file: 데몬 로그 파일 경로 (예: Path("logs/daemon.log")).
+        max_bytes: 로테이션 기준 바이트 수 (기본 5MB).
+        backup_count: 보존할 구 로그 파일 수 (기본 7).
+    """
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    file_handler = logging.handlers.RotatingFileHandler(
+        filename=log_file,
+        maxBytes=max_bytes,
+        backupCount=backup_count,
+        encoding="utf-8",
+    )
+    file_handler.setFormatter(logging.Formatter("%(message)s"))
+    logging.getLogger().addHandler(file_handler)
+    # structlog을 stdlib 라우팅으로 전환 → 파일 핸들러도 캡처
+    structlog.configure(
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        cache_logger_on_first_use=False,
+    )

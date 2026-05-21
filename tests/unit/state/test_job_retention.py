@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from signal_program.state.job_retention import cleanup_old_jobs
 
 

@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-
 # ── 픽스처 ───────────────────────────────────────────────────────────────────
 
 
@@ -98,8 +97,8 @@ def test_post_job_returns_422_korean_when_invalid_period(client: TestClient) -> 
 
 
 def test_post_job_returns_429_when_queue_full(tmp_path: Path) -> None:
-    import time as _time
     import tempfile
+    import time as _time
     from pathlib import Path as _Path
 
     from signal_program.web.app import create_app

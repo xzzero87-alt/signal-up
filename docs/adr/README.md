@@ -15,6 +15,11 @@
 | [0007](0007-user-owned-bot-token.md) | 사용자 자가 텔레그램 봇 토큰 | accepted | 2026-05-07 |
 | [0008](0008-settings-storage.md) | 설정 영속화 — `state/settings.json` 단일 source of truth | accepted | 2026-05-07 |
 | [0009](0009-windows-atomic-write.md) | Windows에서 atomic write 우회 (플랫폼 분기) | accepted | 2026-05-12 |
+| [0010](0010-strategy-catalog.md) | Strategy 카탈로그 + OBV 거래량 지표 + 가중치 조합 로직 (V2) | accepted | 2026-05-21 |
+| [0011](0011-windows-service.md) | Windows Service 등록 방식 — nssm 채택 | accepted | 2026-05-20 |
+| [0012](0012-signals-jsonl-canonical.md) | `signals.jsonl` 영속 파일 정식화 + `STATE_SIGNALS_FILE` 상수 | accepted | 2026-05-21 |
+| [0013](0013-daemon-stdout-redirect.md) | 데몬 stdout/stderr 파일 리다이렉트 + 일별 로테이션 | accepted | 2026-05-21 |
+| [0014](0014-operation-guide-path-sync.md) | 운영 가이드 ↔ 코드 path/key 강제 동기화 정책 | accepted | 2026-05-21 |
 
 ## 작성 규칙
 

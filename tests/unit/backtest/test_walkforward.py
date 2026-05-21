@@ -355,7 +355,8 @@ def test_walkforward_html_is_self_contained() -> None:
 # Phase 3 — Hypothesis property + 결정성 회귀
 # ══════════════════════════════════════════════════════════════════════════════
 
-from hypothesis import given, settings as h_settings
+from hypothesis import given
+from hypothesis import settings as h_settings
 from hypothesis import strategies as st
 
 
@@ -425,7 +426,6 @@ def test_grid_search_all_exceptions_returns_first_param() -> None:
 
 
 def test_load_candles_df_creates_df_from_parquet(tmp_path: pytest.TempPathFactory) -> None:
-    from datetime import timezone
     from signal_program.backtest.candles_io import save_candles
     from signal_program.backtest.walkforward import _load_candles_df
     from signal_program.models import Candle
@@ -462,12 +462,55 @@ def test_load_candles_df_missing_cache_returns_empty(tmp_path: pytest.TempPathFa
     assert len(df) == 0
 
 
+def test_walkforward_engine_run_returns_result_with_empty_candles(
+    tmp_path: pytest.TempPathFactory,
+) -> None:
+    """WalkforwardEngine.run() 이 빈 캔들 캐시에서도 WalkforwardResult를 반환한다.
+
+    _load_candles_df를 mock해 실제 parquet 없이도 lines 359-414를 커버한다.
+    """
+    from unittest.mock import patch
+    from zoneinfo import ZoneInfo
+
+    import pandas as pd
+
+    from signal_program.backtest.engine import BacktestEngine
+    from signal_program.backtest.walkforward import WalkforwardEngine, parse_grid
+    from signal_program.strategies.bb_cci import BbCciStrategy
+
+    kst = ZoneInfo("Asia/Seoul")
+    strategy = BbCciStrategy()
+    engine = BacktestEngine(strategy=strategy)
+    wf = WalkforwardEngine(
+        backtest_engine=engine,
+        candles_cache_root=tmp_path,  # type: ignore[arg-type]
+        param_grid=parse_grid("bb_std_mult:2.0"),
+    )
+    period_from = datetime(2025, 1, 1, tzinfo=kst)
+    period_to = datetime(2026, 5, 1, tzinfo=kst)
+
+    with patch("signal_program.backtest.walkforward._load_candles_df") as mock_load:
+        mock_load.return_value = pd.DataFrame()
+        result = wf.run(
+            market="KRW-BTC",
+            period_from=period_from,
+            period_to=period_to,
+            train_months=8,
+            validate_months=2,
+        )
+
+    assert len(result.folds) > 0
+    assert result.out_of_sample_combined is not None
+
+
+@pytest.mark.slow
 def test_walkforward_engine_run_end_to_end(tmp_path: pytest.TempPathFactory) -> None:
     """WalkforwardEngine.run() 전체 흐름을 mock 캔들로 검증한다."""
     from datetime import timedelta
+
     from signal_program.backtest.candles_io import save_candles
     from signal_program.backtest.engine import BacktestEngine
-    from signal_program.backtest.walkforward import WalkforwardEngine, StrategyParams, parse_grid
+    from signal_program.backtest.walkforward import StrategyParams, WalkforwardEngine
     from signal_program.models import Candle
     from signal_program.strategies.bb_cci import BbCciStrategy
 

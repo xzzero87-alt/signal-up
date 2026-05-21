@@ -73,9 +73,8 @@ def test_auth_uses_constant_time_comparison() -> None:
 # ── create_app 미들웨어 자동 장착 (M16 Follow-up v4) ──────────────────────────
 
 
-def test_create_app_with_external_bind_requires_auth(tmp_path: "Path") -> None:
+def test_create_app_with_external_bind_requires_auth(tmp_path: Path) -> None:
     """결함 회귀: create_app(bind='0.0.0.0') → BasicAuthMiddleware가 자동 장착되어 401 반환."""
-    from pathlib import Path
 
     from signal_program.web.app import create_app
 
@@ -91,9 +90,8 @@ def test_create_app_with_external_bind_requires_auth(tmp_path: "Path") -> None:
         )
 
 
-def test_create_app_with_external_bind_accepts_correct_password(tmp_path: "Path") -> None:
+def test_create_app_with_external_bind_accepts_correct_password(tmp_path: Path) -> None:
     """결함 회귀: create_app(bind='0.0.0.0') + 올바른 비번 → 200."""
-    from pathlib import Path
 
     from signal_program.web.app import create_app
 
@@ -110,9 +108,8 @@ def test_create_app_with_external_bind_accepts_correct_password(tmp_path: "Path"
         assert resp.status_code == 200
 
 
-def test_create_app_localhost_bind_no_auth_required(tmp_path: "Path") -> None:
+def test_create_app_localhost_bind_no_auth_required(tmp_path: Path) -> None:
     """기본 localhost bind → BasicAuthMiddleware 비활성 → 인증 없어도 200."""
-    from pathlib import Path
 
     from signal_program.web.app import create_app
 

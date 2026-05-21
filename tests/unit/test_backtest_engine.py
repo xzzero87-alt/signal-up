@@ -16,7 +16,8 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 import pytest
-from hypothesis import given, settings as h_settings
+from hypothesis import given
+from hypothesis import settings as h_settings
 from hypothesis import strategies as st
 
 from signal_program.backtest.engine import BacktestEngine

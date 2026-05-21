@@ -13,6 +13,9 @@
 from __future__ import annotations
 
 import logging
+import os
+import sys
+from io import TextIOWrapper
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -22,7 +25,8 @@ from rich.console import Console
 from rich.table import Table
 
 from signal_program.config import Settings
-from signal_program.logging_config import configure_logging
+from signal_program.constants import STATE_DIR, STATE_SIGNALS_FILE
+from signal_program.logging_config import attach_file_handler, configure_logging
 
 app = typer.Typer(
     name="signal",
@@ -229,8 +233,17 @@ def serve(
         bool,
         typer.Option("--start-daemon", help="기동 시 자동으로 라이브 데몬도 함께 시작"),
     ] = False,
+    log_file: Annotated[
+        str,
+        typer.Option("--log-file", help="데몬 로그 파일 경로 (ADR-0013)"),
+    ] = "logs/daemon.log",
 ) -> None:
     """FastAPI 웹 대시보드 서버를 기동한다. 기본: http://127.0.0.1:8765/"""
+    # ADR-0013: stdout UTF-8 강제 (Windows cp949 [E3] 해결)
+    os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+    if isinstance(sys.stdout, TextIOWrapper):
+        sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+
     import asyncio
 
     from signal_program.state.settings_store import SettingsStore
@@ -257,7 +270,7 @@ def serve(
 
     _pw = current.web_auth_password
     with contextlib.suppress(KeyboardInterrupt):
-        asyncio.run(_serve_async(settings, actual_bind, actual_port, start_daemon, _pw))
+        asyncio.run(_serve_async(settings, actual_bind, actual_port, start_daemon, _pw, log_file))
 
 
 async def _serve_async(
@@ -266,6 +279,7 @@ async def _serve_async(
     port: int,
     start_daemon: bool,
     web_auth_password: str = "",
+    log_file: str = "logs/daemon.log",
 ) -> None:
     """task supervisor 패턴 — runner 죽어도 web 생존."""
     import asyncio
@@ -277,7 +291,7 @@ async def _serve_async(
     from signal_program.web.app import create_app
     from signal_program.web.runner_handle import RunnerHandle
 
-    history = SignalHistory(Path("state/signals.jsonl"))
+    history = SignalHistory(Path(STATE_DIR) / STATE_SIGNALS_FILE)
 
     def _runner_factory():  # type: ignore[no-untyped-def]
         return _run_live_coro(settings)
@@ -286,6 +300,7 @@ async def _serve_async(
 
     if start_daemon:
         await handle.start()
+        attach_file_handler(Path(log_file))
         typer.echo("데몬 자동 시작 완료")
 
     reports_dir = Path("reports")
