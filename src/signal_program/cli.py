@@ -277,7 +277,7 @@ async def _serve_async(
     from signal_program.web.app import create_app
     from signal_program.web.runner_handle import RunnerHandle
 
-    history = SignalHistory(Path("state/signal_history.jsonl"))
+    history = SignalHistory(Path("state/signals.jsonl"))
 
     def _runner_factory():  # type: ignore[no-untyped-def]
         return _run_live_coro(settings)
@@ -376,7 +376,8 @@ def scan_once(
     market: Annotated[str, typer.Option("--market", "-m", help="마켓 코드 (예: KRW-BTC)")],
 ) -> None:
     """단발성 단일 마켓 즉시 평가. [마일스톤 9에서 구현 예정]"""
-    raise NotImplementedError("마일스톤 9에서 구현")
+    typer.echo("scan-once는 마일스톤 9에서 구현 예정, 현재 사용 불가", err=True)
+    raise typer.Exit(1)
 
 
 @app.command()

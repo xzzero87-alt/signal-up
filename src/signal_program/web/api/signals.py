@@ -1,7 +1,7 @@
 """GET /api/signals/recent — 최근 시그널 조회.
 
 M13: 빈 배열 stub
-M14: state/signal_history.jsonl에서 실 데이터 제공
+M14: state/signals.jsonl에서 실 데이터 제공
 """
 
 from __future__ import annotations
