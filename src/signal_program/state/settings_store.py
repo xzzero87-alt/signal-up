@@ -38,7 +38,7 @@ class SettingsStore:
             base = self._env_settings.model_dump()
             base.update(data)
             return Settings.model_validate(base)
-        except Exception:
+        except (json.JSONDecodeError, ValueError):
             return self._env_settings
 
     def save(self, settings: Settings) -> None:

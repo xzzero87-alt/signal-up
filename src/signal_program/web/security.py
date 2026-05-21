@@ -95,7 +95,8 @@ def friendly_validation_errors(exc: Any) -> list[dict[str, str]]:
                 messages.append({"field": field, "message": f"최대 {max_len}자 이하로 입력하세요"})
             case "value_error":
                 # ValueError에서 "Value error, " prefix 제거하고 한국어 메시지만 표시
-                raw = str(ctx.get("error", err["msg"]))
+                error_obj = ctx.get("error")
+                raw = str(error_obj) if isinstance(error_obj, ValueError) else err["msg"]
                 messages.append({"field": field, "message": raw})
             case _:
                 messages.append({"field": field, "message": err["msg"]})
