@@ -11,11 +11,14 @@ const STRING_FIELDS = new Set([
 const INT_FIELDS = new Set([
   'bb_period', 'cci_period', 'cci_threshold_normal', 'cci_threshold_strong',
   'squeeze_lookback', 'cooldown_hours',
+  'sto_oversold', 'sto_overbought',          // V2 (ADR-0010)
 ]);
 
 // 부동소수 필드
 const FLOAT_FIELDS = new Set([
   'bb_std_mult', 'volume_ratio_min_a', 'volume_ratio_min_b', 'squeeze_quantile',
+  'bb_weight', 'cci_weight', 'sto_weight', 'obv_weight', // V2 가중치
+  'buy_threshold', 'sell_threshold',                      // V2 임계값
 ]);
 
 async function saveSettings(event) {
@@ -76,6 +79,13 @@ async function saveSettings(event) {
 
 function refreshForm(settings) {
   for (const [key, val] of Object.entries(settings)) {
+    // radio 버튼 그룹 (strategy_version 등)
+    const radios = document.querySelectorAll(`input[type="radio"][name="${key}"]`);
+    if (radios.length > 0) {
+      radios.forEach(r => { r.checked = (r.value === String(val)); });
+      if (typeof updateV2Dim === 'function') updateV2Dim();
+      continue;
+    }
     const el = document.getElementById(key);
     if (!el) continue;
     if (el.type === 'checkbox') el.checked = !!val;
@@ -91,13 +101,24 @@ function resetToDefaults() {
     volume_ratio_min_a: 1.0, volume_ratio_min_b: 1.5,
     squeeze_lookback: 120, squeeze_quantile: 0.20,
     cooldown_hours: 2, dry_run: false,
+    // V2 기본값 (ADR-0010)
+    strategy_version: 'v1',
+    bb_weight: 0.20, cci_weight: 0.20, sto_weight: 0.20, obv_weight: 0.40,
+    buy_threshold: 0.65, sell_threshold: 0.65,
+    sto_oversold: 15, sto_overbought: 85,
   };
   for (const [key, val] of Object.entries(defaults)) {
+    const radios = document.querySelectorAll(`input[type="radio"][name="${key}"]`);
+    if (radios.length > 0) {
+      radios.forEach(r => { r.checked = (r.value === String(val)); });
+      continue;
+    }
     const el = document.getElementById(key);
     if (!el) continue;
     if (el.type === 'checkbox') el.checked = !!val;
     else el.value = val;
   }
+  if (typeof updateV2Dim === 'function') updateV2Dim();
   showToast('기본값으로 초기화했습니다. 저장 버튼을 눌러 적용하세요.');
 }
 
