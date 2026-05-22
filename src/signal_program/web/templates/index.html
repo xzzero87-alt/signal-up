@@ -29,6 +29,7 @@
       <option value="">전체</option>
       <option value="A">A (평균회귀)</option>
       <option value="B">B (스퀴즈)</option>
+      <option value="C">C (V2 가중치)</option>
     </select>
   </label>
   <label>강도
@@ -46,11 +47,11 @@
   <thead>
     <tr>
       <th>시각 (KST)</th><th>코인</th><th>모드</th><th>방향</th>
-      <th>강도</th><th>가격 (KRW)</th><th>BB 위치</th><th>CCI</th><th>거래량비</th>
+      <th>강도</th><th>가격 (KRW)</th><th>BB 위치</th><th>CCI</th><th>거래량비</th><th>회고</th>
     </tr>
   </thead>
   <tbody id="signal-tbody">
-    <tr><td colspan="9" class="empty-row">시그널 없음 — 데몬 실행 후 시그널이 수신되면 여기에 표시됩니다.</td></tr>
+    <tr><td colspan="10" class="empty-row">시그널 없음 — 데몬 실행 후 시그널이 수신되면 여기에 표시됩니다.</td></tr>
   </tbody>
 </table>
 {% endblock %}

@@ -16,7 +16,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from signal_program.config import Settings
-from signal_program.web.api import backtest, daemon, dashboard, health, pages, settings, signals
+from signal_program.web.api import backtest, daemon, dashboard, feedback, health, pages, settings, signals
 from signal_program.web.deps import get_settings_store, init_settings_store
 from signal_program.web.middleware import BasicAuthMiddleware
 from signal_program.web.security import friendly_validation_errors
@@ -101,6 +101,7 @@ def create_app(
     app.include_router(backtest.router)
     app.include_router(daemon.router)
     app.include_router(dashboard.router)
+    app.include_router(feedback.router)
 
     # 정적 파일
     if _STATIC_DIR.exists():

@@ -84,11 +84,57 @@
     </div>
   </section>
 
+  <section class="settings-section">
+    <h2>전략 버전 (ADR-0010)</h2>
+    <div class="field-row">
+      <label>전략 선택</label>
+      <label style="display:flex;align-items:center;gap:0.5rem;min-width:unset">
+        <input type="radio" name="strategy_version" value="v1"
+          {% if settings.strategy_version == 'v2' %}{% else %}checked{% endif %}
+          onchange="updateV2Dim()"> V1 (BB+CCI)
+      </label>
+      <label style="display:flex;align-items:center;gap:0.5rem;min-width:unset;margin-left:1rem">
+        <input type="radio" name="strategy_version" value="v2"
+          {% if settings.strategy_version == 'v2' %}checked{% endif %}
+          onchange="updateV2Dim()"> V2 (4지표 가중치)
+      </label>
+    </div>
+    <div id="v2-section" class="v2-section {% if settings.strategy_version != 'v2' %}dimmed{% endif %}">
+      <p style="font-size:0.8rem;color:var(--color-muted);margin:0.25rem 0 0.75rem">
+        가중치 합 = 1.00 권장. OBV 0.40 기본 (거래량 중시, ADR-0010 §2).
+      </p>
+      {% for fname, lbl, step in [
+        ('bb_weight','BB 가중치','0.05'),
+        ('cci_weight','CCI 가중치','0.05'),
+        ('sto_weight','Sto 가중치','0.05'),
+        ('obv_weight','OBV 가중치','0.05'),
+        ('buy_threshold','매수 임계값','0.05'),
+        ('sell_threshold','매도 임계값','0.05'),
+        ('sto_oversold','Sto 과매도 기준','1'),
+        ('sto_overbought','Sto 과매수 기준','1'),
+      ] %}
+      <div class="field-row">
+        <label for="{{ fname }}">{{ lbl }}</label>
+        <input id="{{ fname }}" name="{{ fname }}" type="number" step="{{ step }}"
+               value="{{ settings[fname] if fname in settings else '' }}" data-field="{{ fname }}">
+        <span class="field-error" id="err-{{ fname }}"></span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
   <div class="form-actions">
     <button type="submit" class="btn-primary">저장</button>
     <button type="button" class="btn-secondary" onclick="resetToDefaults()">기본값 초기화</button>
   </div>
 </form>
+<script>
+function updateV2Dim() {
+  const v2 = document.querySelector('input[name="strategy_version"][value="v2"]');
+  const sec = document.getElementById('v2-section');
+  if (sec) sec.classList.toggle('dimmed', !v2.checked);
+}
+</script>
 {% endblock %}
 
 {% block scripts %}

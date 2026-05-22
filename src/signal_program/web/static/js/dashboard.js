@@ -90,15 +90,43 @@ function renderSignalTable(signals) {
     const ts = (s.triggered_at || '').replace('T', ' ').slice(0, 16);
     const dir = s.direction === 'buy' ? '🟢 BUY' : '🔴 SELL';
     const str = s.strength === 'strong' ? '★★' : '★';
+    const modeLabel = s.mode === 'C' ? 'C(V2)' : (s.mode || '—');
+    const key = (s.market || '') + '__' + (s.triggered_at || '').replace(/[^0-9]/g, '');
+    const safeMarket = (s.market || '').replace(/'/g, '');
+    const safeTs = (s.triggered_at || '').replace(/'/g, '');
     return `<tr>
-      <td>${ts}</td><td>${s.market||'—'}</td><td>${s.mode||'—'}</td>
+      <td>${ts}</td><td>${s.market||'—'}</td><td>${modeLabel}</td>
       <td>${dir}</td><td>${str}</td>
       <td>${s.price ? s.price.toLocaleString('ko-KR') : '—'}</td>
       <td>${ind.bb_pct_b != null ? ind.bb_pct_b.toFixed(2) : '—'}</td>
       <td>${ind.cci != null ? ind.cci.toFixed(0) : '—'}</td>
       <td>${ind.volume_ratio != null ? ind.volume_ratio.toFixed(1) + '배' : '—'}</td>
+      <td>
+        <button class="btn-feedback" data-key="${key}" data-label="👍"
+          onclick="sendFeedback('${safeMarket}','${safeTs}','👍','${key}')"
+          aria-label="${safeMarket} 좋음">👍</button>
+        <button class="btn-feedback" data-key="${key}" data-label="👎"
+          onclick="sendFeedback('${safeMarket}','${safeTs}','👎','${key}')"
+          aria-label="${safeMarket} 나쁨">👎</button>
+      </td>
     </tr>`;
   }).join('');
+}
+
+async function sendFeedback(market, triggeredAt, label, key) {
+  try {
+    const res = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ market, triggered_at: triggeredAt, label })
+    });
+    if (res.ok) {
+      // 선택된 버튼 시각 표시
+      document.querySelectorAll(`[data-key="${key}"]`).forEach(btn => {
+        btn.classList.toggle('selected', btn.dataset.label === label);
+      });
+    }
+  } catch (_) { /* 네트워크 오류 무시 */ }
 }
 
 function applyFilters() { fetchDashboard(); }

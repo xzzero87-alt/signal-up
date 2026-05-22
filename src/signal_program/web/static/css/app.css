@@ -76,3 +76,35 @@ body { font-family: var(--font); background: var(--color-bg); color: var(--color
 .job-succeeded { color: var(--color-success); font-weight: 600; }
 .job-failed  { color: var(--color-danger); font-weight: 600; }
 .text-danger { color: var(--color-danger); font-size: 0.8rem; }
+
+/* ── 다크 모드 (R_P1_8) ───────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --color-bg: #121212; --color-surface: #1e1e1e; --color-border: #333;
+  --color-text: #e8e8e8; --color-muted: #999;
+  --color-primary: #5c9bff; --color-success: #66bb6a;
+  --color-danger: #ef5350; --color-nav: #0d2b5e;
+}
+[data-theme="dark"] .signal-table thead th { background: #2a2a2a; }
+[data-theme="dark"] .signal-table tbody tr:nth-child(even) { background: #1a1a1a; }
+[data-theme="dark"] .info-box { background: #0d2b4e; border-color: #1e5080; }
+[data-theme="dark"] .btn-secondary { background: #2a2a2a; border-color: #444; }
+[data-theme="dark"] .settings-section { background: var(--color-surface); }
+
+/* 다크 모드 토글 버튼 */
+.btn-theme { background: none; border: 1px solid rgba(255,255,255,0.3); color: #fff;
+  border-radius: var(--radius); padding: 3px 8px; cursor: pointer; font-size: 0.85rem; }
+.btn-theme:hover { background: rgba(255,255,255,0.15); }
+
+/* ── 접근성 (R_P1_12) ────────────────────────────────────────────────────── */
+:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+
+/* ── V2 설정 섹션 dim ────────────────────────────────────────────────────── */
+.v2-section { transition: opacity 0.2s; }
+.v2-section.dimmed { opacity: 0.35; pointer-events: none; }
+
+/* ── 회고 라벨 버튼 (R_P1_10) ───────────────────────────────────────────── */
+.btn-feedback { background: none; border: 1px solid var(--color-border);
+  border-radius: var(--radius); padding: 1px 6px; cursor: pointer; font-size: 0.9rem; }
+.btn-feedback:hover { border-color: var(--color-primary); }
+.btn-feedback.selected { border-color: var(--color-primary); background: rgba(21,101,192,0.1); }

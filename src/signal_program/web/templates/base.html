@@ -17,8 +17,27 @@
   <div class="nav-daemon" id="nav-daemon">
     <span id="nav-daemon-status" class="daemon-indicator">데몬: <strong>확인 중</strong></span>
     <button id="nav-daemon-btn" class="btn-daemon" onclick="toggleDaemon()">—</button>
+    <button class="btn-theme" onclick="toggleTheme()" id="btn-theme" title="다크/라이트 모드 전환" aria-label="다크/라이트 모드 전환">🌙</button>
   </div>
 </nav>
+<script>
+(function(){
+  const t = localStorage.getItem('theme') || 'light';
+  document.documentElement.setAttribute('data-theme', t);
+  document.addEventListener('DOMContentLoaded', function(){
+    const btn = document.getElementById('btn-theme');
+    if (btn) btn.textContent = t === 'dark' ? '☀️' : '🌙';
+  });
+})();
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  const btn = document.getElementById('btn-theme');
+  if (btn) btn.textContent = next === 'dark' ? '☀️' : '🌙';
+}
+</script>
 <main class="main">
   {% block content %}{% endblock %}
 </main>
