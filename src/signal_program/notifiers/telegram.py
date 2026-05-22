@@ -29,6 +29,11 @@ _MAX_CAPTION_LEN = 1024
 _MODE_LABEL: dict[str, str] = {
     StrategyMode.MEAN_REVERSION.value: "평균회귀",
     StrategyMode.SQUEEZE_BREAKOUT.value: "스퀴즈 돌파",
+    StrategyMode.WEIGHTED_SCORE.value: "가중치",  # V2 (ADR-0010)
+}
+
+_VERSION_TAG: dict[str, str] = {
+    StrategyMode.WEIGHTED_SCORE.value: "[V2]",
 }
 _EMOJI: dict[tuple[str, str], str] = {
     (SignalDirection.BUY.value, SignalStrength.NORMAL.value): "🟢",
@@ -44,13 +49,15 @@ def format_message(signal: Signal) -> str:
     DESIGN.md §5.3 포맷 준수. 4096자 초과 시 말줄임.
     """
     emoji = _EMOJI[(signal.direction.value, signal.strength.value)]
-    mode_label = _MODE_LABEL[signal.mode.value]
+    mode_label = _MODE_LABEL.get(signal.mode.value, signal.mode.value)
+    version_tag = _VERSION_TAG.get(signal.mode.value, "[V1]")
     ts_kst = signal.triggered_at.strftime("%Y-%m-%d %H:%M")
     ind = signal.indicators
 
     lines = [
         (
-            f"{emoji} [{signal.direction.value.upper()}-{signal.strength.value.capitalize()}]"
+            f"{version_tag} {emoji}"
+            f" [{signal.direction.value.upper()}-{signal.strength.value.capitalize()}]"
             f" {signal.market} (1h) — Mode {signal.mode.value}({mode_label})"
         ),
         f"가격: {signal.price:,.0f} KRW",
@@ -58,6 +65,17 @@ def format_message(signal: Signal) -> str:
         f"CCI(20): {ind.cci:.0f}",
         f"거래량: 평균의 {ind.volume_ratio:.1f}배",
         f"시각: {ts_kst} KST",
+    ]
+
+    # V2 전용 지표 줄 (stoch_k / obv 있을 때만 추가)
+    if ind.stoch_k is not None:
+        lines.append(f"Sto(14,3): K={ind.stoch_k:.1f}%")
+    if ind.stoch_d is not None:
+        lines.append(f"Sto D: {ind.stoch_d:.1f}%")
+    if ind.obv is not None:
+        lines.append(f"OBV raw: {ind.obv:+,.0f}")
+
+    lines += [
         "",
         "📊 차트 첨부 (M8 예정)",
         "ℹ️ 참고용 시그널 — 매매는 직접 판단",

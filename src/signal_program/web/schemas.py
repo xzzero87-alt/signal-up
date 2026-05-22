@@ -34,6 +34,16 @@ class SettingsView(BaseModel):
     squeeze_quantile: float = Field(gt=0, lt=1)
     cooldown_hours: int = Field(ge=0, le=72)
     dry_run: bool
+    # V2 전략 필드 (ADR-0010)
+    strategy_version: Literal["v1", "v2"] = "v1"
+    bb_weight: float = Field(default=0.20, ge=0.0, le=1.0)
+    cci_weight: float = Field(default=0.20, ge=0.0, le=1.0)
+    sto_weight: float = Field(default=0.20, ge=0.0, le=1.0)
+    obv_weight: float = Field(default=0.40, ge=0.0, le=1.0)
+    buy_threshold: float = Field(default=0.65, ge=0.0, le=1.0)
+    sell_threshold: float = Field(default=0.65, ge=0.0, le=1.0)
+    sto_oversold: int = Field(default=15, ge=1, le=50)
+    sto_overbought: int = Field(default=85, ge=50, le=99)
 
 
 class SettingsUpdate(BaseModel):
@@ -55,6 +65,16 @@ class SettingsUpdate(BaseModel):
     squeeze_quantile: float | None = Field(default=None, gt=0, lt=1)
     cooldown_hours: int | None = Field(default=None, ge=0, le=72)
     dry_run: bool | None = None
+    # V2 전략 필드 (ADR-0010) — None이면 변경 안 함
+    strategy_version: Literal["v1", "v2"] | None = None
+    bb_weight: float | None = Field(default=None, ge=0.0, le=1.0)
+    cci_weight: float | None = Field(default=None, ge=0.0, le=1.0)
+    sto_weight: float | None = Field(default=None, ge=0.0, le=1.0)
+    obv_weight: float | None = Field(default=None, ge=0.0, le=1.0)
+    buy_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
+    sell_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
+    sto_oversold: int | None = Field(default=None, ge=1, le=50)
+    sto_overbought: int | None = Field(default=None, ge=50, le=99)
 
 
 class HealthResponse(BaseModel):

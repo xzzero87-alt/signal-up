@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import field_validator
 from pydantic_settings import (
@@ -112,6 +112,22 @@ class Settings(BaseSettings):
     cycle_timeout_seconds: int = 120
     signals_log_path: Path = Path(STATE_DIR) / STATE_SIGNALS_FILE
     charts_dir: Path = Path("state/charts")
+
+    # V2 전략 (ADR-0010) — V1은 기존 bb_*/cci_* 파라미터 그대로 사용
+    strategy_version: Literal["v1", "v2"] = "v1"
+    # 가중치 (합 = 1.00)
+    bb_weight: float = 0.20
+    cci_weight: float = 0.20
+    sto_weight: float = 0.20
+    obv_weight: float = 0.40
+    # 발사 임계값
+    buy_threshold: float = 0.65
+    sell_threshold: float = 0.65
+    # 스토캐스틱 임계값 (ADR-0010 §3: 15/85 엄격)
+    sto_oversold: int = 15
+    sto_overbought: int = 85
+    # OBV 이동평균 기간
+    obv_lookback: int = 20
 
     # 운영
     log_level: str = "INFO"

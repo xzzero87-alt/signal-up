@@ -34,6 +34,10 @@ class IndicatorSnapshot(BaseModel):
     cci: float
     volume_ratio: float = Field(ge=0.0)
     bb_width_quantile: float | None = None
+    # V2 신규 필드 (ADR-0010) — None=V1 시그널
+    stoch_k: float | None = None
+    stoch_d: float | None = None
+    obv: float | None = None
 
 
 class Signal(BaseModel):
