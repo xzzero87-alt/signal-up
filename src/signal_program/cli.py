@@ -17,7 +17,11 @@ import os
 import sys
 from io import TextIOWrapper
 from pathlib import Path
-from typing import Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any
+
+if TYPE_CHECKING:
+    from signal_program.exchanges.upbit import UpbitClient
+    from signal_program.strategies.base import Strategy
 
 import httpx
 import typer
@@ -386,13 +390,108 @@ async def _run_live_coro(settings: Settings) -> None:
         await runner.run_forever()
 
 
+def _make_exchange_client(http: httpx.AsyncClient) -> UpbitClient:
+    """UpbitClient 팩토리 — 테스트에서 패치 대상."""
+    from signal_program.exchanges.upbit import UpbitClient
+
+    return UpbitClient(_client=http)
+
+
+def _make_strategy(strategy_version: str, settings: Settings) -> Strategy:
+    """get_strategy() 래퍼 — 테스트에서 패치 대상."""
+    from signal_program.strategies import get_strategy
+
+    return get_strategy(strategy_version, settings)
+
+
 @app.command(name="scan-once")
 def scan_once(
     market: Annotated[str, typer.Option("--market", "-m", help="마켓 코드 (예: KRW-BTC)")],
+    strategy: Annotated[
+        str, typer.Option("--strategy", help="전략 버전 (v1 / v2)")
+    ] = "v1",
 ) -> None:
-    """단발성 단일 마켓 즉시 평가. [마일스톤 9에서 구현 예정]"""
-    typer.echo("scan-once는 마일스톤 9에서 구현 예정, 현재 사용 불가", err=True)
-    raise typer.Exit(1)
+    """단발성 단일 마켓 즉시 평가 (텔레그램 미전송)."""
+    import asyncio
+
+    try:
+        settings = Settings()
+    except SystemExit as exc:
+        typer.echo(f"설정 오류: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    asyncio.run(_scan_once_async(market, strategy, settings))
+
+
+async def _scan_once_async(
+    market: str,
+    strategy_version: str,
+    settings: Settings,
+) -> None:
+    from zoneinfo import ZoneInfo
+
+    import httpx
+    from rich.console import Console
+    from rich.table import Table
+
+    from signal_program.enums import Timeframe
+    from signal_program.runner import candles_to_df
+
+    _KST = ZoneInfo("Asia/Seoul")
+    console = Console()
+
+    # 전략 버전 검증
+    try:
+        strategy = _make_strategy(strategy_version, settings)
+    except ValueError as exc:
+        typer.echo(str(exc), err=True)
+        raise typer.Exit(1) from exc
+
+    console.print(
+        f"[bold]scan-once[/bold]  {market}  |  전략: {strategy_version.upper()}"
+    )
+
+    # 캔들 조회
+    async with httpx.AsyncClient(base_url="https://api.upbit.com", timeout=10.0) as http:
+        exchange = _make_exchange_client(http)
+        try:
+            candles = await exchange.fetch_candles(market, Timeframe.HOUR_1, 200)
+        except Exception as exc:
+            typer.echo(f"캔들 조회 실패: {exc}", err=True)
+            raise typer.Exit(1) from exc
+
+    if not candles:
+        typer.echo(f"{market}: 캔들 데이터 없음", err=True)
+        raise typer.Exit(1)
+
+    df = candles_to_df(candles)
+    signals = strategy.evaluate(market, df)
+
+    if not signals:
+        last_close = candles[-1].close
+        console.print(
+            f"[dim]{market}[/dim]  시그널 없음  |  현재가: {last_close:,.0f} KRW"
+        )
+        return
+
+    # 시그널 테이블 출력
+    table = Table(title=f"{market} 시그널", show_lines=False)
+    table.add_column("방향", style="bold")
+    table.add_column("강도")
+    table.add_column("모드")
+    table.add_column("현재가", justify="right")
+    table.add_column("평가시각")
+
+    for sig in signals:
+        table.add_row(
+            sig.direction.value,
+            sig.strength.value,
+            sig.mode.value,
+            f"{sig.price:,.0f}",
+            sig.triggered_at.strftime("%H:%M KST"),
+        )
+
+    console.print(table)
 
 
 @app.command()
