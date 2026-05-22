@@ -669,8 +669,17 @@ async def _walkforward_async(
     period_from = _dt.strptime(from_date, "%Y-%m-%d").replace(tzinfo=kst)
     period_to = _dt.strptime(to_date, "%Y-%m-%d").replace(tzinfo=kst) + _td(days=1)
 
+    # V2 전략인데 V1 기본 그리드가 그대로면 V2 기본 그리드로 자동 스왑
+    _V1_DEFAULT_GRID = "bb_std_mult:1.5,2.0,2.5"
+    _V2_DEFAULT_GRID = "buy_threshold:0.60,0.65,0.70;obv_weight:0.30,0.40,0.50"
+    if strategy_version == "v2" and grid_str == _V1_DEFAULT_GRID:
+        grid_str = _V2_DEFAULT_GRID
+        console = Console()
+        console.print(f"[dim]V2 기본 그리드 자동 적용: {_V2_DEFAULT_GRID}[/dim]")
+    else:
+        console = Console()
+
     param_grid = parse_grid(grid_str)
-    console = Console()
     total_months = train_months + validate_months
     console.print(
         f"[cyan]그리드 {len(param_grid)}개 파라미터 조합 × {total_months}개월 윈도우[/cyan]"
@@ -684,6 +693,8 @@ async def _walkforward_async(
         backtest_engine=base_engine,
         candles_cache_root=cache_root,
         param_grid=param_grid,
+        strategy_version=strategy_version,
+        base_settings=settings,
     )
 
     wf_result = wf_engine.run(

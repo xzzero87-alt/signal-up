@@ -50,14 +50,19 @@ class WalkforwardDataError(Exception):
 class StrategyParams(BaseModel):
     """그리드 서치 대상 파라미터. 기본값은 Settings 기본값과 일치.
 
-    필드 추가는 follow-up PR. 현재는 BB·CCI·거래량 핵심 3개.
+    V1 필드: bb_std_mult, cci_threshold_normal, volume_ratio_min_a
+    V2 필드: buy_threshold, obv_weight (None = base_settings 기본값, ADR-0010 §4.2)
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
+    # V1
     bb_std_mult: float = 2.0
     cci_threshold_normal: int = 100
     volume_ratio_min_a: float = 1.0
+    # V2 (ADR-0010 §4.2) — None이면 base_settings 기본값 유지
+    buy_threshold: float | None = None
+    obv_weight: float | None = None
 
     @field_validator("bb_std_mult")
     @classmethod
@@ -149,8 +154,30 @@ def _generate_folds(
     return folds
 
 
-def _params_to_strategy(params: StrategyParams) -> Any:
-    """StrategyParams → BbCciStrategy. 나머지 파라미터는 기본값 유지."""
+def _params_to_strategy(
+    params: StrategyParams,
+    strategy_version: str = "v1",
+    base_settings: Any = None,
+) -> Any:
+    """StrategyParams → Strategy.
+
+    V1: BbCciStrategy (3개 파라미터만 적용).
+    V2: FourIndicatorStrategy — base_settings에 buy_threshold/obv_weight 오버라이드 적용.
+    """
+    if strategy_version == "v2":
+        from signal_program.strategies import get_strategy
+
+        overrides: dict[str, float] = {}
+        if params.buy_threshold is not None:
+            overrides["buy_threshold"] = params.buy_threshold
+        if params.obv_weight is not None:
+            overrides["obv_weight"] = params.obv_weight
+
+        effective = (
+            base_settings.model_copy(update=overrides) if overrides else base_settings
+        )
+        return get_strategy("v2", effective)
+
     from signal_program.strategies.bb_cci import BbCciStrategy
 
     return BbCciStrategy(
@@ -327,6 +354,8 @@ class WalkforwardEngine:
         candles_cache_root: Path,
         param_grid: tuple[StrategyParams, ...],
         objective: Callable[[BacktestResult], float] | None = None,
+        strategy_version: str = "v1",
+        base_settings: Any = None,
     ) -> None:
         self.backtest_engine = backtest_engine
         self.candles_cache_root = candles_cache_root
@@ -334,10 +363,12 @@ class WalkforwardEngine:
         self.objective: Callable[[BacktestResult], float] = (
             objective if objective is not None else _default_objective
         )
+        self.strategy_version = strategy_version
+        self.base_settings = base_settings
 
     def _engine_factory(self, params: StrategyParams) -> BacktestEngine:
         return BacktestEngine(
-            strategy=_params_to_strategy(params),
+            strategy=_params_to_strategy(params, self.strategy_version, self.base_settings),
             fee_rate=self.backtest_engine.fee_rate,
             slippage_rate=self.backtest_engine.slippage_rate,
             max_holding_bars=self.backtest_engine.max_holding_bars,

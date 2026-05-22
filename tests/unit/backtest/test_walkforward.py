@@ -587,3 +587,73 @@ def test_determinism_same_input_same_result() -> None:
     best1, _ = _grid_search("KRW-BTC", pd.DataFrame(), grid, mock_factory, lambda r: r.sharpe_annualized)
     best2, _ = _grid_search("KRW-BTC", pd.DataFrame(), grid, mock_factory, lambda r: r.sharpe_annualized)
     assert best1 == best2  # 결정성
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# V2 그리드 지원 (ADR-0010 §4.2)
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+def test_strategy_params_has_v2_fields_with_none_defaults() -> None:
+    """StrategyParams V2 필드는 None 기본값 — V1 호환."""
+    params = StrategyParams()
+    assert params.buy_threshold is None
+    assert params.obv_weight is None
+
+
+def test_strategy_params_v2_fields_accepted() -> None:
+    """StrategyParams V2 필드를 명시적으로 지정할 수 있다."""
+    params = StrategyParams(buy_threshold=0.65, obv_weight=0.40)
+    assert params.buy_threshold == pytest.approx(0.65)
+    assert params.obv_weight == pytest.approx(0.40)
+
+
+def test_params_to_strategy_v2_returns_four_indicator_strategy() -> None:
+    """strategy_version='v2' 이면 FourIndicatorStrategy를 반환한다."""
+    from signal_program.config import Settings
+    from signal_program.strategies.v2_4indicator import FourIndicatorStrategy
+
+    params = StrategyParams()
+    settings = Settings()
+    strategy = _params_to_strategy(params, strategy_version="v2", base_settings=settings)
+    assert isinstance(strategy, FourIndicatorStrategy)
+
+
+def test_params_to_strategy_v2_applies_overrides() -> None:
+    """StrategyParams.buy_threshold 가 Settings에 적용된다."""
+    from signal_program.config import Settings
+    from signal_program.strategies.v2_4indicator import FourIndicatorStrategy
+
+    params = StrategyParams(buy_threshold=0.60, obv_weight=0.30)
+    settings = Settings()
+    strategy = _params_to_strategy(params, strategy_version="v2", base_settings=settings)
+    assert isinstance(strategy, FourIndicatorStrategy)
+
+
+def test_parse_grid_v2_buy_threshold_obv_weight() -> None:
+    """V2 그리드 문자열 파싱 — 3×3=9 조합."""
+    params = parse_grid("buy_threshold:0.60,0.65,0.70;obv_weight:0.30,0.40,0.50")
+    assert len(params) == 9
+    thresholds = sorted({p.buy_threshold for p in params if p.buy_threshold is not None})
+    weights = sorted({p.obv_weight for p in params if p.obv_weight is not None})
+    assert thresholds == pytest.approx([0.60, 0.65, 0.70])
+    assert weights == pytest.approx([0.30, 0.40, 0.50])
+
+
+def test_walkforward_engine_accepts_strategy_version_kwarg() -> None:
+    """WalkforwardEngine이 strategy_version='v2' 를 받아 속성으로 보관한다."""
+    from signal_program.backtest.engine import BacktestEngine
+    from signal_program.backtest.walkforward import WalkforwardEngine
+    from signal_program.config import Settings
+    from signal_program.strategies.v2_4indicator import FourIndicatorStrategy
+
+    settings = Settings()
+    engine = BacktestEngine(strategy=FourIndicatorStrategy(settings))
+    wf = WalkforwardEngine(
+        backtest_engine=engine,
+        candles_cache_root=Path("data/candles"),
+        param_grid=(StrategyParams(buy_threshold=0.65),),
+        strategy_version="v2",
+        base_settings=settings,
+    )
+    assert wf.strategy_version == "v2"
