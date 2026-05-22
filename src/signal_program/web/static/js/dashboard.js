@@ -77,16 +77,47 @@ async function toggleDaemon() {
   }
 }
 
+// ── R_P1_12: 거래량비 칩 ────────────────────────────────────────────────────
+function _volChip(ratio) {
+  if (ratio == null) return '<span class="chip chip-vol chip-vol--dim">—</span>';
+  const val = ratio.toFixed(1) + '×';
+  if (ratio >= 2.0) return `<span class="chip chip-vol chip-vol--high">${val}</span>`;
+  if (ratio >= 1.5) return `<span class="chip chip-vol chip-vol--mid">${val}</span>`;
+  return `<span class="chip chip-vol chip-vol--low">${val}</span>`;
+}
+
+// ── R_P1_11: 업비트 외부 링크 ───────────────────────────────────────────────
+function _upbitLink(market) {
+  if (!market) return '—';
+  const url = 'https://upbit.com/exchange?code=CRIX.UPBIT.' + encodeURIComponent(market);
+  return `${market}&nbsp;<a class="market-ext-link" href="${url}" target="_blank"
+    rel="noopener noreferrer" aria-label="${market} 업비트에서 보기" title="업비트에서 보기">↗</a>`;
+}
+
+// ── R_P1_14: 쿨다운 칩 / 회고 버튼 ─────────────────────────────────────────
+function _feedbackOrCooldown(status, safeMarket, safeTs, key) {
+  if (status === 'cooled_down') {
+    return '<span class="chip chip-cooldown" title="쿨다운 중 — 중복 알림 억제됨">⏸ 쿨다운</span>';
+  }
+  return `<button class="btn-feedback" data-key="${key}" data-label="👍"
+      onclick="sendFeedback('${safeMarket}','${safeTs}','👍','${key}')"
+      aria-label="${safeMarket} 좋음">👍</button>
+    <button class="btn-feedback" data-key="${key}" data-label="👎"
+      onclick="sendFeedback('${safeMarket}','${safeTs}','👎','${key}')"
+      aria-label="${safeMarket} 나쁨">👎</button>`;
+}
+
 function renderSignalTable(signals) {
   const tbody = document.getElementById('signal-tbody');
   if (!tbody) return;
   if (!signals || signals.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9" class="empty-row">시그널 없음</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="empty-row">시그널 없음</td></tr>';
     return;
   }
   tbody.innerHTML = [...signals].reverse().map(r => {
     const s = r.signal || {};
     const ind = s.indicators || {};
+    const status = r.status || 'ok';
     const ts = (s.triggered_at || '').replace('T', ' ').slice(0, 16);
     const dir = s.direction === 'buy' ? '🟢 BUY' : '🔴 SELL';
     const str = s.strength === 'strong' ? '★★' : '★';
@@ -95,20 +126,15 @@ function renderSignalTable(signals) {
     const safeMarket = (s.market || '').replace(/'/g, '');
     const safeTs = (s.triggered_at || '').replace(/'/g, '');
     return `<tr>
-      <td>${ts}</td><td>${s.market||'—'}</td><td>${modeLabel}</td>
+      <td>${ts}</td>
+      <td>${_upbitLink(s.market)}</td>
+      <td>${modeLabel}</td>
       <td>${dir}</td><td>${str}</td>
       <td>${s.price ? s.price.toLocaleString('ko-KR') : '—'}</td>
       <td>${ind.bb_pct_b != null ? ind.bb_pct_b.toFixed(2) : '—'}</td>
       <td>${ind.cci != null ? ind.cci.toFixed(0) : '—'}</td>
-      <td>${ind.volume_ratio != null ? ind.volume_ratio.toFixed(1) + '배' : '—'}</td>
-      <td>
-        <button class="btn-feedback" data-key="${key}" data-label="👍"
-          onclick="sendFeedback('${safeMarket}','${safeTs}','👍','${key}')"
-          aria-label="${safeMarket} 좋음">👍</button>
-        <button class="btn-feedback" data-key="${key}" data-label="👎"
-          onclick="sendFeedback('${safeMarket}','${safeTs}','👎','${key}')"
-          aria-label="${safeMarket} 나쁨">👎</button>
-      </td>
+      <td>${_volChip(ind.volume_ratio)}</td>
+      <td>${_feedbackOrCooldown(status, safeMarket, safeTs, key)}</td>
     </tr>`;
   }).join('');
 }
