@@ -32,6 +32,15 @@ def _to_view(settings: object) -> SettingsView:
         squeeze_quantile=s.squeeze_quantile,
         cooldown_hours=s.cooldown_hours,
         dry_run=s.dry_run,
+        strategy_version=s.strategy_version,
+        bb_weight=s.bb_weight,
+        cci_weight=s.cci_weight,
+        sto_weight=s.sto_weight,
+        obv_weight=s.obv_weight,
+        buy_threshold=s.buy_threshold,
+        sell_threshold=s.sell_threshold,
+        sto_oversold=s.sto_oversold,
+        sto_overbought=s.sto_overbought,
     )
 
 
