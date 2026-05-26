@@ -50,11 +50,13 @@ class BacktestEngine:
         fee_rate: float = 0.0005,
         slippage_rate: float = 0.0005,
         max_holding_bars: int = 24,
+        stop_loss_pct: float | None = None,
     ) -> None:
         self.strategy = strategy
         self.fee_rate = fee_rate
         self.slippage_rate = slippage_rate
         self.max_holding_bars = max_holding_bars
+        self.stop_loss_pct = stop_loss_pct
 
     def run(self, market: str, candles_df: pd.DataFrame) -> BacktestResult:
         """백테스트 실행. 전체 시뮬레이션 결과를 BacktestResult로 반환."""
@@ -81,7 +83,17 @@ class BacktestEngine:
                 bars_held = i - position["signal_bar_idx"]
                 close = float(candles_df.iloc[i]["close"])
                 bb_middle: float = position["bb_middle"]
-                should_exit = bars_held >= self.max_holding_bars or close >= bb_middle
+                entry: float = position["entry_price"]
+                pnl_raw = close / entry - 1.0
+                hit_sl = (
+                    self.stop_loss_pct is not None
+                    and pnl_raw <= -self.stop_loss_pct
+                )
+                should_exit = (
+                    bars_held >= self.max_holding_bars
+                    or close >= bb_middle
+                    or hit_sl
+                )
 
                 if should_exit:
                     opened_at = candles_df.iloc[i]["opened_at"]
