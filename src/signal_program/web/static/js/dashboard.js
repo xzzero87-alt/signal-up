@@ -23,6 +23,8 @@ async function fetchDashboard() {
     const res2 = await fetch(CARDS_API + '?' + params);
     if (res2.ok) renderSignalCards(await res2.json());
   } catch (_) { /* ignore */ }
+
+  fetchFalseRate();
 }
 
 function buildFilterParams() {
@@ -332,6 +334,43 @@ function tickCountdown() {
   const elapsed   = Math.floor((Date.now() - lastUpdateAt) / 1000);
   const remaining = Math.max(0, Math.floor(POLL_INTERVAL_MS / 1000) - elapsed);
   el.textContent  = remaining > 0 ? remaining + '초 후' : '갱신 중...';
+}
+
+// ── 거짓신호율 배지 (R_P1_14) ────────────────────────────────────────────────
+
+async function fetchFalseRate(window = 30) {
+  try {
+    const res = await fetch(`/api/signals/stats?window=${window}`);
+    if (!res.ok) return;
+    renderFalseRateBadge(await res.json());
+  } catch (_) {
+    // 네트워크 오류 시 조용히 숨김 유지
+  }
+}
+
+function renderFalseRateBadge(stats) {
+  const badge = document.getElementById('falserate-badge');
+  const sep   = document.getElementById('falserate-sep');
+  const value = document.getElementById('falserate-value');
+  const winEl = document.getElementById('falserate-window');
+
+  if (!badge) return;
+
+  if (!stats.has_data) {
+    badge.style.display = 'none';
+    if (sep) sep.style.display = 'none';
+    return;
+  }
+
+  value.textContent = `${stats.bad_rate.toFixed(1)}%`;
+  winEl.textContent = `(최근 ${stats.total_count}건)`;
+  badge.style.display = 'inline';
+  if (sep) sep.style.display = 'inline';
+
+  // 30% 이상이면 danger 강조
+  value.className = stats.bad_rate >= 30
+    ? 'sticky-falserate danger'
+    : 'sticky-falserate';
 }
 
 fetchDashboard();

@@ -48,7 +48,7 @@ _DEFAULT_WHITELIST: list[str] = [
 ]
 
 # 쉼표 구분 파싱을 적용할 필드
-_COMMA_FIELDS: frozenset[str] = frozenset({"whitelist_markets"})
+_COMMA_FIELDS: frozenset[str] = frozenset({"whitelist_markets", "kr_whitelist_symbols"})
 
 
 class _CommaAwareEnvSource(EnvSettingsSource):
@@ -113,7 +113,7 @@ class Settings(BaseSettings):
     signals_log_path: Path = Path(STATE_DIR) / STATE_SIGNALS_FILE
     charts_dir: Path = Path("state/charts")
 
-    # V2 전략 (ADR-0010) — V1은 기존 bb_*/cci_* 파라미터 그대로 사용
+    # V2 전략 (ADR-0010)
     strategy_version: Literal["v1", "v2"] = "v1"
     # 가중치 (합 = 1.00)
     bb_weight: float = 0.20
@@ -129,6 +129,16 @@ class Settings(BaseSettings):
     # OBV 이동평균 기간
     obv_lookback: int = 20
 
+    # KIS Open API -- 국장 (ADR-0016)
+    # 키 미설정 시 KR 기능은 비활성화. 모의투자 서버 기본값(안전).
+    kis_app_key: str = ""
+    kis_app_secret: str = ""
+    kis_is_paper: bool = True
+    kr_enabled: bool = False
+    kr_whitelist_symbols: list[str] = []
+    kr_cooldown_hours_60m: int = 2
+    kr_cooldown_hours_120m: int = 4
+
     # 운영
     log_level: str = "INFO"
     dry_run: bool = False
@@ -138,25 +148,32 @@ class Settings(BaseSettings):
     web_port: int = 8765
     web_auth_password: str = ""
 
+    @field_validator("kr_whitelist_symbols", mode="before")
+    @classmethod
+    def _parse_kr_symbols(cls, v: object) -> list[str]:
+        if isinstance(v, str):
+            return [s.strip() for s in v.split(",") if s.strip()]
+        if isinstance(v, (list, tuple)):
+            return [str(item) for item in v]
+        raise ValueError(f"kr_whitelist_symbols parse error: {type(v).__name__}")  # noqa: EM102
+
     @field_validator("whitelist_markets", mode="before")
     @classmethod
     def _parse_whitelist(cls, v: object) -> list[str]:
-        """직접 인스턴스화 시 쉼표 구분 문자열을 리스트로 변환한다."""
         if isinstance(v, str):
             return [m.strip() for m in v.split(",") if m.strip()]
         if isinstance(v, (list, tuple)):
             result = [str(item) for item in v]
             if not result:
-                raise ValueError("화이트리스트는 최소 1개 마켓이 필요합니다")
+                raise ValueError("화이트리스트는 마켓이 하나 이상 필요합니다")
             return result
-        raise ValueError(f"화이트리스트를 파싱할 수 없음: {type(v).__name__}")  # noqa: EM102
+        raise ValueError(f"whitelist_markets parse error: {type(v).__name__}")  # noqa: EM102
 
     def model_post_init(self, __context: Any) -> None:
-        """비-localhost 바인드 + 빈 비밀번호 조합을 거부한다 (DESIGN.md §10)."""
         if self.web_bind != "127.0.0.1" and not self.web_auth_password:
             raise SystemExit(
-                "WEB_BIND가 비-localhost인데 WEB_AUTH_PASSWORD가 설정되지 않았습니다. "
-                "외부 노출 시 비밀번호 필수."
+                "WEB_BIND is non-localhost but WEB_AUTH_PASSWORD is not set. "
+                "Password required for external exposure."
             )
 
     @classmethod
@@ -168,7 +185,6 @@ class Settings(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
-        """쉼표 구분 리스트를 지원하는 커스텀 소스를 주입한다."""
         env_file = cls.model_config.get("env_file")
         encoding = cls.model_config.get("env_file_encoding")
         return (

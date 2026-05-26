@@ -11,8 +11,12 @@ from typing import Any
 
 from fastapi import APIRouter, Query
 
-from signal_program.state.signal_feedback import build_signal_id, load_feedback_map
-from signal_program.web.schemas import SignalCardEntry
+from signal_program.state.signal_feedback import (
+    build_signal_id,
+    compute_feedback_stats,
+    load_feedback_map,
+)
+from signal_program.web.schemas import FeedbackStats, SignalCardEntry
 
 router = APIRouter(tags=["signals"])
 
@@ -89,3 +93,18 @@ def signal_cards(
             )
         )
     return entries
+
+
+@router.get("/api/signals/stats", response_model=FeedbackStats)
+async def get_signal_stats(
+    window: int = Query(default=30, ge=1, le=200),
+) -> FeedbackStats:
+    """피드백 누적 통계를 반환한다. sticky 패널 거짓신호율 배지에 사용된다 (R_P1_14)."""
+    raw: dict[str, Any] = compute_feedback_stats(window=window)
+    return FeedbackStats(
+        bad_count=int(raw["bad_count"]),
+        total_count=int(raw["total_count"]),
+        bad_rate=float(raw["bad_rate"]),
+        window=int(raw["window"]),
+        has_data=bool(raw["has_data"]),
+    )

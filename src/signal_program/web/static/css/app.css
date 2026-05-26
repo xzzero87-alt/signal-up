@@ -355,3 +355,24 @@ body { font-family: var(--font); background: var(--color-bg); color: var(--color
   .score-bars { grid-column: 1; grid-row: 2; width: 100%; }
   .feedback-buttons { grid-column: 2; grid-row: 2; align-self: end; }
 }
+
+/* ── 거짓신호율 배지 (R_P1_14) ───────────────────────────────────────────── */
+.sticky-falserate {
+  background: rgba(163, 45, 45, 0.12);
+  color: var(--text-danger, #a32d2d);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sticky-falserate.danger {
+  background: rgba(163, 45, 45, 0.22);
+  color: var(--text-danger, #a32d2d);
+}
+
+.falserate-window {
+  font-size: 11px;
+  color: var(--text-tertiary, #888);
+  margin-left: 2px;
+}

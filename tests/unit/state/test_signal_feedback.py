@@ -1,4 +1,4 @@
-"""signal_feedback 저장소 단위 테스트 (ADR-0010 R_P1_10).
+"""signal_feedback 저장소 단위 테스트 (ADR-0010 R_P1_10, R_P1_14).
 
 핸드오프 §6.2 기반.
 """
@@ -13,6 +13,7 @@ import pytest
 import signal_program.state.signal_feedback as fb_module
 from signal_program.state.signal_feedback import (
     build_signal_id,
+    compute_feedback_stats,
     load_feedback_map,
     save_feedback,
 )
@@ -75,3 +76,60 @@ def test_load_skips_legacy_records(tmp_path: Path) -> None:
 
     fm = load_feedback_map()
     assert fm == {}
+
+
+# ── compute_feedback_stats (R_P1_14) ──────────────────────────────────────────
+
+
+class TestComputeFeedbackStats:
+    def test_empty_file_returns_no_data(self) -> None:
+        """피드백 파일이 없으면 has_data=False."""
+        stats = compute_feedback_stats(window=30)
+        assert stats["has_data"] is False
+        assert stats["total_count"] == 0
+        assert stats["bad_rate"] == 0.0
+
+    def test_fewer_than_3_records_returns_no_data(self) -> None:
+        """레코드 2개는 표본 부족 — has_data=False."""
+        save_feedback("id1", "KRW-BTC", "bad")
+        save_feedback("id2", "KRW-ETH", "helpful")
+
+        stats = compute_feedback_stats(window=30)
+        assert stats["has_data"] is False
+        assert stats["total_count"] == 2
+
+    def test_bad_rate_calculated_correctly(self) -> None:
+        """4건 중 bad 1건 → bad_rate=25.0."""
+        save_feedback("id1", "KRW-BTC", "helpful")
+        save_feedback("id2", "KRW-ETH", "confusing")
+        save_feedback("id3", "KRW-XRP", "bad")
+        save_feedback("id4", "KRW-SOL", "helpful")
+
+        stats = compute_feedback_stats(window=30)
+        assert stats["has_data"] is True
+        assert stats["bad_count"] == 1
+        assert stats["total_count"] == 4
+        assert stats["bad_rate"] == 25.0
+
+    def test_window_limits_to_last_n_records(self) -> None:
+        """window=3이면 마지막 3건만 집계."""
+        # 앞 2건 bad, 뒤 3건 helpful
+        for i in range(2):
+            save_feedback(f"bad{i}", "KRW-BTC", "bad")
+        for i in range(3):
+            save_feedback(f"ok{i}", "KRW-ETH", "helpful")
+
+        stats = compute_feedback_stats(window=3)
+        # 마지막 3건(helpful)만 집계 → bad=0
+        assert stats["bad_count"] == 0
+        assert stats["total_count"] == 3
+        assert stats["bad_rate"] == 0.0
+
+    def test_all_bad_returns_100_percent(self) -> None:
+        """전부 bad이면 bad_rate=100.0."""
+        for i in range(5):
+            save_feedback(f"id{i}", "KRW-BTC", "bad")
+
+        stats = compute_feedback_stats(window=30)
+        assert stats["bad_rate"] == 100.0
+        assert stats["has_data"] is True

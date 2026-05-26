@@ -67,3 +67,54 @@ def load_feedback_map() -> dict[str, str]:
             except (json.JSONDecodeError, AttributeError):
                 continue
     return result
+
+
+def compute_feedback_stats(window: int = 30) -> dict[str, object]:
+    """최근 window 개 피드백 레코드의 거짓신호율을 계산한다.
+
+    Returns:
+        bad_count:   "bad" 레코드 수
+        total_count: 집계에 사용된 레코드 수 (window 이하)
+        bad_rate:    0.0 ~ 100.0 (퍼센트)
+        window:      요청 window 크기
+        has_data:    total_count >= 3 (표시 가능 최소 표본)
+    """
+    if not _FEEDBACK_FILE.exists():
+        return {
+            "bad_count": 0,
+            "total_count": 0,
+            "bad_rate": 0.0,
+            "window": window,
+            "has_data": False,
+        }
+
+    records: list[dict[str, str]] = []
+    with _FEEDBACK_FILE.open(encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                try:
+                    records.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+
+    recent = records[-window:]
+    total = len(recent)
+    bad_count = sum(1 for r in recent if r.get("feedback") == "bad")
+
+    if total < 3:
+        return {
+            "bad_count": bad_count,
+            "total_count": total,
+            "bad_rate": 0.0,
+            "window": window,
+            "has_data": False,
+        }
+
+    return {
+        "bad_count": bad_count,
+        "total_count": total,
+        "bad_rate": round(bad_count / total * 100, 1),
+        "window": window,
+        "has_data": True,
+    }

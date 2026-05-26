@@ -155,3 +155,15 @@ class SignalCardEntry(BaseModel):
     volume_ratio: float
     sparkline_prices: tuple[float, ...] | None = None  # 최대 14개 close 가격
     feedback: str | None = None  # "helpful" | "confusing" | "bad" | None
+
+
+class FeedbackStats(BaseModel):
+    """거짓신호율 집계 결과. GET /api/signals/stats 응답 (R_P1_14)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    bad_count: int = Field(ge=0, description="'bad' 레코드 수")
+    total_count: int = Field(ge=0, description="집계 대상 레코드 수")
+    bad_rate: float = Field(ge=0.0, le=100.0, description="거짓신호율 (0~100%)")
+    window: int = Field(ge=1, description="집계 window 크기")
+    has_data: bool = Field(description="표시 가능 최소 표본 충족 여부 (total_count >= 3)")

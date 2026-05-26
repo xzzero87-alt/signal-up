@@ -39,6 +39,12 @@
     </select>
   </label>
   <span class="countdown">다음 갱신: <span id="last-update">—</span></span>
+  <span class="sep" id="falserate-sep" style="display:none">·</span>
+  <span id="falserate-badge" style="display:none" aria-live="polite">
+    <i class="ti ti-shield-x" style="font-size:14px; vertical-align:-2px; margin-right:2px" aria-hidden="true"></i>거짓신호율
+    <span class="sticky-falserate" id="falserate-value">0%</span>
+    <span class="falserate-window" id="falserate-window">(최근 30건)</span>
+  </span>
 </div>
 
 <div id="error-msg" class="error-box" style="display:none"></div>
