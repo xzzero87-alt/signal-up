@@ -129,3 +129,48 @@ def test_dashboard_js_no_duplicate_const_declaration() -> None:
     assert not re.search(r"const\s+POLL_INTERVAL_MS", text), (
         "dashboard.js에 const POLL_INTERVAL_MS 중복 선언 — index.html inline과 충돌"
     )
+
+
+# ── R_P1_7: sticky 패널 + 다음 폴링 카운트다운 ──────────────────────────────
+
+
+def test_dashboard_countdown_label_is_next_poll(client: TestClient) -> None:
+    """R_P1_7: 대시보드 HTML에 '다음 갱신' 카운트다운 라벨이 있어야 한다."""
+    resp = client.get("/")
+    assert "다음 갱신" in resp.text, "카운트다운 라벨 '다음 갱신'이 없음"
+
+
+def test_dashboard_filter_bar_is_sticky() -> None:
+    """R_P1_7: app.css filter-bar에 position:sticky 스타일이 있어야 한다."""
+    import pathlib
+
+    css = (
+        pathlib.Path(__file__).parents[2]
+        / "src"
+        / "signal_program"
+        / "web"
+        / "static"
+        / "css"
+        / "app.css"
+    )
+    text = css.read_text(encoding="utf-8")
+    assert "filter-bar" in text, ".filter-bar 규칙 없음"
+    assert "sticky" in text, "position: sticky 없음"
+
+
+def test_dashboard_js_countdown_shows_remaining_time() -> None:
+    """R_P1_7: dashboard.js tickCountdown이 다음 폴링까지 남은 시간을 표시해야 한다."""
+    import pathlib
+
+    js = (
+        pathlib.Path(__file__).parents[2]
+        / "src"
+        / "signal_program"
+        / "web"
+        / "static"
+        / "js"
+        / "dashboard.js"
+    )
+    text = js.read_text(encoding="utf-8")
+    assert "초 후" in text, "tickCountdown에 '초 후' 표현 없음"
+    assert "POLL_INTERVAL_MS" in text, "POLL_INTERVAL_MS 참조 없음"

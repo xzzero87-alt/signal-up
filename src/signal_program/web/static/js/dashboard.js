@@ -162,10 +162,14 @@ function showError(msg) {
   if (el) { el.textContent = msg; el.style.display = 'block'; }
 }
 
+// ── R_P1_7: 다음 폴링까지 남은 시간 카운트다운 ──────────────────────────────
 function tickCountdown() {
-  if (!lastUpdateAt) return;
   const el = document.getElementById('last-update');
-  if (el) el.textContent = Math.floor((Date.now() - lastUpdateAt) / 1000) + '초 전';
+  if (!el) return;
+  if (!lastUpdateAt) { el.textContent = '—'; return; }
+  const elapsed = Math.floor((Date.now() - lastUpdateAt) / 1000);
+  const remaining = Math.max(0, Math.floor(POLL_INTERVAL_MS / 1000) - elapsed);
+  el.textContent = remaining > 0 ? remaining + '초 후' : '갱신 중...';
 }
 
 fetchDashboard();

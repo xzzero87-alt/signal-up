@@ -38,9 +38,18 @@ body { font-family: var(--font); background: var(--color-bg); color: var(--color
 .error-box { background: #ffebee; border: 1px solid #ef9a9a; border-radius: var(--radius); padding: 0.5rem 1rem; font-size: 0.85rem; color: var(--color-danger); }
 .toast { position: fixed; top: 1rem; right: 1rem; background: var(--color-success); color: #fff; padding: 0.6rem 1.2rem; border-radius: var(--radius); z-index: 999; }
 
-.filter-bar { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: flex-end; }
+/* ── R_P1_7: sticky 필터 패널 ──────────────────────────────────────────────── */
+.filter-bar {
+  display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;
+  position: sticky; top: 0; z-index: 10;
+  background: var(--color-bg);
+  padding: 0.5rem 0; margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
 .filter-bar label { display: flex; flex-direction: column; font-size: 0.8rem; color: var(--color-muted); gap: 2px; }
 .filter-bar select { border: 1px solid var(--color-border); border-radius: var(--radius); padding: 4px 8px; }
+/* 카운트다운 — filter-bar 오른쪽 끝 정렬 */
+.filter-bar .countdown { margin-left: auto; font-size: 0.8rem; color: var(--color-muted); white-space: nowrap; align-self: center; }
 
 .signal-table { border-collapse: collapse; width: 100%; }
 .signal-table th, .signal-table td { border: 1px solid var(--color-border); padding: 0.4rem 0.7rem; text-align: left; font-size: 0.85rem; }
