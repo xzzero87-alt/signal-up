@@ -67,6 +67,45 @@ def test_backtest_cli_creates_parent_directories(
     assert nested_path.exists()
 
 
+# ── R_P2_D7: --grid 옵션 ────────────────────────────────────────────────────
+
+
+def test_backtest_cli_accepts_grid_option() -> None:
+    """--grid 옵션이 인식되어야 한다 ('No such option' 오류 없이 종료)."""
+    result = runner.invoke(
+        app,
+        [
+            "backtest",
+            "--market", "KRW-BTC",
+            "--from", "2020-01-01",
+            "--to", "2020-01-31",
+            "--strategy", "v2",
+            "--grid", "obv_weight:0.3,0.4,0.5;buy_threshold:0.60,0.65,0.70",
+        ],
+    )
+    assert "No such option: --grid" not in (result.output or ""), result.output
+    assert result.exit_code in (0, 1)  # 캔들 없음(0) 또는 설정 오류(1)
+
+
+@_NEEDS_DATA
+def test_backtest_cli_grid_saves_json() -> None:
+    """--grid 옵션으로 실행 시 state/backtest/ 에 JSON 파일이 생성되어야 한다."""
+    result = runner.invoke(
+        app,
+        [
+            "backtest",
+            "--market", "KRW-BTC",
+            "--from", "2025-01-01",
+            "--to", "2025-01-31",
+            "--strategy", "v2",
+            "--grid", "obv_weight:0.3,0.4;buy_threshold:0.60,0.65",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    json_files = list(Path("state/backtest").glob("v2_grid_*.json"))
+    assert len(json_files) > 0, "JSON 파일이 생성되어야 함"
+
+
 # ── --report-html 없으면 HTML 파일 미생성 (기존 동작 불변) ──────────────────
 
 @_NEEDS_DATA

@@ -407,9 +407,7 @@ def _make_strategy(strategy_version: str, settings: Settings) -> Strategy:
 @app.command(name="scan-once")
 def scan_once(
     market: Annotated[str, typer.Option("--market", "-m", help="마켓 코드 (예: KRW-BTC)")],
-    strategy: Annotated[
-        str, typer.Option("--strategy", help="전략 버전 (v1 / v2)")
-    ] = "v1",
+    strategy: Annotated[str, typer.Option("--strategy", help="전략 버전 (v1 / v2)")] = "v1",
 ) -> None:
     """단발성 단일 마켓 즉시 평가 (텔레그램 미전송)."""
     import asyncio
@@ -447,9 +445,7 @@ async def _scan_once_async(
         typer.echo(str(exc), err=True)
         raise typer.Exit(1) from exc
 
-    console.print(
-        f"[bold]scan-once[/bold]  {market}  |  전략: {strategy_version.upper()}"
-    )
+    console.print(f"[bold]scan-once[/bold]  {market}  |  전략: {strategy_version.upper()}")
 
     # 캔들 조회
     async with httpx.AsyncClient(base_url="https://api.upbit.com", timeout=10.0) as http:
@@ -469,9 +465,7 @@ async def _scan_once_async(
 
     if not signals:
         last_close = candles[-1].close
-        console.print(
-            f"[dim]{market}[/dim]  시그널 없음  |  현재가: {last_close:,.0f} KRW"
-        )
+        console.print(f"[dim]{market}[/dim]  시그널 없음  |  현재가: {last_close:,.0f} KRW")
         return
 
     # 시그널 테이블 출력
@@ -505,6 +499,16 @@ def backtest(
         str,
         typer.Option("--report-html", help="HTML 리포트 출력 경로 (미지정 시 콘솔만)"),
     ] = "",
+    grid: Annotated[
+        str,
+        typer.Option(
+            "--grid",
+            help=(
+                "파라미터 그리드 (예: obv_weight:0.3,0.4,0.5;buy_threshold:0.60,0.65,0.70). "
+                "지정 시 전체 조합 비교표 출력 + state/backtest/ JSON 저장."
+            ),
+        ),
+    ] = "",
 ) -> None:
     """저장된 parquet 캔들로 백테스트를 실행하고 결과를 표로 출력한다."""
     import asyncio
@@ -518,7 +522,9 @@ def backtest(
         raise typer.Exit(1) from exc
 
     configure_logging(settings)
-    asyncio.run(_backtest_async(settings, market, from_date, to_date, mode, strategy, report_path))
+    asyncio.run(
+        _backtest_async(settings, market, from_date, to_date, mode, strategy, report_path, grid)
+    )
 
 
 async def _backtest_async(
@@ -529,6 +535,7 @@ async def _backtest_async(
     mode_str: str,
     strategy_version: str = "v1",
     report_path: Path | None = None,
+    grid_str: str = "",
 ) -> None:
     from datetime import datetime as _dt
     from datetime import timedelta as _td
@@ -564,6 +571,19 @@ async def _backtest_async(
         return
 
     df = pd.DataFrame([c.model_dump() for c in candles])
+
+    # ── --grid: 파라미터 그리드 비교표 모드 ──────────────────────────────────
+    if grid_str:
+        await _run_grid_output(
+            market=market,
+            from_date=from_date,
+            to_date=to_date,
+            strategy_version=strategy_version,
+            settings=settings,
+            grid_str=grid_str,
+            df=df,
+        )
+        return
 
     strategy = get_strategy(strategy_version, settings)
     engine = BacktestEngine(strategy=strategy)
@@ -636,8 +656,15 @@ def walkforward(
     configure_logging(settings)
     asyncio.run(
         _walkforward_async(
-            settings, market, from_date, to_date,
-            train_months, validate_months, grid, strategy, report_path
+            settings,
+            market,
+            from_date,
+            to_date,
+            train_months,
+            validate_months,
+            grid,
+            strategy,
+            report_path,
         )
     )
 
@@ -755,6 +782,93 @@ async def _walkforward_async(
         report_path.parent.mkdir(parents=True, exist_ok=True)
         report_path.write_text(html, encoding="utf-8")
         typer.echo(f"HTML 리포트 저장: {report_path}")
+
+
+# ── backtest --grid: 파라미터 비교표 + JSON 저장 ──────────────────────────────
+
+
+async def _run_grid_output(
+    *,
+    market: str,
+    from_date: str,
+    to_date: str,
+    strategy_version: str,
+    settings: Settings,
+    grid_str: str,
+    df: Any,
+) -> None:
+    """파라미터 그리드 실행 → Rich 비교표 출력 + state/backtest/ JSON 저장."""
+    import pandas as pd  # noqa: F401 (df 타입 힌트)
+
+    from signal_program.backtest.grid_search import run_backtest_grid, save_grid_json
+    from signal_program.backtest.walkforward import parse_grid
+
+    param_grid = parse_grid(grid_str)
+    console = Console()
+
+    console.print(
+        f"[bold cyan]파라미터 그리드 실행[/bold cyan] — {market} "
+        f"({from_date} ~ {to_date}) / {strategy_version.upper()} / {len(param_grid)}셀"
+    )
+
+    cells = run_backtest_grid(
+        market=market,
+        candles_df=df,
+        param_grid=param_grid,
+        strategy_version=strategy_version,
+        base_settings=settings,
+    )
+
+    if not cells:
+        console.print("[yellow]그리드 결과 없음[/yellow]")
+        return
+
+    # ── Rich 비교표 ──────────────────────────────────────────────────────────
+    # 첫 셀의 params 키를 컬럼으로 사용 (동적 파라미터 지원)
+    param_keys = list(cells[0].params.keys())
+
+    grid_table = Table(
+        title=f"V2 파라미터 그리드 — {market} ({from_date} ~ {to_date})",
+        show_header=True,
+        header_style="bold cyan",
+        show_lines=True,
+    )
+    grid_table.add_column("셀", min_width=4, justify="right")
+    for key in param_keys:
+        grid_table.add_column(key, min_width=12, justify="right")
+    grid_table.add_column("거래수", min_width=6, justify="right")
+    grid_table.add_column("승률", min_width=7, justify="right")
+    grid_table.add_column("MDD", min_width=7, justify="right")
+    grid_table.add_column("누적수익률", min_width=10, justify="right")
+    grid_table.add_column("Sharpe", min_width=7, justify="right")
+
+    for cell in cells:
+        r = cell.result
+        cum = r.cumulative_return_pct
+        sharpe = r.sharpe_annualized
+        grid_table.add_row(
+            str(cell.cell_index),
+            *[f"{cell.params.get(k, 0):.2f}" for k in param_keys],
+            str(len(r.trades)),
+            f"{r.win_rate:.1%}",
+            f"{abs(r.mdd_pct):.2%}",
+            f"[{'green' if cum >= 0 else 'red'}]{cum:+.2%}[/]",
+            f"[{'green' if sharpe >= 0 else 'red'}]{sharpe:.2f}[/]",
+        )
+
+    console.print(grid_table)
+
+    # ── JSON 저장 ─────────────────────────────────────────────────────────────
+    json_path = save_grid_json(
+        cells=cells,
+        market=market,
+        period_from=from_date,
+        period_to=to_date,
+        strategy_version=strategy_version,
+        grid_str=grid_str,
+        output_dir=Path("state/backtest"),
+    )
+    console.print(f"[dim]📄 JSON 저장: {json_path}[/dim]")
 
 
 @app.command(name="fetch-candles")
