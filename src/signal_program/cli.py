@@ -732,13 +732,22 @@ async def _walkforward_async(
         validate_months=validate_months,
     )
 
+    # grid_str에서 변화하는 파라미터 키 추출
+    # 예: "buy_threshold:0.3;obv_weight:0.1" → ["buy_threshold", "obv_weight"]
+    _grid_keys: list[str] = [
+        part.split(":")[0].strip()
+        for part in grid_str.split(";")
+        if ":" in part.strip()
+    ] or ["bb_std_mult"]
+    _param_col_header = _grid_keys[0] if len(_grid_keys) == 1 else "최적 파라미터"
+
     # 콘솔: fold별 요약
     fold_table = Table(
         title=f"워크포워드 Fold별 결과 — {market}", show_header=True, header_style="bold cyan"
     )
     fold_table.add_column("Fold", min_width=5)
     fold_table.add_column("Validate 기간", min_width=24)
-    fold_table.add_column("최적 bb_std", min_width=10)
+    fold_table.add_column(_param_col_header, min_width=18)
     fold_table.add_column("Train Sharpe", min_width=12)
     fold_table.add_column("Val. Sharpe", min_width=12)
     fold_table.add_column("Val. Cum.", min_width=12)
@@ -746,10 +755,16 @@ async def _walkforward_async(
     for fold in wf_result.folds:
         val_sharpe = fold.validate_result.sharpe_annualized
         val_cum = fold.validate_result.cumulative_return_pct
+        if len(_grid_keys) == 1:
+            _param_str = str(getattr(fold.best_params, _grid_keys[0], "N/A"))
+        else:
+            _param_str = ", ".join(
+                f"{k}={getattr(fold.best_params, k, 'N/A')}" for k in _grid_keys
+            )
         fold_table.add_row(
             str(fold.fold_index),
             f"{fold.validate_period_from:%Y-%m-%d} ~ {fold.validate_period_to:%Y-%m-%d}",
-            str(fold.best_params.bb_std_mult),
+            _param_str,
             f"{fold.train_result.sharpe_annualized:.2f}",
             f"[{'green' if val_sharpe >= 0 else 'red'}]{val_sharpe:.2f}[/]",
             f"[{'green' if val_cum >= 0 else 'red'}]{val_cum:+.2%}[/]",

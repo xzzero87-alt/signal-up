@@ -106,6 +106,55 @@ def test_backtest_cli_grid_saves_json() -> None:
     assert len(json_files) > 0, "JSON 파일이 생성되어야 함"
 
 
+# ── walkforward V2 fold 테이블 컬럼 버그 픽스 검증 ─────────────────────────
+
+_CANDLE_PATH_2025_10 = Path("data/candles/KRW-BTC/60/2025-10.parquet")
+_NEEDS_10M_DATA = pytest.mark.skipif(
+    not (_CANDLE_PATH.exists() and _CANDLE_PATH_2025_10.exists()),
+    reason="Candle data (2025-01 ~ 2025-10) not available",
+)
+
+
+@_NEEDS_10M_DATA
+def test_walkforward_v2_fold_table_shows_grid_param_column() -> None:
+    """V2 그리드 walkforward: fold 테이블에 실제 그리드 파라미터 컬럼이 나와야 한다."""
+    result = runner.invoke(
+        app,
+        [
+            "walkforward",
+            "--market", "KRW-BTC",
+            "--from", "2025-01-01",
+            "--to", "2025-10-31",
+            "--train-months", "6",
+            "--validate-months", "2",
+            "--strategy", "v2",
+            "--grid", "buy_threshold:0.30,0.40",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert "buy_threshold" in result.output, "V2 그리드 키가 컬럼 헤더에 나와야 함"
+    assert "최적 bb_std" not in result.output, "V1 전용 bb_std 컬럼이 V2에서 노출되면 안 됨"
+
+
+@_NEEDS_10M_DATA
+def test_walkforward_v1_fold_table_shows_bb_std_mult_column() -> None:
+    """V1 그리드 walkforward: fold 테이블에 'bb_std_mult' 컬럼이 유지되어야 한다."""
+    result = runner.invoke(
+        app,
+        [
+            "walkforward",
+            "--market", "KRW-BTC",
+            "--from", "2025-01-01",
+            "--to", "2025-10-31",
+            "--train-months", "6",
+            "--validate-months", "2",
+            "--grid", "bb_std_mult:1.5,2.0",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert "bb_std_mult" in result.output, "V1 그리드 키가 컬럼 헤더에 나와야 함"
+
+
 # ── --report-html 없으면 HTML 파일 미생성 (기존 동작 불변) ──────────────────
 
 @_NEEDS_DATA
