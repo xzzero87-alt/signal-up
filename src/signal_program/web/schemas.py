@@ -133,3 +133,25 @@ class DashboardView(BaseModel):
     next_evaluation_at: datetime | None = None
     recent_signals: list[dict[str, object]] = Field(default_factory=list)
     settings_summary: dict[str, object] = Field(default_factory=dict)
+
+
+class SignalCardEntry(BaseModel):
+    """대시보드 카드 렌더용 DTO (R_P1_9).
+
+    Signal 도메인 모델을 확장하지 않고 래핑한다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    signal_id: str  # "{triggered_at_iso}_{market}"
+    market: str
+    triggered_at: datetime
+    mode: str  # "V1" | "V2"
+    direction: str  # "buy" | "sell"
+    strength: str  # "normal" | "strong"
+    price: float
+    bb_pct_b: float
+    cci: float
+    volume_ratio: float
+    sparkline_prices: tuple[float, ...] | None = None  # 최대 14개 close 가격
+    feedback: str | None = None  # "helpful" | "confusing" | "bad" | None

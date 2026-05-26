@@ -1,0 +1,85 @@
+{# signal_card.html — Jinja2 매크로 (R_P1_9).
+   실제 렌더링은 dashboard.js buildSignalCard() 가 담당한다.
+   이 파일은 서버사이드 렌더 대비 + JS 구현 참조용이다. #}
+{% macro signal_card(entry) %}
+<div class="signal-card direction-{{ entry.direction }}{% if entry.strength == 'strong' %} strength-strong{% endif %}{% if entry.feedback == 'bad' %} feedback-bad{% endif %}"
+     data-signal-id="{{ entry.signal_id }}">
+  <div class="signal-meta">
+    <div class="signal-market">
+      <a href="https://upbit.com/exchange?code=CRIX.UPBIT.{{ entry.market }}"
+         target="_blank" rel="noopener" class="market-link">
+        {{ entry.market | replace("KRW-", "") }}
+        <i class="ti ti-external-link ext-icon" aria-hidden="true"></i>
+      </a>
+      {% if entry.direction == "buy" %}
+        <span class="signal-direction direction-buy">
+          <i class="ti ti-trending-up" aria-hidden="true"></i> 매수
+        </span>
+      {% else %}
+        <span class="signal-direction direction-sell">
+          <i class="ti ti-trending-down" aria-hidden="true"></i> 매도
+        </span>
+      {% endif %}
+      <span class="tag-{{ entry.mode | lower }}">{{ entry.mode }}</span>
+      <span class="vol-chip{% if entry.volume_ratio >= 2.0 %} strong{% endif %}">
+        <i class="ti ti-activity" aria-hidden="true"></i>
+        Vol {{ "%.1f"|format(entry.volume_ratio) }}x
+      </span>
+    </div>
+    <div class="signal-time">{{ entry.triggered_at | string | truncate(16, killwords=True, end="") }}</div>
+    <div class="signal-score">
+      {% if entry.mode == "V1" %}
+        {% if entry.direction == "buy" %}
+          BB하단 + CCI {{ entry.cci | int }}
+        {% else %}
+          BB상단 + CCI +{{ entry.cci | abs | int }}
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+  <svg class="mini-chart" viewBox="0 0 100 40" aria-hidden="true">
+    <line x1="2" y1="20" x2="98" y2="20"
+          stroke="rgba(128,128,128,0.3)" stroke-width="1" stroke-dasharray="3,3"/>
+  </svg>
+  <div class="score-bars">
+    <div class="score-row">
+      <span class="label">BB</span>
+      <div class="bar-track">
+        <div class="bar-fill"></div>
+      </div>
+      <span class="value">{{ "%.2f"|format(entry.bb_pct_b) }}</span>
+    </div>
+    <div class="score-row">
+      <span class="label">CCI</span>
+      <div class="bar-track">
+        <div class="bar-fill"></div>
+      </div>
+      <span class="value">{{ entry.cci | int }}</span>
+    </div>
+    <div class="score-row na">
+      <span class="label">Sto</span>
+      <div class="bar-track"></div>
+      <span class="value">V1</span>
+    </div>
+    <div class="score-row na">
+      <span class="label">OBV</span>
+      <div class="bar-track"></div>
+      <span class="value">V1</span>
+    </div>
+  </div>
+  <div class="feedback-buttons">
+    <button type="button"
+            class="fb-btn{% if entry.feedback == 'helpful' %} selected helpful{% endif %}"
+            onclick="submitFeedback(this,'{{ entry.signal_id }}','helpful')"
+            title="도움됨" aria-label="이 시그널이 매매 결정에 도움이 됐음">👍</button>
+    <button type="button"
+            class="fb-btn{% if entry.feedback == 'confusing' %} selected confusing{% endif %}"
+            onclick="submitFeedback(this,'{{ entry.signal_id }}','confusing')"
+            title="헷갈림" aria-label="이 시그널이 헷갈렸음">🤔</button>
+    <button type="button"
+            class="fb-btn{% if entry.feedback == 'bad' %} selected bad{% endif %}"
+            onclick="submitFeedback(this,'{{ entry.signal_id }}','bad')"
+            title="거짓신호" aria-label="이 시그널은 거짓신호였음">👎</button>
+  </div>
+</div>
+{% endmacro %}

@@ -1,12 +1,18 @@
-"""GET /api/signals/recent — 최근 시그널 조회.
+"""시그널 조회 엔드포인트.
 
-M13: 빈 배열 stub
-M14: state/signals.jsonl에서 실 데이터 제공
+GET /api/signals/recent — 원본 JSONL 레코드 반환 (기존, 변경 금지)
+GET /api/signals/cards  — 카드 뷰용 SignalCardEntry 반환 (R_P1_9 신규)
 """
 
 from __future__ import annotations
 
+from datetime import datetime
+from typing import Any
+
 from fastapi import APIRouter, Query
+
+from signal_program.state.signal_feedback import build_signal_id, load_feedback_map
+from signal_program.web.schemas import SignalCardEntry
 
 router = APIRouter(tags=["signals"])
 
@@ -33,3 +39,53 @@ def recent_signals(
         limit=limit, market=market, direction=direction, mode=mode, strength=strength
     )
     return list(records)
+
+
+@router.get("/api/signals/cards", response_model=list[SignalCardEntry])
+def signal_cards(
+    market: str | None = Query(default=None),
+    direction: str | None = Query(default=None),
+    mode: str | None = Query(default=None),
+    strength: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=500),
+) -> list[SignalCardEntry]:
+    """카드 뷰용 시그널 목록. feedback 상태 포함 (R_P1_9)."""
+    if _signal_history is None:
+        return []
+    records = _signal_history.read_recent(  # type: ignore[attr-defined]
+        limit=limit, market=market, direction=direction, mode=mode, strength=strength
+    )
+    feedback_map = load_feedback_map()
+    entries: list[SignalCardEntry] = []
+    for record in records:
+        sig: dict[str, Any] = record.get("signal", {})
+        market_val: str = str(sig.get("market", ""))
+        triggered_at_iso: str = str(sig.get("triggered_at", ""))
+        mode_code: str = str(sig.get("mode", "A"))
+        indicators: dict[str, Any] = sig.get("indicators", {})
+
+        signal_id = build_signal_id(triggered_at_iso, market_val)
+        mode_label = "V2" if mode_code == "C" else "V1"
+
+        try:
+            triggered_at_dt = datetime.fromisoformat(triggered_at_iso)
+        except (ValueError, TypeError):
+            continue
+
+        entries.append(
+            SignalCardEntry(
+                signal_id=signal_id,
+                market=market_val,
+                triggered_at=triggered_at_dt,
+                mode=mode_label,
+                direction=str(sig.get("direction", "buy")),
+                strength=str(sig.get("strength", "normal")),
+                price=float(sig.get("price", 0.0)),
+                bb_pct_b=float(indicators.get("bb_pct_b", 0.0)),
+                cci=float(indicators.get("cci", 0.0)),
+                volume_ratio=float(indicators.get("volume_ratio", 0.0)),
+                sparkline_prices=None,
+                feedback=feedback_map.get(signal_id),
+            )
+        )
+    return entries

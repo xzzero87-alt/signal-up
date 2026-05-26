@@ -43,17 +43,11 @@
 
 <div id="error-msg" class="error-box" style="display:none"></div>
 
-<table class="signal-table" id="signal-table">
-  <thead>
-    <tr>
-      <th>시각 (KST)</th><th>코인</th><th>모드</th><th>방향</th>
-      <th>강도</th><th>가격 (KRW)</th><th>BB 위치</th><th>CCI</th><th>거래량비</th><th>회고</th>
-    </tr>
-  </thead>
-  <tbody id="signal-tbody">
-    <tr><td colspan="10" class="empty-row">시그널 없음 — 데몬 실행 후 시그널이 수신되면 여기에 표시됩니다.</td></tr>
-  </tbody>
-</table>
+<div id="signal-cards" class="signal-cards-container">
+  <div class="empty-cards" id="signal-empty">
+    시그널 없음 — 데몬 실행 후 시그널이 수신되면 여기에 표시됩니다.
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
