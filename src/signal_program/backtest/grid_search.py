@@ -1,7 +1,7 @@
 """백테스트 파라미터 그리드 서치 — D+7 GO/NO-GO 비교표 산출.
 
 signal backtest --grid "obv_weight:0.3,0.4,0.5;buy_threshold:0.60,0.65,0.70"
-→ 9개 GridCell 실행 → Rich 비교표 출력 + JSON 저장.
+→ 9개 GridCell 병렬 실행 → Rich 비교표 출력 + JSON 저장.
 
 import 사용처:
   - cli.py backtest --grid 옵션
@@ -10,7 +10,9 @@ import 사용처:
 
 from __future__ import annotations
 
+import concurrent.futures
 import json
+import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
@@ -35,6 +37,38 @@ class GridCell:
     result: BacktestResult
 
 
+# ── ProcessPoolExecutor 워커 (top-level, picklable) ──────────────────────────
+
+def _run_single_cell(
+    idx: int,
+    params: Any,
+    market: str,
+    candles_df: Any,  # pd.DataFrame — TYPE_CHECKING 외부에서 런타임 사용
+    strategy_version: str,
+    base_settings: Any,
+) -> GridCell:
+    """ProcessPoolExecutor 워커: 단일 파라미터 조합 백테스트 실행.
+
+    top-level 함수여야 pickle 직렬화가 가능하다.
+    """
+    from signal_program.backtest.walkforward import _params_to_strategy
+
+    strategy = _params_to_strategy(params, strategy_version, base_settings)
+    engine = BacktestEngine(strategy=strategy)
+    try:
+        result = engine.run(market, candles_df)
+    except Exception:
+        result = _empty_result()
+
+    # None 필드 제외 — V2 그리드에서 V1 필드(None), V1 그리드에서 V2 필드(None)
+    params_dict: dict[str, float] = {
+        k: v for k, v in params.model_dump().items() if v is not None
+    }
+    return GridCell(cell_index=idx, params=params_dict, result=result)
+
+
+# ── 공개 API ─────────────────────────────────────────────────────────────────
+
 def run_backtest_grid(
     market: str,
     candles_df: pd.DataFrame,
@@ -45,31 +79,81 @@ def run_backtest_grid(
 ) -> list[GridCell]:
     """파라미터 그리드 전체 백테스트 실행 → GridCell 리스트 반환.
 
-    _engine_factory: 테스트 주입용 (None → 실제 전략 생성).
+    _engine_factory:
+      - None  → ProcessPoolExecutor 병렬 실행 (실제 운용).
+      - 함수  → 순차 실행 (테스트 주입용).
     """
-    from signal_program.backtest.walkforward import _params_to_strategy
+    if _engine_factory is not None:
+        return _run_sequential(
+            market=market,
+            candles_df=candles_df,
+            param_grid=param_grid,
+            engine_factory=_engine_factory,
+        )
 
-    def _default_factory(params: Any) -> BacktestEngine:
-        strategy = _params_to_strategy(params, strategy_version, base_settings)
-        return BacktestEngine(strategy=strategy)
+    return _run_parallel(
+        market=market,
+        candles_df=candles_df,
+        param_grid=param_grid,
+        strategy_version=strategy_version,
+        base_settings=base_settings,
+    )
 
-    factory = _engine_factory if _engine_factory is not None else _default_factory
 
+def _run_sequential(
+    market: str,
+    candles_df: Any,
+    param_grid: tuple[Any, ...],
+    engine_factory: Callable[[Any], BacktestEngine],
+) -> list[GridCell]:
+    """테스트 주입 경로: 순차 실행."""
     cells: list[GridCell] = []
     for idx, params in enumerate(param_grid, start=1):
-        engine = factory(params)
+        engine = engine_factory(params)
         try:
             result = engine.run(market, candles_df)
         except Exception:
             result = _empty_result()
 
-        # None 필드 제외 — V2 그리드에서 V1 필드(None), V1 그리드에서 V2 필드(None)
         params_dict: dict[str, float] = {
             k: v for k, v in params.model_dump().items() if v is not None
         }
         cells.append(GridCell(cell_index=idx, params=params_dict, result=result))
 
     return cells
+
+
+def _run_parallel(
+    market: str,
+    candles_df: Any,
+    param_grid: tuple[Any, ...],
+    strategy_version: str,
+    base_settings: Any,
+) -> list[GridCell]:
+    """실제 운용 경로: ProcessPoolExecutor 병렬 실행.
+
+    workers = min(셀 수, 논리 CPU 수) — 9셀 × 20코어 = 9 workers.
+    """
+    n_cells = len(param_grid)
+    workers = min(n_cells, os.cpu_count() or 4)
+
+    with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
+        futures = [
+            executor.submit(
+                _run_single_cell,
+                idx,
+                params,
+                market,
+                candles_df,
+                strategy_version,
+                base_settings,
+            )
+            for idx, params in enumerate(param_grid, start=1)
+        ]
+        cells = [f.result() for f in concurrent.futures.as_completed(futures)]
+
+    # as_completed 순서 비결정적 → cell_index 기준 정렬
+    return sorted(cells, key=lambda c: c.cell_index)
 
 
 def _empty_result() -> BacktestResult:

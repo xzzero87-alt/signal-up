@@ -807,7 +807,7 @@ async def _run_grid_output(
     console = Console()
 
     console.print(
-        f"[bold cyan]파라미터 그리드 실행[/bold cyan] — {market} "
+        f"[bold cyan]파라미터 그리드 실행[/bold cyan] - {market} "
         f"({from_date} ~ {to_date}) / {strategy_version.upper()} / {len(param_grid)}셀"
     )
 
@@ -828,7 +828,7 @@ async def _run_grid_output(
     param_keys = list(cells[0].params.keys())
 
     grid_table = Table(
-        title=f"V2 파라미터 그리드 — {market} ({from_date} ~ {to_date})",
+        title=f"V2 파라미터 그리드 - {market} ({from_date} ~ {to_date})",
         show_header=True,
         header_style="bold cyan",
         show_lines=True,
@@ -868,7 +868,7 @@ async def _run_grid_output(
         grid_str=grid_str,
         output_dir=Path("state/backtest"),
     )
-    console.print(f"[dim]📄 JSON 저장: {json_path}[/dim]")
+    console.print(f"[dim]JSON 저장: {json_path}[/dim]")
 
 
 @app.command(name="fetch-candles")
