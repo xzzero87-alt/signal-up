@@ -17,25 +17,38 @@
   <div class="nav-daemon" id="nav-daemon">
     <span id="nav-daemon-status" class="daemon-indicator">데몬: <strong>확인 중</strong></span>
     <button id="nav-daemon-btn" class="btn-daemon" onclick="toggleDaemon()">—</button>
-    <button class="btn-theme" onclick="toggleTheme()" id="btn-theme" title="다크/라이트 모드 전환" aria-label="다크/라이트 모드 전환">🌙</button>
+    <button class="btn-theme" onclick="toggleTheme()" id="btn-theme" title="다크/라이트 모드 전환" aria-label="다크/라이트 모드 전환">
+      <span id="themeIcon" aria-hidden="true">🌙</span>
+    </button>
   </div>
 </nav>
 <script>
+/* ── 다크 모드 초기화 (R_P1_8) ─────────────────────────────────────────────
+   FOUC 방지: DOMContentLoaded 이전에 data-theme 속성을 설정한다.
+   저장값 없으면 data-theme 미설정 → CSS @media가 OS 설정을 자동 follow. */
 (function(){
-  const t = localStorage.getItem('theme') || 'light';
-  document.documentElement.setAttribute('data-theme', t);
+  var saved = localStorage.getItem('signal-theme');
+  if (saved === 'dark' || saved === 'light') {
+    document.documentElement.setAttribute('data-theme', saved);
+  }
   document.addEventListener('DOMContentLoaded', function(){
-    const btn = document.getElementById('btn-theme');
-    if (btn) btn.textContent = t === 'dark' ? '☀️' : '🌙';
+    var icon = document.getElementById('themeIcon');
+    if (!icon) return;
+    var isDark = saved === 'dark' ||
+      (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    icon.textContent = isDark ? '☀️' : '🌙';
   });
 })();
 function toggleTheme(){
-  const cur = document.documentElement.getAttribute('data-theme');
-  const next = cur === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem('theme', next);
-  const btn = document.getElementById('btn-theme');
-  if (btn) btn.textContent = next === 'dark' ? '☀️' : '🌙';
+  var html = document.documentElement;
+  var cur = html.getAttribute('data-theme');
+  var isDark = cur === 'dark' ||
+    (cur !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  var next = isDark ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('signal-theme', next);
+  var icon = document.getElementById('themeIcon');
+  if (icon) icon.textContent = next === 'dark' ? '☀️' : '🌙';
 }
 </script>
 <main class="main">
