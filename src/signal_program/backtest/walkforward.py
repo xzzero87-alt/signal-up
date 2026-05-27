@@ -173,9 +173,7 @@ def _params_to_strategy(
         if params.obv_weight is not None:
             overrides["obv_weight"] = params.obv_weight
 
-        effective = (
-            base_settings.model_copy(update=overrides) if overrides else base_settings
-        )
+        effective = base_settings.model_copy(update=overrides) if overrides else base_settings
         return get_strategy("v2", effective)
 
     from signal_program.strategies.bb_cci import BbCciStrategy

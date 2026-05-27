@@ -85,15 +85,8 @@ class BacktestEngine:
                 bb_middle: float = position["bb_middle"]
                 entry: float = position["entry_price"]
                 pnl_raw = close / entry - 1.0
-                hit_sl = (
-                    self.stop_loss_pct is not None
-                    and pnl_raw <= -self.stop_loss_pct
-                )
-                should_exit = (
-                    bars_held >= self.max_holding_bars
-                    or close >= bb_middle
-                    or hit_sl
-                )
+                hit_sl = self.stop_loss_pct is not None and pnl_raw <= -self.stop_loss_pct
+                should_exit = bars_held >= self.max_holding_bars or close >= bb_middle or hit_sl
 
                 if should_exit:
                     opened_at = candles_df.iloc[i]["opened_at"]

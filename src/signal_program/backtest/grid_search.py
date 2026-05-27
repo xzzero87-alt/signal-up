@@ -39,6 +39,7 @@ class GridCell:
 
 # ── ProcessPoolExecutor 워커 (top-level, picklable) ──────────────────────────
 
+
 def _run_single_cell(
     idx: int,
     params: Any,
@@ -61,13 +62,12 @@ def _run_single_cell(
         result = _empty_result()
 
     # None 필드 제외 — V2 그리드에서 V1 필드(None), V1 그리드에서 V2 필드(None)
-    params_dict: dict[str, float] = {
-        k: v for k, v in params.model_dump().items() if v is not None
-    }
+    params_dict: dict[str, float] = {k: v for k, v in params.model_dump().items() if v is not None}
     return GridCell(cell_index=idx, params=params_dict, result=result)
 
 
 # ── 공개 API ─────────────────────────────────────────────────────────────────
+
 
 def run_backtest_grid(
     market: str,

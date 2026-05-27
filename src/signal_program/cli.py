@@ -735,9 +735,7 @@ async def _walkforward_async(
     # grid_str에서 변화하는 파라미터 키 추출
     # 예: "buy_threshold:0.3;obv_weight:0.1" → ["buy_threshold", "obv_weight"]
     _grid_keys: list[str] = [
-        part.split(":")[0].strip()
-        for part in grid_str.split(";")
-        if ":" in part.strip()
+        part.split(":")[0].strip() for part in grid_str.split(";") if ":" in part.strip()
     ] or ["bb_std_mult"]
     _param_col_header = _grid_keys[0] if len(_grid_keys) == 1 else "최적 파라미터"
 
@@ -758,9 +756,7 @@ async def _walkforward_async(
         if len(_grid_keys) == 1:
             _param_str = str(getattr(fold.best_params, _grid_keys[0], "N/A"))
         else:
-            _param_str = ", ".join(
-                f"{k}={getattr(fold.best_params, k, 'N/A')}" for k in _grid_keys
-            )
+            _param_str = ", ".join(f"{k}={getattr(fold.best_params, k, 'N/A')}" for k in _grid_keys)
         fold_table.add_row(
             str(fold.fold_index),
             f"{fold.validate_period_from:%Y-%m-%d} ~ {fold.validate_period_to:%Y-%m-%d}",
