@@ -20,6 +20,7 @@
 | [0012](0012-signals-jsonl-canonical.md) | `signals.jsonl` 영속 파일 정식화 + `STATE_SIGNALS_FILE` 상수 | accepted | 2026-05-21 |
 | [0013](0013-daemon-stdout-redirect.md) | 데몬 stdout/stderr 파일 리다이렉트 + 일별 로테이션 | accepted | 2026-05-21 |
 | [0014](0014-operation-guide-path-sync.md) | 운영 가이드 ↔ 코드 path/key 강제 동기화 정책 | accepted | 2026-05-21 |
+| [0017](0017-v2-strategy-no-go-redesign.md) | V2 전략 D+7 NO-GO 판정 — v1 운용 유지 + V2 재설계 | accepted | 2026-05-27 |
 
 ## 작성 규칙
 
