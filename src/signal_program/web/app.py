@@ -22,6 +22,7 @@ from signal_program.web.api import (
     dashboard,
     feedback,
     health,
+    kr_dashboard,
     pages,
     settings,
     signals,
@@ -110,6 +111,7 @@ def create_app(
     app.include_router(backtest.router)
     app.include_router(daemon.router)
     app.include_router(dashboard.router)
+    app.include_router(kr_dashboard.router)
     app.include_router(feedback.router)
 
     # 정적 파일

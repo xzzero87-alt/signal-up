@@ -183,6 +183,46 @@ def test_dashboard_aggregates_health_settings_and_daemon(client: TestClient) -> 
     assert "daemon_status" in data
 
 
+# ── KR Dashboard ──────────────────────────────────────────────────────────
+
+def test_kr_dashboard_returns_200(client: TestClient) -> None:
+    resp = client.get("/api/kr/dashboard")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "stock_states" in data
+    assert "recent_signals" in data
+
+
+def test_kr_dashboard_stock_states_is_list(client: TestClient) -> None:
+    resp = client.get("/api/kr/dashboard")
+    assert resp.status_code == 200
+    assert isinstance(resp.json()["stock_states"], list)
+
+
+def test_kr_signals_returns_list(client: TestClient) -> None:
+    resp = client.get("/api/kr/signals")
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)
+
+
+def test_kr_signals_timeframe_filter_60(client: TestClient) -> None:
+    resp = client.get("/api/kr/signals?timeframe=60")
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)
+
+
+def test_kr_signals_timeframe_filter_120(client: TestClient) -> None:
+    resp = client.get("/api/kr/signals?timeframe=120")
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)
+
+
+def test_kr_signals_limit_param(client: TestClient) -> None:
+    resp = client.get("/api/kr/signals?limit=10")
+    assert resp.status_code == 200
+    assert isinstance(resp.json(), list)
+
+
 # ── Security (unit-level) ──────────────────────────────────────────────────
 
 def test_mask_secrets_replaces_known_secret_keys() -> None:

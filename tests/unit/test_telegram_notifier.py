@@ -428,3 +428,87 @@ async def test_sendphoto_caption_truncated(signal: Signal, tmp_path: Path) -> No
     assert body.count(b"x" * 10) > 0  # 잘린 caption 일부 포함
     assert b"x" * 1050 not in body  # 1050자 연속 없음 (잘림 확인)
     assert any("caption_truncated" in str(e) for e in cap)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# M19 — KR 주식 타임프레임 레이블
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
+def _make_kr_signal(
+    market: str = "005930",
+    timeframe: Timeframe = Timeframe.HOUR_1,
+) -> Signal:
+    """국내 주식 시그널 픽스처."""
+    return Signal(
+        market=market,
+        timeframe=timeframe,
+        mode=StrategyMode.MEAN_REVERSION,
+        direction=SignalDirection.BUY,
+        strength=SignalStrength.NORMAL,
+        price=78_500.0,
+        triggered_at=datetime(2026, 5, 12, 10, 0, tzinfo=KST),
+        indicators=IndicatorSnapshot(
+            bb_upper=80_000.0,
+            bb_middle=77_000.0,
+            bb_lower=74_000.0,
+            bb_width=0.078,
+            bb_pct_b=0.35,
+            cci=-80.0,
+            volume_ratio=1.2,
+            bb_width_quantile=None,
+        ),
+    )
+
+
+def test_kr_signal_hour1_label() -> None:
+    """KR 주식 HOUR_1 시그널 → '(60분봉)' 포함, '(1h)' 미포함."""
+    sig = _make_kr_signal(market="005930", timeframe=Timeframe.HOUR_1)
+    text = format_message(sig)
+    assert "(60분봉)" in text
+    assert "(1h)" not in text
+    assert "005930" in text
+
+
+def test_kr_signal_hour2_label() -> None:
+    """KR 주식 HOUR_2 시그널 → '(120분봉)' 포함, '(1h)' 미포함."""
+    sig = _make_kr_signal(market="005930", timeframe=Timeframe.HOUR_2)
+    text = format_message(sig)
+    assert "(120분봉)" in text
+    assert "(1h)" not in text
+
+
+def test_coin_signal_keeps_1h_label() -> None:
+    """업비트 코인(KRW- 접두사) 시그널은 여전히 '(1h)' 레이블."""
+    sig = _make_signal(SignalDirection.BUY, SignalStrength.NORMAL, StrategyMode.MEAN_REVERSION)
+    assert sig.market.startswith("KRW-")
+    text = format_message(sig)
+    assert "(1h)" in text
+    assert "(60분봉)" not in text
+    assert "(120분봉)" not in text
+
+
+@pytest.mark.parametrize(
+    "market,timeframe,expected_label",
+    [
+        ("005930", Timeframe.HOUR_1, "(60분봉)"),   # 삼성전자 60분봉
+        ("005930", Timeframe.HOUR_2, "(120분봉)"),  # 삼성전자 120분봉
+        ("035720", Timeframe.HOUR_1, "(60분봉)"),   # 카카오 60분봉
+        ("035720", Timeframe.HOUR_2, "(120분봉)"),  # 카카오 120분봉
+        ("KRW-BTC", Timeframe.HOUR_1, "(1h)"),      # 비트코인 코인 (코인)
+        ("KRW-ETH", Timeframe.HOUR_1, "(1h)"),      # 이더리움 (코인)
+    ],
+)
+def test_timeframe_label_parametrize(
+    market: str, timeframe: Timeframe, expected_label: str
+) -> None:
+    """마켓 종류 × 타임프레임 → 올바른 레이블 출력."""
+    if market.startswith("KRW-"):
+        sig = _make_signal(
+            SignalDirection.BUY, SignalStrength.NORMAL, StrategyMode.MEAN_REVERSION
+        )
+        sig = Signal(**{**sig.model_dump(), "market": market, "timeframe": timeframe})
+    else:
+        sig = _make_kr_signal(market=market, timeframe=timeframe)
+    text = format_message(sig)
+    assert expected_label in text

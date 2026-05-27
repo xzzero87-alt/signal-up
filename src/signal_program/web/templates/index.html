@@ -10,6 +10,14 @@
   </div>
 </div>
 
+<!-- 탭 전환 -->
+<div class="tab-bar" style="margin-bottom:12px">
+  <button id="tab-crypto" class="tab-btn tab-active" onclick="switchTab('crypto')">코인</button>
+  <button id="tab-kr"     class="tab-btn"             onclick="switchTab('kr')">국장</button>
+</div>
+
+<!-- 코인 탭 -->
+<div id="section-crypto">
 <div class="filter-bar">
   <label>코인
     <select id="filter-market" onchange="applyFilters()">
@@ -54,9 +62,79 @@
     시그널 없음 — 데몬 실행 후 시그널이 수신되면 여기에 표시됩니다.
   </div>
 </div>
+</div><!-- /section-crypto -->
+
+<!-- 국장 탭 -->
+<div id="section-kr" style="display:none">
+  <div class="filter-bar">
+    <label>타임프레임
+      <select id="kr-filter-timeframe" onchange="loadKrSignals()">
+        <option value="">전체</option>
+        <option value="60">60분봉</option>
+        <option value="120">120분봉</option>
+      </select>
+    </label>
+    <span class="countdown">다음 갱신: <span id="kr-last-update">—</span></span>
+  </div>
+  <div id="kr-error-msg" class="error-box" style="display:none"></div>
+  <div id="kr-signal-cards" class="signal-cards-container">
+    <div class="empty-cards" id="kr-signal-empty">
+      국장 시그널 없음
+    </div>
+  </div>
+</div><!-- /section-kr -->
 {% endblock %}
 
 {% block scripts %}
 <script>const POLL_INTERVAL_MS = 30_000;</script>
 <script src="/static/js/dashboard.js"></script>
+<script>
+// ── 탭 전환 ─────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById('section-crypto').style.display = tab === 'crypto' ? '' : 'none';
+  document.getElementById('section-kr').style.display     = tab === 'kr'     ? '' : 'none';
+  document.getElementById('tab-crypto').classList.toggle('tab-active', tab === 'crypto');
+  document.getElementById('tab-kr').classList.toggle('tab-active',     tab === 'kr');
+  if (tab === 'kr') loadKrSignals();
+}
+
+// ── 국장 시그널 로드 ──────────────────────────────────────────────────────────
+async function loadKrSignals() {
+  const tf = document.getElementById('kr-filter-timeframe').value;
+  const url = '/api/kr/signals?limit=50' + (tf ? '&timeframe=' + tf : '');
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const records = await resp.json();
+    renderKrCards(records);
+    document.getElementById('kr-last-update').textContent = new Date().toLocaleTimeString('ko-KR');
+  } catch (e) {
+    const box = document.getElementById('kr-error-msg');
+    box.textContent = '국장 시그널 로드 실패: ' + e.message;
+    box.style.display = '';
+  }
+}
+
+function renderKrCards(records) {
+  const container = document.getElementById('kr-signal-cards');
+  const empty     = document.getElementById('kr-signal-empty');
+  container.querySelectorAll('.signal-card').forEach(el => el.remove());
+  if (!records.length) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  records.forEach(rec => {
+    const sig = rec.signal || rec;
+    const card = document.createElement('div');
+    card.className = 'signal-card';
+    const dir = sig.direction || '—';
+    const tf  = sig.timeframe === '60' ? '60분' : sig.timeframe === '120' ? '120분' : sig.timeframe;
+    card.innerHTML = `
+      <div class="card-market">${sig.market || '—'}</div>
+      <div class="card-detail">${dir.toUpperCase()} · ${tf} · ${sig.strength || '—'}</div>
+      <div class="card-price">${sig.price != null ? Number(sig.price).toLocaleString() + '원' : '—'}</div>
+      <div class="card-time">${sig.triggered_at ? new Date(sig.triggered_at).toLocaleString('ko-KR') : '—'}</div>
+    `;
+    container.appendChild(card);
+  });
+}
+</script>
 {% endblock %}

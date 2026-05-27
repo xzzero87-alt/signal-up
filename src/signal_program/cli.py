@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import sys
@@ -387,7 +388,37 @@ async def _run_live_coro(settings: Settings) -> None:
             signal_log=signal_log,
             charts_dir=settings.charts_dir,
         )
-        await runner.run_forever()
+
+        if settings.kr_enabled and settings.kis_app_key and settings.kis_app_secret:
+            from signal_program.exchanges.kis_api import KisApiAdapter
+            from signal_program.kr_runner import KrStockRunnerService
+
+            async with KisApiAdapter(
+                app_key=settings.kis_app_key,
+                app_secret=settings.kis_app_secret,
+                is_paper=settings.kis_is_paper,
+            ) as kr_exchange:
+                kr_runner = KrStockRunnerService(
+                    settings=settings,
+                    exchange=kr_exchange,
+                    strategy=strategy,
+                    notifier=notifier,
+                    signal_log=signal_log,
+                    cooldown_60m=CooldownStore(
+                        path=Path("state/kr_cooldown_60m.json"),
+                        cooldown=timedelta(hours=settings.kr_cooldown_hours_60m),
+                    ),
+                    cooldown_120m=CooldownStore(
+                        path=Path("state/kr_cooldown_120m.json"),
+                        cooldown=timedelta(hours=settings.kr_cooldown_hours_120m),
+                    ),
+                    charts_dir=settings.charts_dir,
+                )
+                async with asyncio.TaskGroup() as tg:
+                    tg.create_task(runner.run_forever())
+                    tg.create_task(kr_runner.run_forever())
+        else:
+            await runner.run_forever()
 
 
 def _make_exchange_client(http: httpx.AsyncClient) -> UpbitClient:

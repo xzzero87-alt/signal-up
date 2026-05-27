@@ -42,6 +42,12 @@ _EMOJI: dict[tuple[str, str], str] = {
     (SignalDirection.SELL.value, SignalStrength.STRONG.value): "🔴🔴",
 }
 
+# KR 주식 타임프레임 레이블 (업비트 코인은 "(1h)" 고정)
+_TIMEFRAME_KR_LABEL: dict[str, str] = {
+    "60": "(60분봉)",
+    "120": "(120분봉)",
+}
+
 
 def format_message(signal: Signal) -> str:
     """Signal → 텔레그램 텍스트 변환. 순수 함수(I/O 없음).
@@ -54,11 +60,19 @@ def format_message(signal: Signal) -> str:
     ts_kst = signal.triggered_at.strftime("%Y-%m-%d %H:%M")
     ind = signal.indicators
 
+    # KR 주식(숫자 코드 등)은 타임프레임 레이블, 업비트 코인은 (1h) 고정
+    is_kr_stock = not signal.market.startswith("KRW-")
+    tf_label = (
+        _TIMEFRAME_KR_LABEL.get(signal.timeframe.value, f"({signal.timeframe.value}분봉)")
+        if is_kr_stock
+        else "(1h)"
+    )
+
     lines = [
         (
             f"{version_tag} {emoji}"
             f" [{signal.direction.value.upper()}-{signal.strength.value.capitalize()}]"
-            f" {signal.market} (1h) — Mode {signal.mode.value}({mode_label})"
+            f" {signal.market} {tf_label} — Mode {signal.mode.value}({mode_label})"
         ),
         f"가격: {signal.price:,.0f} KRW",
         f"BB: 위치 {ind.bb_pct_b:.2f}σ",
@@ -77,7 +91,7 @@ def format_message(signal: Signal) -> str:
 
     lines += [
         "",
-        "📊 차트 첨부 (M8 예정)",
+        "📊 차트 첨부",
         "ℹ️ 참고용 시그널 — 매매는 직접 판단",
     ]
 

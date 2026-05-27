@@ -14,6 +14,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from signal_program.enums import KrMarket, SignalDirection
+
 
 class SettingsView(BaseModel):
     """GET 응답. 시크릿 필드는 마스킹된 문자열."""
@@ -155,6 +157,33 @@ class SignalCardEntry(BaseModel):
     volume_ratio: float
     sparkline_prices: tuple[float, ...] | None = None  # 최대 14개 close 가격
     feedback: str | None = None  # "helpful" | "confusing" | "bad" | None
+
+
+class KrStockStateView(BaseModel):
+    """국장 종목 상태 뷰 (DESIGN §8.7.4)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    symbol: str
+    name: str
+    market: KrMarket
+    last_price: float
+    bb_pct_b: float
+    cci: float
+    volume_ratio: float
+    last_signal_at: datetime | None = None
+    last_signal_direction: SignalDirection | None = None
+
+
+class KrDashboardView(BaseModel):
+    """국장 대시보드 응답 뷰 (DESIGN §8.7.4)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    next_scan_at: datetime | None = None
+    last_scan_at: datetime | None = None
+    stock_states: tuple[KrStockStateView, ...] = ()
+    recent_signals: tuple[dict[str, object], ...] = ()
 
 
 class FeedbackStats(BaseModel):
