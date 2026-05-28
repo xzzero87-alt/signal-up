@@ -17,6 +17,7 @@ class StrategyMode(StrEnum):
     MEAN_REVERSION = "A"
     SQUEEZE_BREAKOUT = "B"
     WEIGHTED_SCORE = "C"  # V2 FourIndicatorStrategy (ADR-0010)
+    FRACTAL_BREAKOUT = "D"  # KrFractalStrategy (ADR-0018)
 
 
 class SignalDirection(StrEnum):

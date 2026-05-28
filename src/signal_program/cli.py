@@ -393,6 +393,17 @@ async def _run_live_coro(settings: Settings) -> None:
             from signal_program.exchanges.kis_api import KisApiAdapter
             from signal_program.kr_runner import KrStockRunnerService
 
+            if settings.kr_strategy == "fractal":
+                from signal_program.strategies.kr_fractal import KrFractalStrategy
+
+                kr_strategy = KrFractalStrategy(
+                    fractal_lookback=settings.fractal_lookback,
+                    fractal_volume_threshold=settings.fractal_volume_threshold,
+                    fractal_volume_strong=settings.fractal_volume_strong,
+                )
+            else:
+                kr_strategy = strategy
+
             async with KisApiAdapter(
                 app_key=settings.kis_app_key,
                 app_secret=settings.kis_app_secret,
@@ -401,7 +412,7 @@ async def _run_live_coro(settings: Settings) -> None:
                 kr_runner = KrStockRunnerService(
                     settings=settings,
                     exchange=kr_exchange,
-                    strategy=strategy,
+                    strategy=kr_strategy,
                     notifier=notifier,
                     signal_log=signal_log,
                     cooldown_60m=CooldownStore(

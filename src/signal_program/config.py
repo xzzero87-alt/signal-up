@@ -139,6 +139,12 @@ class Settings(BaseSettings):
     kr_cooldown_hours_60m: int = 2
     kr_cooldown_hours_120m: int = 4
 
+    # KR 전략 선택 (ADR-0018)
+    kr_strategy: Literal["bb_cci", "fractal"] = "fractal"
+    fractal_lookback: int = 100
+    fractal_volume_threshold: float = 1.2
+    fractal_volume_strong: float = 2.0
+
     # 운영
     log_level: str = "INFO"
     dry_run: bool = False

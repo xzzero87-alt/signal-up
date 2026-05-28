@@ -38,6 +38,11 @@ class IndicatorSnapshot(BaseModel):
     stoch_k: float | None = None
     stoch_d: float | None = None
     obv: float | None = None
+    # KrFractalStrategy 필드 (ADR-0018) — None=비-Fractal 시그널
+    fractal_up: float | None = None
+    fractal_down: float | None = None
+    fractal_up_age: int | None = None
+    fractal_down_age: int | None = None
 
 
 class Signal(BaseModel):
