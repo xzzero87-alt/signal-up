@@ -24,6 +24,8 @@
 
 **v2.0 확장:** 결과물을 **GitHub에 공개해 다른 트레이더도 자기 PC에 설치해 사용**할 수 있게 한다. 각 사용자는 자기 텔레그램 봇 토큰과 화이트리스트를 갖고 운영한다. 클라우드 호스팅·회원가입·결제·중앙 DB는 제외(=별도 SaaS 프로젝트가 필요한 영역).
 
+**v2.1 국장 확장:** 동일 아키텍처 위에 **KOSPI/KOSDAQ 국내 주식 시장을 추가 지원**한다. 한국투자증권 Open API(KIS)로 60분봉·120분봉 캔들을 수집하고, 업비트 루프와 병렬로 `signal serve`에서 동시 실행한다. 증권사 API는 시세 조회 전용이며, 주문 실행은 제외(ADR-0002). Node.js 프로토타입(`korean_stock_signal/`)으로 전체 흐름을 검증한 뒤 Python 메인 프로젝트에 통합했다.
+
 ---
 
 ## 2. Goals
@@ -52,6 +54,9 @@
 | N6 | 사용자 인증·멀티유저 | 자가설치형은 1대 1사용자 가정. 인증 도입 시 보안 표면↑ |
 | N7 | 텔레그램 외 알림 채널(Slack, 이메일) | 모바일 즉시성 우선. [ADR-0003](docs/adr/0003-telegram-only-channel.md) |
 | **N8** *(신설, v2.0)* | **데스크탑 설치 패키지(.exe/.app)** | Tauri/PyInstaller 도입은 GUI v1 안정화 후 검토. 일단 `uv run signal serve`로 시작 |
+| **N9** *(신설, v2.1)* | **국내 주식 주문 실행** | ADR-0002와 동일 원칙. KIS API 주문 엔드포인트 사용 금지 |
+| **N10** *(신설, v2.1)* | **실시간 WebSocket 시세** | KIS WebSocket 재연결 관리 복잡도 대비 효용 낮음. 정각 폴링으로 충분. v2 후보 |
+| **N11** *(신설, v2.1)* | **공휴일 자동 처리** | `_is_market_open`은 평일/시간만 체크. 공휴일엔 KIS API가 빈 데이터 반환 → skip 처리 |
 
 ---
 
@@ -80,7 +85,14 @@
 - As a 운영자, **dry-run 모드**로 텔레그램 송출 없이 시그널 로직만 검증하고 싶다.
 - As a 운영자, **로그를 통해 사이클별 동작과 실패 원인을 추적**할 수 있어야 한다.
 
-### 4.4 GUI 시점 (v2.0 신설)
+### 4.4 국내 주식 시점 (v2.1 신설)
+
+- As a 트레이더, **업비트 루프와 함께 국내 주식도 같은 `signal serve` 명령 하나로** 동시에 모니터링하고 싶다.
+- As a 트레이더, **KIS API 키를 설정 페이지에 입력하면** 별도 설정 파일 없이 국내 주식 스캔이 시작되길 원한다.
+- As a 트레이더, **평일 09:00~15:30 이외에는 불필요한 API 호출 없이** 루프가 알아서 대기하길 원한다.
+- As a 트레이더, **60분봉(HOUR_1) 외에 120분봉(HOUR_2) 시그널도** 텔레그램으로 받고 싶다 (10시·12시·14시 봉 마감 기준).
+
+### 4.5 GUI 시점 (v2.0 신설)
 
 - As a 자가설치 사용자, **README에 적힌 한 줄 명령(`uv run signal serve`)으로 GUI를 띄우고** localhost로 접속해 시작하고 싶다 — 터미널 친숙도가 낮아도 운영 가능하도록.
 - As a 자가설치 사용자, **설정 페이지에서 화이트리스트·BB/CCI 임계값·텔레그램 봇 토큰을 입력·저장**하고 즉시 반영되길 원한다 — 매번 `.env`를 직접 편집하지 않기 위해.
@@ -143,6 +155,26 @@
 ##### R-P0-14 — 데몬 제어
 - "Start"/"Stop" 토글 버튼. Stop은 진행 중 사이클 완료 후 종료(graceful)
 - 상태는 GUI에 실시간 반영 + 로그 기록
+
+#### 5.1.3 국내 주식 계층 (v2.1 신설)
+
+##### R-P0-16 — 국내 주식 스캔 루프 (`KrStockRunnerService`)
+- `signal serve` 실행 시 업비트 `RunnerService`와 asyncio TaskGroup으로 병렬 실행
+- 평일 09:00~15:30 KST 외에는 사이클 skip (API 호출 없음)
+- HOUR_1(60분봉): 시장 개장 시 매 정각 실행
+- HOUR_2(120분봉): 10시·12시·14시 정각에만 추가 실행
+
+##### R-P0-17 — KIS Open API 어댑터 (`KisApiAdapter`)
+- OAuth2 액세스 토큰 발급·갱신 (24h TTL, 만료 10분 전 선제 재발급)
+- 60분봉 페이지네이션 수집 (단일 호출 최대 30개, 최대 5페이지)
+- 120분봉 집계: 60분봉 2개 페어링 (`_resample_to_120m`)
+- Rate limit: `asyncio.Semaphore(5)` (KIS 초당 20건 대응)
+- read-only 조회 전용. 주문 엔드포인트 사용 금지
+
+##### R-P0-18 — 국내 주식 설정 항목
+- `kr_whitelist_symbols`: 종목코드 목록 (예: `["005930", "000660"]`)
+- `kis_app_key` / `kis_app_secret`: GUI 설정 페이지에서 입력, 마스킹 표시
+- `kis_is_paper`: 모의투자 / 실계좌 전환 토글
 
 ##### R-P0-15 — 보안 기본선
 - 바인드 주소 기본 `127.0.0.1`
@@ -222,6 +254,8 @@
 | [0007](docs/adr/0007-user-owned-bot-token.md) | 사용자 자가 텔레그램 봇 토큰 | accepted |
 | [0008](docs/adr/0008-settings-storage.md) | 설정 영속화 — `state/settings.json` 단일 source of truth | accepted |
 | [0009](docs/adr/0009-windows-atomic-write.md) | Windows에서 atomic write 우회 (플랫폼 분기) | accepted |
+| [0015](docs/adr/0015-korean-stock-market-support.md) | 국내 주식(KOSPI/KOSDAQ) 시장 지원 추가 | accepted |
+| [0016](docs/adr/0016-kis-api-korean-stock-datasource.md) | KIS Open API (한국투자증권) 국내 주식 데이터 소스 채택 | accepted |
 
 전체 인덱스와 작성 규칙은 [`docs/adr/README.md`](docs/adr/README.md) 참조.
 
