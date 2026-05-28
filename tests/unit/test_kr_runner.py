@@ -123,7 +123,7 @@ def _make_runner(
         settings = _make_settings()
 
     signal_log = MagicMock()
-    signal_log.append = MagicMock()
+    signal_log.append = AsyncMock()
 
     return KrStockRunnerService(
         settings=settings,
