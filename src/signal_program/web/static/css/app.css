@@ -1,125 +1,399 @@
 /* 업비트 시그널 프로그램 v2.0 — app.css (외부 CDN 없음) */
 *, *::before, *::after { box-sizing: border-box; }
 
+/* ── 디자인 토큰 (단일 블록) ─────────────────────────────────────────────── */
 :root {
-  --color-bg: #fafafa; --color-surface: #fff; --color-border: #e0e0e0;
-  --color-text: #222; --color-muted: #666;
-  --color-primary: #1565C0; --color-success: #2e7d32;
-  --color-danger: #c62828; --color-nav: #1565C0;
+  /* Colors */
+  --color-bg: #f4f6fa;
+  --color-surface: #ffffff;
+  --color-border: #dde3ec;
+  --color-text: #1c2939;
+  --color-muted: #5f7080;
+  --color-primary: #1565C0;
+  --color-primary-hover: #0d47a1;
+  --color-success: #2e7d32;
+  --color-danger: #c62828;
+  --color-nav: #1565C0;
+
+  /* Typography */
   --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-  --radius: 4px;
+
+  /* Shape */
+  --radius: 6px;
+  --radius-lg: 12px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+  --shadow-nav: 0 2px 8px rgba(0,0,0,0.15);
+
+  /* Animation */
+  --transition: 0.15s ease;
+
+  /* Signal card tokens */
+  --bg-primary: #fff;
+  --bg-secondary: #f7f5f0;
+  --bg-tertiary: #fff;
+  --bg-info: #e6f1fb;
+  --bg-success: #eaf3de;
+  --bg-warning: #faeeda;
+  --bg-purple: #eeedfe;
+  --border-tertiary: rgba(0,0,0,0.15);
+  --br-lg: 12px;
+  --br-md: 8px;
+  --text-primary: #1a1a1a;
+  --text-secondary: #5f5e5a;
+  --text-tertiary: #888780;
+  --text-danger: #a32d2d;
+  --text-info: #185fa5;
+  --text-success: #3b6d11;
+  --text-warning: #854f0b;
+  --text-purple: #534ab7;
 }
 
-body { font-family: var(--font); background: var(--color-bg); color: var(--color-text); margin: 0; padding: 0; font-size: 14px; transition: background 0.2s, color 0.2s; }
+/* ── 다크 모드 토큰 (단일 블록) ─────────────────────────────────────────── */
+[data-theme="dark"] {
+  --color-bg: #0f1621;
+  --color-surface: #192030;
+  --color-border: #2a3548;
+  --color-text: #dde8f5;
+  --color-muted: #7a94b0;
+  --color-primary: #5b9aff;
+  --color-primary-hover: #4488ee;
+  --color-success: #66bb6a;
+  --color-danger: #ef5350;
+  --color-nav: #0d1a2e;
+  --shadow-nav: 0 2px 8px rgba(0,0,0,0.4);
 
-.nav { background: var(--color-nav); color: #fff; display: flex; align-items: center; padding: 0 1.5rem; height: 48px; gap: 2rem; flex-wrap: wrap; }
+  --bg-primary: #192030;
+  --bg-secondary: #1e2a3a;
+  --bg-tertiary: #1c2535;
+  --bg-info: #0d2b4e;
+  --bg-success: #1a2e10;
+  --bg-warning: #2e1f0a;
+  --bg-purple: #1e1c3a;
+  --border-tertiary: rgba(255,255,255,0.12);
+  --text-primary: #dde8f5;
+  --text-secondary: #9aafca;
+  --text-tertiary: #6b849e;
+  --text-danger: #ef5350;
+  --text-info: #5b9aff;
+  --text-success: #66bb6a;
+  --text-warning: #ffb74d;
+  --text-purple: #9c8fe8;
+}
+
+/* ── OS 다크 모드 자동 follow (R_P1_8) ──────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg: #0f1621;
+    --color-surface: #192030;
+    --color-border: #2a3548;
+    --color-text: #dde8f5;
+    --color-muted: #7a94b0;
+    --color-primary: #5b9aff;
+    --color-primary-hover: #4488ee;
+    --color-success: #66bb6a;
+    --color-danger: #ef5350;
+    --color-nav: #0d1a2e;
+    --shadow-nav: 0 2px 8px rgba(0,0,0,0.4);
+    --bg-primary: #192030;
+    --bg-secondary: #1e2a3a;
+    --bg-tertiary: #1c2535;
+    --bg-info: #0d2b4e;
+    --bg-success: #1a2e10;
+    --bg-warning: #2e1f0a;
+    --bg-purple: #1e1c3a;
+    --border-tertiary: rgba(255,255,255,0.12);
+    --text-primary: #dde8f5;
+    --text-secondary: #9aafca;
+    --text-tertiary: #6b849e;
+    --text-danger: #ef5350;
+    --text-info: #5b9aff;
+    --text-success: #66bb6a;
+    --text-warning: #ffb74d;
+    --text-purple: #9c8fe8;
+  }
+}
+
+/* ── 기반 스타일 ──────────────────────────────────────────────────────────── */
+body {
+  font-family: var(--font);
+  background: var(--color-bg);
+  color: var(--color-text);
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+  transition: background var(--transition), color var(--transition);
+}
+
+/* ── 네비게이션 ──────────────────────────────────────────────────────────── */
+.nav {
+  background: var(--color-nav);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem;
+  height: 52px;
+  gap: 2rem;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow-nav);
+}
 .nav-daemon { margin-left: auto; display: flex; align-items: center; gap: 0.75rem; font-size: 0.85rem; }
 .daemon-indicator { color: rgba(255,255,255,0.85); }
 .daemon-indicator.running { color: #a5d6a7; }
 .daemon-indicator.stopped { color: rgba(255,255,255,0.6); }
-.btn-daemon { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: var(--radius); padding: 3px 10px; cursor: pointer; font-size: 0.8rem; white-space: nowrap; }
+.btn-daemon {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: var(--radius);
+  padding: 3px 10px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  transition: background var(--transition);
+}
 .btn-daemon:hover { background: rgba(255,255,255,0.25); }
 .btn-daemon:disabled { opacity: 0.5; cursor: default; }
 .nav-brand { font-weight: 700; }
-.nav-links { list-style: none; margin: 0; padding: 0; display: flex; gap: 1.5rem; }
-.nav-links a { color: rgba(255,255,255,0.85); text-decoration: none; }
-.nav-links a:hover, .nav-links a.active { color: #fff; text-decoration: underline; }
+.nav-links { list-style: none; margin: 0; padding: 0; display: flex; gap: 0.25rem; }
+.nav-links a {
+  color: rgba(255,255,255,0.82);
+  text-decoration: none;
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  transition: background var(--transition), color var(--transition);
+}
+.nav-links a:hover { color: #fff; background: rgba(255,255,255,0.12); }
+.nav-links a.active { color: #fff; background: rgba(255,255,255,0.18); font-weight: 600; }
 .nav-disabled { color: rgba(255,255,255,0.45); cursor: default; font-size: 0.85rem; }
 
-.main { padding: 1.5rem 2rem; max-width: 1200px; }
-.footer { padding: 1rem 2rem; color: var(--color-muted); font-size: 0.8rem; border-top: 1px solid var(--color-border); }
+/* 다크 모드 토글 버튼 */
+.btn-theme {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.3);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 3px 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background var(--transition);
+}
+.btn-theme:hover { background: rgba(255,255,255,0.15); }
 
+/* ── 레이아웃 ─────────────────────────────────────────────────────────────── */
+.main {
+  padding: 1.5rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.footer {
+  padding: 1rem 2rem;
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  border-top: 1px solid var(--color-border);
+}
+
+/* ── 페이지 헤더 ──────────────────────────────────────────────────────────── */
 .page-header { margin-bottom: 1.5rem; }
 .page-header h1 { margin: 0 0 0.5rem; font-size: 1.3rem; }
 .header-info { display: flex; gap: 1.5rem; font-size: 0.85rem; color: var(--color-muted); flex-wrap: wrap; align-items: center; }
 .header-info strong { color: var(--color-text); }
+.header-subtitle { font-size: 0.9rem; color: var(--color-muted); margin: 0.25rem 0 0; }
 
+/* ── 알림 박스 ────────────────────────────────────────────────────────────── */
 .info-box  { background: #e3f2fd; border: 1px solid #90caf9; border-radius: var(--radius); padding: 0.5rem 1rem; font-size: 0.85rem; margin-top: 0.5rem; }
 .error-box { background: #ffebee; border: 1px solid #ef9a9a; border-radius: var(--radius); padding: 0.5rem 1rem; font-size: 0.85rem; color: var(--color-danger); }
 .toast { position: fixed; top: 1rem; right: 1rem; background: var(--color-success); color: #fff; padding: 0.6rem 1.2rem; border-radius: var(--radius); z-index: 999; }
+[data-theme="dark"] .info-box { background: #0d2b4e; border-color: #1e5080; }
 
-/* ── R_P1_7: sticky 필터 패널 ──────────────────────────────────────────────── */
+/* ── 필터 바 (R_P1_7 sticky) ─────────────────────────────────────────────── */
 .filter-bar {
-  display: flex; gap: 1rem; flex-wrap: wrap; align-items: flex-end;
-  position: sticky; top: 0; z-index: 10;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  position: sticky;
+  top: 52px; /* nav height */
+  z-index: 10;
   background: var(--color-bg);
-  padding: 0.5rem 0; margin-bottom: 0.5rem;
+  padding: 0.5rem 0;
+  margin-bottom: 0.5rem;
   border-bottom: 1px solid var(--color-border);
 }
 .filter-bar label { display: flex; flex-direction: column; font-size: 0.8rem; color: var(--color-muted); gap: 2px; }
-.filter-bar select { border: 1px solid var(--color-border); border-radius: var(--radius); padding: 4px 8px; }
-/* 카운트다운 — filter-bar 오른쪽 끝 정렬 */
+.filter-bar select {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition: border-color var(--transition);
+}
+.filter-bar select:focus { border-color: var(--color-primary); outline: none; }
 .filter-bar .countdown { margin-left: auto; font-size: 0.8rem; color: var(--color-muted); white-space: nowrap; align-self: center; }
 
+/* ── 테이블 ───────────────────────────────────────────────────────────────── */
 .signal-table { border-collapse: collapse; width: 100%; }
 .signal-table th, .signal-table td { border: 1px solid var(--color-border); padding: 0.4rem 0.7rem; text-align: left; font-size: 0.85rem; }
-.signal-table thead th { background: #f0f0f0; font-weight: 600; white-space: nowrap; }
-.signal-table tbody tr:nth-child(even) { background: #f9f9f9; }
+.signal-table thead th {
+  background: var(--color-surface);
+  font-weight: 600;
+  white-space: nowrap;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--color-muted);
+  border-bottom: 2px solid var(--color-border);
+}
+.signal-table tbody tr:nth-child(even) { background: rgba(0,0,0,0.025); }
+.signal-table tbody tr:hover { background: rgba(21,101,192,0.04); }
 .empty-row { text-align: center; color: var(--color-muted); padding: 2rem; }
+[data-theme="dark"] .signal-table thead th { background: var(--color-surface); }
+[data-theme="dark"] .signal-table tbody tr:nth-child(even) { background: rgba(255,255,255,0.03); }
+[data-theme="dark"] .signal-table tbody tr:hover { background: rgba(91,154,255,0.06); }
 
-.settings-section { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.25rem; }
-.settings-section h2 { margin: 0 0 1rem; font-size: 1rem; color: var(--color-primary); }
+/* ── 설정 섹션 ────────────────────────────────────────────────────────────── */
+.settings-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+.settings-section h2 {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  color: var(--color-primary);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 0.6rem;
+}
+
+/* ── 탭 바 ────────────────────────────────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  margin-bottom: 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 3px;
+  width: fit-content;
+  box-shadow: var(--shadow-sm);
+}
+.tab-btn {
+  background: none;
+  border: none;
+  border-radius: calc(var(--radius) - 1px);
+  padding: 0.3rem 1.1rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  color: var(--color-muted);
+  transition: background var(--transition), color var(--transition), box-shadow var(--transition);
+}
+.tab-btn:hover { background: rgba(0,0,0,0.05); color: var(--color-text); }
+.tab-btn.tab-active {
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+[data-theme="dark"] .tab-btn:hover { background: rgba(255,255,255,0.07); }
+
+/* ── 폼 필드 ──────────────────────────────────────────────────────────────── */
 .field-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
 .field-row label { min-width: 200px; font-size: 0.875rem; }
-.field-row input[type="number"], .field-row input[type="text"], .field-row input[type="password"] { border: 1px solid var(--color-border); border-radius: var(--radius); padding: 4px 8px; font-size: 0.875rem; width: 160px; }
+.field-row input[type="number"],
+.field-row input[type="text"],
+.field-row input[type="password"] {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  font-size: 0.875rem;
+  width: 160px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+.field-row input[type="number"]:hover,
+.field-row input[type="text"]:hover,
+.field-row input[type="password"]:hover { border-color: #a0b8d8; }
+.field-row input[type="number"]:focus,
+.field-row input[type="text"]:focus,
+.field-row input[type="password"]:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(21,101,192,0.12);
+  outline: none;
+}
+[data-theme="dark"] .field-row input[type="number"]:hover,
+[data-theme="dark"] .field-row input[type="text"]:hover,
+[data-theme="dark"] .field-row input[type="password"]:hover { border-color: #4a6a90; }
+[data-theme="dark"] .field-row input[type="number"]:focus,
+[data-theme="dark"] .field-row input[type="text"]:focus,
+[data-theme="dark"] .field-row input[type="password"]:focus { box-shadow: 0 0 0 3px rgba(91,154,255,0.15); }
 .input-wide { width: 400px !important; }
 .field-row-check label { display: flex; align-items: center; gap: 0.5rem; min-width: unset; }
 .field-error { color: var(--color-danger); font-size: 0.8rem; }
 .help { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; background: #bbb; color: #fff; border-radius: 50%; font-size: 10px; cursor: help; flex-shrink: 0; }
 
+/* ── 버튼 ─────────────────────────────────────────────────────────────────── */
 .form-actions { display: flex; gap: 0.75rem; margin-top: 1rem; }
-.btn-primary { background: var(--color-primary); color: #fff; border: none; border-radius: var(--radius); padding: 0.5rem 1.25rem; cursor: pointer; font-size: 0.9rem; }
-.btn-primary:hover { background: #0d47a1; }
-.btn-secondary { background: #fff; color: var(--color-text); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 0.5rem 1.25rem; cursor: pointer; font-size: 0.9rem; }
-.btn-sm { background: #fff; border: 1px solid var(--color-border); border-radius: var(--radius); padding: 2px 10px; cursor: pointer; font-size: 0.8rem; }
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.5rem 1.25rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 4px rgba(21,101,192,0.25);
+  transition: background var(--transition), box-shadow var(--transition), transform var(--transition);
+}
+.btn-primary:hover {
+  background: var(--color-primary-hover);
+  box-shadow: 0 4px 8px rgba(21,101,192,0.3);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: translateY(0); }
+.btn-secondary {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.5rem 1.25rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background var(--transition), border-color var(--transition);
+}
+.btn-secondary:hover { background: var(--color-bg); border-color: #a0b8d8; }
+.btn-sm {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 2px 10px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--color-text);
+  transition: background var(--transition);
+}
+.btn-sm:hover { background: var(--color-bg); }
 
-/* 백테스트 페이지 */
+/* ── 백테스트 페이지 ──────────────────────────────────────────────────────── */
 .advanced-section summary { cursor: pointer; padding: 0.25rem 0; }
 .advanced-section summary:hover { opacity: 0.8; }
 .field-note { font-size: 0.8rem; color: var(--color-muted); margin-top: 0.5rem; }
-.header-subtitle { font-size: 0.9rem; color: var(--color-muted); margin: 0.25rem 0 0; }
 
-/* 잡 상태 색상 */
+/* ── 잡 상태 ─────────────────────────────────────────────────────────────── */
 .job-queued  { color: var(--color-muted); }
-.job-running { color: #1565C0; font-weight: 600; }
+.job-running { color: var(--color-primary); font-weight: 600; }
 .job-succeeded { color: var(--color-success); font-weight: 600; }
 .job-failed  { color: var(--color-danger); font-weight: 600; }
 .text-danger { color: var(--color-danger); font-size: 0.8rem; }
-
-/* ── 다크 모드 (R_P1_8) ───────────────────────────────────────────────────── */
-[data-theme="dark"] {
-  --color-bg: #121212; --color-surface: #1e1e1e; --color-border: #333;
-  --color-text: #e8e8e8; --color-muted: #999;
-  --color-primary: #5c9bff; --color-success: #66bb6a;
-  --color-danger: #ef5350; --color-nav: #0d2b5e;
-}
-[data-theme="dark"] .signal-table thead th { background: #2a2a2a; }
-[data-theme="dark"] .signal-table tbody tr:nth-child(even) { background: #1a1a1a; }
-[data-theme="dark"] .info-box { background: #0d2b4e; border-color: #1e5080; }
-[data-theme="dark"] .btn-secondary { background: #2a2a2a; border-color: #444; }
-[data-theme="dark"] .settings-section { background: var(--color-surface); }
-
-/* 다크 모드 토글 버튼 */
-.btn-theme { background: none; border: 1px solid rgba(255,255,255,0.3); color: #fff;
-  border-radius: var(--radius); padding: 3px 8px; cursor: pointer; font-size: 0.85rem; }
-.btn-theme:hover { background: rgba(255,255,255,0.15); }
-
-/* ── OS 다크 모드 자동 follow (R_P1_8) ──────────────────────────────────── */
-/* data-theme="light" 으로 고정한 경우에는 적용 안 함 */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --color-bg: #121212; --color-surface: #1e1e1e; --color-border: #333;
-    --color-text: #e8e8e8; --color-muted: #999;
-    --color-primary: #5c9bff; --color-success: #66bb6a;
-    --color-danger: #ef5350; --color-nav: #0d2b5e;
-    --bg-primary: #1e1e1e; --bg-secondary: #2a2a2a; --bg-tertiary: #242424;
-    --bg-info: #0d2b4e; --bg-success: #1a2e10; --bg-warning: #2e1f0a; --bg-purple: #1e1c3a;
-    --border-tertiary: rgba(255,255,255,0.12);
-    --text-primary: #e8e8e8; --text-secondary: #aaa; --text-tertiary: #777;
-    --text-danger: #ef5350; --text-info: #5c9bff;
-    --text-success: #66bb6a; --text-warning: #ffb74d; --text-purple: #9c8fe8;
-  }
-}
 
 /* ── 접근성 (R_P1_12) ────────────────────────────────────────────────────── */
 :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
@@ -133,8 +407,15 @@ body { font-family: var(--font); background: var(--color-bg); color: var(--color
 .v2-section.dimmed { opacity: 0.35; pointer-events: none; }
 
 /* ── 회고 라벨 버튼 (R_P1_10) ───────────────────────────────────────────── */
-.btn-feedback { background: none; border: 1px solid var(--color-border);
-  border-radius: var(--radius); padding: 1px 6px; cursor: pointer; font-size: 0.9rem; }
+.btn-feedback {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 1px 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: border-color var(--transition), background var(--transition);
+}
 .btn-feedback:hover { border-color: var(--color-primary); }
 .btn-feedback.selected { border-color: var(--color-primary); background: rgba(21,101,192,0.1); }
 
@@ -156,52 +437,11 @@ body { font-family: var(--font); background: var(--color-bg); color: var(--color
 /* ── 외부 링크 (R_P1_11) ────────────────────────────────────────────────── */
 .market-ext-link {
   color: var(--color-muted); font-size: 0.75rem; text-decoration: none;
-  opacity: 0.6; transition: opacity 0.15s; vertical-align: super;
+  opacity: 0.6; transition: opacity var(--transition); vertical-align: super;
 }
 .market-ext-link:hover { opacity: 1; color: var(--color-primary); }
 
 /* ── 시그널 카드 (R_P1_9) ─────────────────────────────────────────────────── */
-
-:root {
-  --bg-primary: #fff;
-  --bg-secondary: #f7f5f0;
-  --bg-tertiary: #fff;
-  --bg-info: #e6f1fb;
-  --bg-success: #eaf3de;
-  --bg-warning: #faeeda;
-  --bg-purple: #eeedfe;
-  --border-tertiary: rgba(0,0,0,0.15);
-  --br-lg: 12px;
-  --br-md: 8px;
-  --text-primary: #1a1a1a;
-  --text-secondary: #5f5e5a;
-  --text-tertiary: #888780;
-  --text-danger: #a32d2d;
-  --text-info: #185fa5;
-  --text-success: #3b6d11;
-  --text-warning: #854f0b;
-  --text-purple: #534ab7;
-}
-
-[data-theme="dark"] {
-  --bg-primary: #1e1e1e;
-  --bg-secondary: #2a2a2a;
-  --bg-tertiary: #242424;
-  --bg-info: #0d2b4e;
-  --bg-success: #1a2e10;
-  --bg-warning: #2e1f0a;
-  --bg-purple: #1e1c3a;
-  --border-tertiary: rgba(255,255,255,0.12);
-  --text-primary: #e8e8e8;
-  --text-secondary: #aaa;
-  --text-tertiary: #777;
-  --text-danger: #ef5350;
-  --text-info: #5c9bff;
-  --text-success: #66bb6a;
-  --text-warning: #ffb74d;
-  --text-purple: #9c8fe8;
-}
-
 .signal-cards-container {
   display: flex;
   flex-direction: column;
@@ -226,7 +466,9 @@ body { font-family: var(--font); background: var(--color-bg); color: var(--color
   gap: 16px;
   align-items: center;
   position: relative;
+  transition: box-shadow var(--transition);
 }
+.signal-card:hover { box-shadow: var(--shadow-md); }
 
 /* STRONG 강도: 좌측 3px 컬러 보더 (R_P1_9) */
 .signal-card.strength-strong.direction-buy  { border-left: 3px solid var(--text-danger, #a32d2d); }
@@ -336,6 +578,7 @@ body { font-family: var(--font); background: var(--color-bg); color: var(--color
   display: flex; align-items: center; justify-content: center;
   font-size: 14px;
   color: var(--text-secondary, #5f5e5a);
+  transition: background var(--transition);
 }
 .fb-btn:hover { background: var(--bg-secondary, #f7f5f0); }
 .fb-btn.selected.helpful   { background: var(--bg-success, #eaf3de); color: var(--text-success, #3b6d11);
@@ -385,12 +628,9 @@ body { font-family: var(--font); background: var(--color-bg); color: var(--color
   font-size: 11px;
   font-weight: 600;
 }
-
 .sticky-falserate.danger {
   background: rgba(163, 45, 45, 0.22);
-  color: var(--text-danger, #a32d2d);
 }
-
 .falserate-window {
   font-size: 11px;
   color: var(--text-tertiary, #888);

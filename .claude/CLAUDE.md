@@ -1,7 +1,7 @@
 # CLAUDE.md — 업비트 시그널 프로그램 (프로젝트 가이드)
 
 > 이 파일은 **이 프로젝트에 진입하는 Claude Code/Cowork**가 가장 먼저 읽는 진입점입니다.
-> 글로벌 코딩 가이드(`~/.claude/CLAUDE.md`)를 우선 따르고, 본 파일은 이 프로젝트만의 추가 규칙입니다.
+> 본 파일은 이 프로젝트만의 규칙입니다.
 
 ## 진입점 문서
 
@@ -71,14 +71,14 @@ DESIGN.md §14 참조. 총 16단계.
 |------|------|
 | PRD 작성 | `product-management:write-spec` |
 | ADR 작성 | `engineering:architecture` + `everything-claude-code:architecture-decision-records` |
-| 코드 품질 | 사용자 글로벌 `~/.claude/CLAUDE.md` (Clean Code 가이드) |
-| Hooks | `~/.claude/CLAUDE.md` §28.3 — `.claude/settings.json`에 적용 |
+| 코드 품질 | Clean Code 가이드 (글로벌) |
+| Hooks | `.claude/settings.json`에 적용 |
 
 추후 코드 작성 단계에서 추가로 활용 가능한 스킬은 [`PRD.md` 부록 B](../PRD.md) 참조.
 
 ## 첫 진입자를 위한 빠른 체크리스트
 
-- [ ] `~/.claude/CLAUDE.md` 글로벌 가이드를 읽음
+- [ ] 글로벌 코딩 가이드 숙지
 - [ ] PRD.md, DESIGN.md, docs/adr/README.md 훑어봄
 - [ ] 변경 금지 영역(이 문서 위쪽) 인지
 - [ ] `uv sync`로 의존성 동기화 (코드 단계 진입 시)

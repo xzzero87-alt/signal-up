@@ -69,6 +69,7 @@ def backtest_page(
         .render(
             active="backtest",
             whitelist_markets=list(settings_data.whitelist_markets),
+            kr_whitelist_symbols=list(settings_data.kr_whitelist_symbols),
         )
     )
     return HTMLResponse(content=html)

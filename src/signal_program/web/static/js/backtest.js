@@ -3,6 +3,17 @@
 
 const JOBS_POLL_INTERVAL_MS = 5_000;
 
+// 현재 활성 탭: 'coin' | 'kr'
+let _btActiveTab = 'coin';
+
+function switchBtTab(tab) {
+  _btActiveTab = tab;
+  document.getElementById('bt-coin-section').style.display = (tab === 'coin') ? '' : 'none';
+  document.getElementById('bt-kr-section').style.display   = (tab === 'kr')   ? '' : 'none';
+  document.getElementById('bt-tab-coin').classList.toggle('tab-active', tab === 'coin');
+  document.getElementById('bt-tab-kr').classList.toggle('tab-active', tab === 'kr');
+}
+
 // 기본 날짜 설정 (최근 16개월)
 (function initDates() {
   const to = new Date();
@@ -17,7 +28,15 @@ const JOBS_POLL_INTERVAL_MS = 5_000;
 
 async function submitJob(isWalkforward) {
   clearErrors();
-  const market      = document.getElementById('market').value;
+  // 활성 탭에 따라 마켓 선택
+  const marketEl = (_btActiveTab === 'kr')
+    ? document.getElementById('kr_market')
+    : document.getElementById('market');
+  const market = marketEl ? marketEl.value : '';
+  if (!market) {
+    showError('마켓/종목을 선택하세요.');
+    return;
+  }
   const period_from = document.getElementById('period_from').value;
   const period_to   = document.getElementById('period_to').value;
   const mode        = document.getElementById('mode').value;

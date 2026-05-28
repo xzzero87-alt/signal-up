@@ -9,17 +9,45 @@
 
 <div class="settings-section">
   <h2>기본 실행</h2>
+
+  <!-- 코인 / 국장 탭 -->
+  <div class="tab-bar" id="bt-tab-bar">
+    <button class="tab-btn tab-active" id="bt-tab-coin" onclick="switchBtTab('coin')">코인</button>
+    <button class="tab-btn" id="bt-tab-kr" onclick="switchBtTab('kr')">국장</button>
+  </div>
+
   <form id="backtest-form" onsubmit="return false;">
-    <div class="field-row">
-      <label for="market">코인 마켓</label>
-      <select id="market" name="market">
-        {% for m in whitelist_markets %}
-          <option value="{{ m }}">{{ m }}</option>
-        {% else %}
-          <option value="KRW-BTC">KRW-BTC</option>
-        {% endfor %}
-      </select>
+    <!-- 코인 마켓 선택 -->
+    <div id="bt-coin-section">
+      <div class="field-row">
+        <label for="market">코인 마켓</label>
+        <select id="market" name="market">
+          {% for m in whitelist_markets %}
+            <option value="{{ m }}">{{ m }}</option>
+          {% else %}
+            <option value="KRW-BTC">KRW-BTC</option>
+          {% endfor %}
+        </select>
+      </div>
     </div>
+
+    <!-- 국장 종목 선택 -->
+    <div id="bt-kr-section" style="display:none;">
+      <div class="field-row">
+        <label for="kr_market">국장 종목</label>
+        <select id="kr_market" name="kr_market">
+          {% for s in kr_whitelist_symbols %}
+            <option value="{{ s }}">{{ s }}</option>
+          {% else %}
+            <option value="" disabled>종목 없음 — 설정 페이지에서 추가하세요</option>
+          {% endfor %}
+        </select>
+      </div>
+      <p class="field-note" style="margin-top:0.25rem;">
+        종목 추가는 <a href="/settings">설정 페이지</a> &gt; 국장 섹션에서 하세요.
+      </p>
+    </div>
+
     <div class="field-row">
       <label for="period_from">시작일</label>
       <input type="date" id="period_from" name="period_from" value="">

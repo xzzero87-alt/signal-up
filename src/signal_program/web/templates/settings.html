@@ -2,7 +2,10 @@
 {% block title %}설정{% endblock %}
 
 {% block content %}
-<h1>설정</h1>
+<div class="page-header">
+  <h1>설정</h1>
+  <p class="header-subtitle">전략 파라미터·텔레그램·국장 API 설정을 관리합니다.</p>
+</div>
 <div id="save-toast" class="toast" style="display:none"></div>
 <div id="form-errors" class="error-box" style="display:none"></div>
 
@@ -120,6 +123,61 @@
         <span class="field-error" id="err-{{ fname }}"></span>
       </div>
       {% endfor %}
+    </div>
+  </section>
+
+  <section class="settings-section">
+    <h2>국장 — KIS Open API (ADR-0016)</h2>
+    <div class="field-row field-row-check">
+      <label>
+        <input id="kr_enabled" name="kr_enabled" type="checkbox"
+               {% if settings.kr_enabled %}checked{% endif %}>
+        국장 기능 활성화
+        <span class="help" title="kr_enabled — KIS App Key/Secret 입력 필수">?</span>
+      </label>
+      <span class="field-error" id="err-kr_enabled"></span>
+    </div>
+    <div class="field-row">
+      <label for="kis_app_key">KIS App Key</label>
+      <input id="kis_app_key" name="kis_app_key" type="password"
+             placeholder="{{ settings.kis_app_key_masked or '비워두면 기존 값 유지' }}" value="">
+      <span class="field-error" id="err-kis_app_key"></span>
+    </div>
+    <div class="field-row">
+      <label for="kis_app_secret">KIS App Secret</label>
+      <input id="kis_app_secret" name="kis_app_secret" type="password"
+             placeholder="{{ settings.kis_app_secret_masked or '비워두면 기존 값 유지' }}" value="">
+      <span class="field-error" id="err-kis_app_secret"></span>
+    </div>
+    <div class="field-row field-row-check">
+      <label>
+        <input id="kis_is_paper" name="kis_is_paper" type="checkbox"
+               {% if settings.kis_is_paper %}checked{% endif %}>
+        모의투자 서버 사용 (kis_is_paper)
+        <span class="help" title="체크=모의투자 / 미체크=실전투자 서버 (캔들 조회 전용)">?</span>
+      </label>
+      <span class="field-error" id="err-kis_is_paper"></span>
+    </div>
+    <div class="field-row">
+      <label for="kr_whitelist_symbols">종목 화이트리스트
+        <span class="help" title="쉼표 구분 종목코드. 예: 005930,035720,000660">?</span>
+      </label>
+      <input id="kr_whitelist_symbols" name="kr_whitelist_symbols" type="text"
+             value="{{ settings.kr_whitelist_symbols | join(',') }}"
+             data-field="kr_whitelist_symbols" class="input-wide">
+      <span class="field-error" id="err-kr_whitelist_symbols"></span>
+    </div>
+    <div class="field-row">
+      <label for="kr_cooldown_hours_60m">쿨다운 60분봉 (시간)</label>
+      <input id="kr_cooldown_hours_60m" name="kr_cooldown_hours_60m" type="number"
+             value="{{ settings.kr_cooldown_hours_60m }}" data-field="kr_cooldown_hours_60m">
+      <span class="field-error" id="err-kr_cooldown_hours_60m"></span>
+    </div>
+    <div class="field-row">
+      <label for="kr_cooldown_hours_120m">쿨다운 120분봉 (시간)</label>
+      <input id="kr_cooldown_hours_120m" name="kr_cooldown_hours_120m" type="number"
+             value="{{ settings.kr_cooldown_hours_120m }}" data-field="kr_cooldown_hours_120m">
+      <span class="field-error" id="err-kr_cooldown_hours_120m"></span>
     </div>
   </section>
 

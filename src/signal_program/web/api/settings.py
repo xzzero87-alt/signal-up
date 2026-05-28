@@ -41,6 +41,14 @@ def _to_view(settings: object) -> SettingsView:
         sell_threshold=s.sell_threshold,
         sto_oversold=s.sto_oversold,
         sto_overbought=s.sto_overbought,
+        # KIS / 국장 (ADR-0016)
+        kis_app_key_masked=mask_secret_value(s.kis_app_key),
+        kis_app_secret_masked=mask_secret_value(s.kis_app_secret),
+        kis_is_paper=s.kis_is_paper,
+        kr_enabled=s.kr_enabled,
+        kr_whitelist_symbols=tuple(s.kr_whitelist_symbols),
+        kr_cooldown_hours_60m=s.kr_cooldown_hours_60m,
+        kr_cooldown_hours_120m=s.kr_cooldown_hours_120m,
     )
 
 

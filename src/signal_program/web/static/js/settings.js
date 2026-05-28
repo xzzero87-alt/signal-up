@@ -5,6 +5,8 @@
 const STRING_FIELDS = new Set([
   'telegram_bot_token',
   'telegram_chat_id',
+  'kis_app_key',   // KIS (ADR-0016)
+  'kis_app_secret',
 ]);
 
 // 정수 필드
@@ -12,7 +14,11 @@ const INT_FIELDS = new Set([
   'bb_period', 'cci_period', 'cci_threshold_normal', 'cci_threshold_strong',
   'squeeze_lookback', 'cooldown_hours',
   'sto_oversold', 'sto_overbought',          // V2 (ADR-0010)
+  'kr_cooldown_hours_60m', 'kr_cooldown_hours_120m', // KIS (ADR-0016)
 ]);
+
+// 체크박스 필드 집합 (미체크 시 false 명시 전달)
+const CHECKBOX_FIELDS = new Set(['dry_run', 'kr_enabled', 'kis_is_paper']);
 
 // 부동소수 필드
 const FLOAT_FIELDS = new Set([
@@ -30,13 +36,13 @@ async function saveSettings(event) {
   const body = {};
 
   for (const [key, val] of fd.entries()) {
-    // whitelist_markets: 빈 입력도 backend에 명시적으로 전달 (검증은 backend v2.0.2가 담당)
-    if (key === 'whitelist_markets') {
+    // 리스트 필드: 빈 입력도 backend에 명시적으로 전달
+    if (key === 'whitelist_markets' || key === 'kr_whitelist_symbols') {
       body[key] = (val ?? '').split(',').map(v => v.trim()).filter(Boolean);
       continue;
     }
     if (val === '' || val == null) continue;
-    if (key === 'dry_run') {
+    if (CHECKBOX_FIELDS.has(key)) {
       body[key] = true;
     } else if (STRING_FIELDS.has(key)) {
       body[key] = val;
@@ -50,7 +56,10 @@ async function saveSettings(event) {
       body[key] = val;
     }
   }
-  if (!body.dry_run) body.dry_run = false;
+  // 미체크 체크박스는 FormData에 포함되지 않으므로 명시적으로 false 설정
+  for (const cbField of CHECKBOX_FIELDS) {
+    if (!(cbField in body)) body[cbField] = false;
+  }
 
   try {
     const res = await fetch('/api/settings', {
@@ -89,8 +98,10 @@ function refreshForm(settings) {
     const el = document.getElementById(key);
     if (!el) continue;
     if (el.type === 'checkbox') el.checked = !!val;
-    else if (key === 'whitelist_markets') el.value = Array.isArray(val) ? val.join(',') : val;
-    else if (key !== 'telegram_bot_token') el.value = val;
+    else if (key === 'whitelist_markets' || key === 'kr_whitelist_symbols')
+      el.value = Array.isArray(val) ? val.join(',') : val;
+    else if (key !== 'telegram_bot_token' && key !== 'kis_app_key_masked' && key !== 'kis_app_secret_masked')
+      el.value = val;
   }
 }
 
@@ -106,6 +117,9 @@ function resetToDefaults() {
     bb_weight: 0.20, cci_weight: 0.20, sto_weight: 0.20, obv_weight: 0.40,
     buy_threshold: 0.65, sell_threshold: 0.65,
     sto_oversold: 15, sto_overbought: 85,
+    // KIS 기본값 (ADR-0016)
+    kr_enabled: false, kis_is_paper: true,
+    kr_cooldown_hours_60m: 2, kr_cooldown_hours_120m: 4,
   };
   for (const [key, val] of Object.entries(defaults)) {
     const radios = document.querySelectorAll(`input[type="radio"][name="${key}"]`);

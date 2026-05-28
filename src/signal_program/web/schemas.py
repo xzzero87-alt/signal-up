@@ -46,6 +46,14 @@ class SettingsView(BaseModel):
     sell_threshold: float = Field(default=0.65, ge=0.0, le=1.0)
     sto_oversold: int = Field(default=15, ge=1, le=50)
     sto_overbought: int = Field(default=85, ge=50, le=99)
+    # KIS / 국장 설정 (ADR-0016)
+    kis_app_key_masked: str = ""
+    kis_app_secret_masked: str = ""
+    kis_is_paper: bool = True
+    kr_enabled: bool = False
+    kr_whitelist_symbols: tuple[str, ...] = ()
+    kr_cooldown_hours_60m: int = Field(default=2, ge=0, le=72)
+    kr_cooldown_hours_120m: int = Field(default=4, ge=0, le=72)
 
 
 class SettingsUpdate(BaseModel):
@@ -77,6 +85,14 @@ class SettingsUpdate(BaseModel):
     sell_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
     sto_oversold: int | None = Field(default=None, ge=1, le=50)
     sto_overbought: int | None = Field(default=None, ge=50, le=99)
+    # KIS / 국장 설정 (ADR-0016)
+    kis_app_key: str | None = None
+    kis_app_secret: str | None = None
+    kis_is_paper: bool | None = None
+    kr_enabled: bool | None = None
+    kr_whitelist_symbols: list[str] | None = None
+    kr_cooldown_hours_60m: int | None = Field(default=None, ge=0, le=72)
+    kr_cooldown_hours_120m: int | None = Field(default=None, ge=0, le=72)
 
 
 class HealthResponse(BaseModel):
