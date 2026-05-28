@@ -12,7 +12,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Protocol
+from typing import Any, Protocol
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -273,7 +273,7 @@ class KisApiAdapter:
             )
             return []
 
-        output2: list[dict] = data.get("output2") or []
+        output2: list[dict[str, Any]] = data.get("output2") or []
         return self._parse_candles(symbol, output2)
 
     # ------------------------------------------------------------------ #
@@ -281,7 +281,7 @@ class KisApiAdapter:
     # ------------------------------------------------------------------ #
 
     @staticmethod
-    def _parse_candles(symbol: str, output2: list[dict]) -> list[Candle]:
+    def _parse_candles(symbol: str, output2: list[dict[str, Any]]) -> list[Candle]:
         """KIS output2 항목 목록을 Candle 목록으로 변환한다.
 
         KIS는 데이터를 newest → oldest 순서로 반환한다.

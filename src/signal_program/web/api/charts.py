@@ -7,9 +7,12 @@ GET /api/charts/{filename}  → PNG FileResponse | 404
 from __future__ import annotations
 
 import re
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException, Request
+
+if TYPE_CHECKING:
+    from pathlib import Path
 from fastapi.responses import FileResponse
 
 router = APIRouter(tags=["charts"])

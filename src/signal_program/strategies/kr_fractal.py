@@ -3,16 +3,12 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
 import pandas as pd
 
 from signal_program.enums import SignalDirection, SignalStrength, StrategyMode, Timeframe
 from signal_program.models import IndicatorSnapshot, Signal
-
-if TYPE_CHECKING:
-    import numpy as np
 
 _KST = ZoneInfo("Asia/Seoul")
 _90M = timedelta(minutes=90)
@@ -25,9 +21,7 @@ def _infer_timeframe(candles: pd.DataFrame) -> Timeframe:
     return Timeframe.HOUR_2 if delta >= _90M else Timeframe.HOUR_1
 
 
-def _find_fractals(
-    df: pd.DataFrame, lookback: int
-) -> tuple[float | None, int, float | None, int]:
+def _find_fractals(df: pd.DataFrame, lookback: int) -> tuple[float | None, int, float | None, int]:
     """최근 확정 Williams Fractal (up/down) 레벨과 봉 거리(age)를 반환한다.
 
     확정 기준: n번째 봉의 프랙탈은 n+2 봉 마감 후 확정 → 최근 확정 인덱스 = iloc[-3].
@@ -96,9 +90,7 @@ class KrFractalStrategy:
         if volume_ratio < self.fractal_volume_threshold:
             return []
 
-        up_level, up_age, down_level, down_age = _find_fractals(
-            candles, self.fractal_lookback
-        )
+        up_level, up_age, down_level, down_age = _find_fractals(candles, self.fractal_lookback)
 
         raw_ts = candles["opened_at"].iloc[-1]
         dt = raw_ts.to_pydatetime() if isinstance(raw_ts, pd.Timestamp) else raw_ts

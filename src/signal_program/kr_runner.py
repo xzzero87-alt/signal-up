@@ -4,23 +4,28 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, time, timedelta
-from pathlib import Path
+from typing import TYPE_CHECKING
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
-import pandas as pd
 import structlog
 from pydantic import BaseModel, ConfigDict
 
-from signal_program.config import Settings
-from signal_program.enums import Timeframe
-from signal_program.exchanges.kis_api import KoreanStockExchange
-from signal_program.notifiers.base import Notifier
 from signal_program.charting.snapshot import generate_snapshot
+from signal_program.enums import Timeframe
 from signal_program.runner import candles_to_df
-from signal_program.state.signal_log import SignalLog
 from signal_program.state.cooldown import CooldownKey, CooldownStore
-from signal_program.strategies.base import Strategy
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    import pandas as pd
+
+    from signal_program.config import Settings
+    from signal_program.exchanges.kis_api import KoreanStockExchange
+    from signal_program.notifiers.base import Notifier
+    from signal_program.state.signal_log import SignalLog
+    from signal_program.strategies.base import Strategy
 
 log = structlog.get_logger(__name__)
 
@@ -182,7 +187,7 @@ class KrStockRunnerService:
             try:
                 await self._notifier.send_signal(signal, chart_path)
                 cooldown.mark_sent(key, now)
-                self._signal_log.append(signal)
+                await self._signal_log.append(signal, sent_status="sent", sent_at=now)
                 sent += 1
                 log.info(
                     "kr_signal_sent",
@@ -220,9 +225,7 @@ class KrStockRunnerService:
             스캔 결과 요약 KrCycleReport.
         """
         started_at = now
-        cooldown = (
-            self._cooldown_60m if timeframe == Timeframe.HOUR_1 else self._cooldown_120m
-        )
+        cooldown = self._cooldown_60m if timeframe == Timeframe.HOUR_1 else self._cooldown_120m
 
         symbols = self._settings.kr_whitelist_symbols or []
         if not symbols:
@@ -249,8 +252,7 @@ class KrStockRunnerService:
         )
 
         tasks = [
-            self._process_symbol(symbol, timeframe, cooldown, now, cycle_id)
-            for symbol in symbols
+            self._process_symbol(symbol, timeframe, cooldown, now, cycle_id) for symbol in symbols
         ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -258,8 +260,8 @@ class KrStockRunnerService:
         total_sent = 0
         all_failures: list[str] = []
 
-        for symbol, result in zip(symbols, results):
-            if isinstance(result, Exception):
+        for symbol, result in zip(symbols, results, strict=False):
+            if isinstance(result, BaseException):
                 log.exception(
                     "kr_symbol_task_failed",
                     cycle_id=cycle_id,
@@ -307,9 +309,7 @@ class KrStockRunnerService:
         log.info("kr_runner_started")
         while True:
             now = datetime.now(_KST)
-            next_run = _next_hour_top(now) + timedelta(
-                seconds=self._settings.cycle_delay_seconds
-            )
+            next_run = _next_hour_top(now) + timedelta(seconds=self._settings.cycle_delay_seconds)
             sleep_sec = (next_run - now).total_seconds()
             if sleep_sec > 0:
                 await asyncio.sleep(sleep_sec)

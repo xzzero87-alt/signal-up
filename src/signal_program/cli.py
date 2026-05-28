@@ -396,6 +396,7 @@ async def _run_live_coro(settings: Settings) -> None:
             from signal_program.exchanges.kis_api import KisApiAdapter
             from signal_program.kr_runner import KrStockRunnerService
 
+            kr_strategy: Strategy
             if settings.kr_strategy == "fractal":
                 from signal_program.strategies.kr_fractal import KrFractalStrategy
 

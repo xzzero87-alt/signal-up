@@ -57,7 +57,7 @@ def kr_signals(
         if not _is_kr_signal(record):
             continue
         if timeframe is not None:
-            sig: dict[str, Any] = record.get("signal", {})  # type: ignore[union-attr]
+            sig: dict[str, Any] = record.get("signal", {})  # type: ignore[attr-defined]
             if str(sig.get("timeframe", "")) != timeframe:
                 continue
         result.append(record)

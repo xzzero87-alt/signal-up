@@ -6,6 +6,7 @@ M7 범위: sendMessage(텍스트)만. sendPhoto(차트) 및 fallback은 M8에서
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from typing import TYPE_CHECKING
 
 import httpx
@@ -190,14 +191,12 @@ class TelegramNotifier:
             chat_id=self._chat_id,
         )
         if self._failure_log is not None:
-            try:
-                self._failure_log.append(  # type: ignore[union-attr]
+            with contextlib.suppress(Exception):
+                self._failure_log.append(  # type: ignore[attr-defined]
                     market=getattr(self, "_current_market", ""),
                     error="send_exhausted",
                     retries=self._max_retries,
                 )
-            except Exception:  # noqa: BLE001
-                pass
 
     async def _send_photo(self, chart_path: Path, signal: Signal) -> None:
         """sendPhoto (multipart). 실패 시 sendMessage fallback."""
