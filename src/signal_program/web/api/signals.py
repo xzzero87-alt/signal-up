@@ -76,6 +76,10 @@ def signal_cards(
         except (ValueError, TypeError):
             continue
 
+        safe_market = market_val.replace("-", "_")
+        ts_str = triggered_at_dt.strftime("%Y%m%dT%H%M")
+        chart_url = f"/api/charts/{safe_market}_{ts_str}.png"
+
         entries.append(
             SignalCardEntry(
                 signal_id=signal_id,
@@ -90,6 +94,7 @@ def signal_cards(
                 volume_ratio=float(indicators.get("volume_ratio", 0.0)),
                 sparkline_prices=None,
                 feedback=feedback_map.get(signal_id),
+                chart_url=chart_url,
             )
         )
     return entries

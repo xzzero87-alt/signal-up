@@ -13,6 +13,7 @@
     <li><a href="/" {% if active == 'dashboard' %}class="active"{% endif %}>대시보드</a></li>
     <li><a href="/settings" {% if active == 'settings' %}class="active"{% endif %}>설정</a></li>
     <li><a href="/backtest" {% if active == 'backtest' %}class="active"{% endif %}>백테스트</a></li>
+    <li><a href="/failures" {% if active == 'failures' %}class="active"{% endif %}>알림 실패</a></li>
   </ul>
   <div class="nav-daemon" id="nav-daemon">
     <span id="nav-daemon-status" class="daemon-indicator">데몬: <strong>확인 중</strong></span>

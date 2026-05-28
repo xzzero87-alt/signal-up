@@ -18,8 +18,10 @@ from fastapi.staticfiles import StaticFiles
 from signal_program.config import Settings
 from signal_program.web.api import (
     backtest,
+    charts,
     daemon,
     dashboard,
+    failures,
     feedback,
     health,
     kr_dashboard,
@@ -80,6 +82,7 @@ def create_app(
         )
         await manager.start()
         app.state.job_manager = manager
+        app.state.charts_dir = (_env.charts_dir).resolve()
 
         # RunnerHandle: 외부 주입 또는 기본 stub
         _handle: _RH = runner_handle or _RH(runner_factory=_noop_runner)
@@ -108,11 +111,13 @@ def create_app(
     app.include_router(health.router)
     app.include_router(settings.router)
     app.include_router(signals.router)
+    app.include_router(charts.router)
     app.include_router(backtest.router)
     app.include_router(daemon.router)
     app.include_router(dashboard.router)
     app.include_router(kr_dashboard.router)
     app.include_router(feedback.router)
+    app.include_router(failures.router)
 
     # 정적 파일
     if _STATIC_DIR.exists():

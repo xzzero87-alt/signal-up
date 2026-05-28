@@ -119,6 +119,7 @@ class TelegramNotifier:
         max_retries: int = 3,
         http_client: httpx.AsyncClient | None = None,
         _retry_wait_multiplier: float = 1.0,
+        failure_log: object | None = None,
     ) -> None:
         self._token = bot_token
         self._chat_id = chat_id
@@ -127,6 +128,7 @@ class TelegramNotifier:
         self._max_retries = max_retries
         self._client = http_client
         self._retry_mult = _retry_wait_multiplier
+        self._failure_log = failure_log
 
     async def send_signal(self, signal: Signal, chart_path: Path | None = None) -> None:
         """시그널 텔레그램 전송. 실패 시 예외 없이 로깅(§5.5)."""
@@ -138,6 +140,7 @@ class TelegramNotifier:
             )
             return
 
+        self._current_market = signal.market
         if chart_path is not None and chart_path.exists():
             await self._send_photo(chart_path, signal)
         else:
@@ -186,6 +189,15 @@ class TelegramNotifier:
             max_retries=self._max_retries,
             chat_id=self._chat_id,
         )
+        if self._failure_log is not None:
+            try:
+                self._failure_log.append(  # type: ignore[union-attr]
+                    market=getattr(self, "_current_market", ""),
+                    error="send_exhausted",
+                    retries=self._max_retries,
+                )
+            except Exception:  # noqa: BLE001
+                pass
 
     async def _send_photo(self, chart_path: Path, signal: Signal) -> None:
         """sendPhoto (multipart). 실패 시 sendMessage fallback."""

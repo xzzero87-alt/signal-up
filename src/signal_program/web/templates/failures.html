@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}알림 실패 이력{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>알림 송출 실패 이력</h1>
+  <p class="header-subtitle">텔레그램 알림 전송에 실패한 내역입니다. 최근 50건.</p>
+</div>
+
+<div class="settings-section">
+  <table class="signal-table" id="failures-table">
+    <thead>
+      <tr>
+        <th>실패 시각</th>
+        <th>마켓</th>
+        <th>오류 유형</th>
+        <th>재시도 횟수</th>
+      </tr>
+    </thead>
+    <tbody id="failures-tbody">
+      <tr><td colspan="4" class="empty-row">로딩 중...</td></tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+'use strict';
+async function loadFailures() {
+  const tbody = document.getElementById('failures-tbody');
+  try {
+    const res = await fetch('/api/notifications/failures?limit=50');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const items = await res.json();
+    if (!items || items.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-row">실패 이력 없음</td></tr>';
+      return;
+    }
+    const esc = s => String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    tbody.innerHTML = items.map(f => `<tr>
+      <td>${new Date(f.failed_at).toLocaleString('ko-KR')}</td>
+      <td>${esc(f.market)}</td>
+      <td>${esc(f.error)}</td>
+      <td>${esc(f.retries)}</td>
+    </tr>`).join('');
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="4" class="empty-row">오류: ${e.message}</td></tr>`;
+  }
+}
+loadFailures();
+</script>
+{% endblock %}

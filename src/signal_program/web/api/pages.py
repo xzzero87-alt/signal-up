@@ -57,6 +57,14 @@ def settings_page(
     return HTMLResponse(content=html)
 
 
+@router.get("/failures", response_class=HTMLResponse)
+def failures_page(
+    request: Request,  # noqa: ARG001
+) -> HTMLResponse:
+    html = _env().get_template("failures.html").render(active="failures")
+    return HTMLResponse(content=html)
+
+
 @router.get("/backtest", response_class=HTMLResponse)
 def backtest_page(
     request: Request,  # noqa: ARG001

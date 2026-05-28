@@ -352,6 +352,7 @@ async def _run_live_coro(settings: Settings) -> None:
     from signal_program.notifiers.telegram import TelegramNotifier
     from signal_program.runner import RunnerService
     from signal_program.state.cooldown import CooldownStore
+    from signal_program.state.notification_log import NotificationFailureLog
     from signal_program.state.signal_log import SignalLog
     from signal_program.strategies.bb_cci import BbCciStrategy
 
@@ -371,6 +372,7 @@ async def _run_live_coro(settings: Settings) -> None:
         cooldown=timedelta(hours=settings.cooldown_hours),
     )
     signal_log = SignalLog(path=settings.signals_log_path)
+    failure_log = NotificationFailureLog(Path("state/notification_failures.jsonl"))
 
     async with httpx.AsyncClient(base_url="https://api.upbit.com", timeout=10.0) as http:
         exchange = UpbitClient(_client=http)
@@ -378,6 +380,7 @@ async def _run_live_coro(settings: Settings) -> None:
             bot_token=SecretStr(settings.telegram_bot_token),
             chat_id=settings.telegram_chat_id,
             dry_run=settings.dry_run,
+            failure_log=failure_log,
         )
         runner = RunnerService(
             settings=settings,

@@ -1,10 +1,13 @@
-// backtest.js — 잡 제출 + 폴링(5초) + iframe 결과 표시 (Vanilla JS)
+// backtest.js — 잡 제출 + 폴링(5초) + iframe 결과 표시 + 비교 보기 (Vanilla JS)
 'use strict';
 
 const JOBS_POLL_INTERVAL_MS = 5_000;
 
 // 현재 활성 탭: 'coin' | 'kr'
 let _btActiveTab = 'coin';
+
+// 비교 선택 (max 2): job_id → job object
+const _selectedForCompare = new Map();
 
 function switchBtTab(tab) {
   _btActiveTab = tab;
@@ -103,7 +106,7 @@ function renderJobsTable(jobs) {
   const tbody = document.getElementById('jobs-tbody');
   if (!tbody) return;
   if (!jobs || jobs.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-row">잡 없음</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="empty-row">잡 없음</td></tr>';
     return;
   }
 
@@ -127,7 +130,15 @@ function renderJobsTable(jobs) {
           ? `<span title="${esc(j.error_message)}">오류</span>`
           : '-');
 
+    const canCompare = j.status === 'succeeded';
+    const checked = _selectedForCompare.has(j.job_id) ? 'checked' : '';
+    const cbDisabled = (!canCompare && !_selectedForCompare.has(j.job_id)) ? 'disabled' : '';
+    const cb = canCompare
+      ? `<input type="checkbox" ${checked} onchange="toggleCompare('${j.job_id}', this.checked)" aria-label="비교 선택">`
+      : '';
+
     return `<tr>
+      <td>${cb}</td>
       <td>${submitted}</td>
       <td>${esc(j.kind)}</td>
       <td>${esc(j.market)}</td>
@@ -137,6 +148,57 @@ function renderJobsTable(jobs) {
       <td>${resultBtn}</td>
     </tr>`;
   }).join('');
+}
+
+function toggleCompare(jobId, checked) {
+  if (checked) {
+    if (_selectedForCompare.size >= 2) {
+      const firstKey = _selectedForCompare.keys().next().value;
+      _selectedForCompare.delete(firstKey);
+    }
+    _selectedForCompare.set(jobId, jobId);
+  } else {
+    _selectedForCompare.delete(jobId);
+  }
+  updateCompareToolbar();
+}
+
+function updateCompareToolbar() {
+  const countEl = document.getElementById('compare-count');
+  const btn = document.getElementById('compare-btn');
+  const n = _selectedForCompare.size;
+  if (countEl) countEl.textContent = `${n}개 선택`;
+  if (btn) btn.disabled = n < 2;
+}
+
+function clearCompareSelection() {
+  _selectedForCompare.clear();
+  updateCompareToolbar();
+  document.getElementById('compare-section').style.display = 'none';
+  refreshJobs();
+}
+
+function compareJobs() {
+  const ids = [..._selectedForCompare.keys()];
+  if (ids.length < 2) return;
+  const [idA, idB] = ids;
+
+  const faA = document.getElementById('compare-frame-a');
+  const faB = document.getElementById('compare-frame-b');
+  const laA = document.getElementById('compare-label-a');
+  const laB = document.getElementById('compare-label-b');
+
+  if (faA) faA.src = `/api/backtest/jobs/${idA}/report`;
+  if (faB) faB.src = `/api/backtest/jobs/${idB}/report`;
+  if (laA) laA.textContent = `잡 ${idA.slice(0, 8)}…`;
+  if (laB) laB.textContent = `잡 ${idB.slice(0, 8)}…`;
+
+  const section = document.getElementById('compare-section');
+  if (section) {
+    section.style.display = '';
+    section.scrollIntoView({ behavior: 'smooth' });
+  }
+  document.getElementById('result-section').style.display = 'none';
 }
 
 function showResult(jobId) {

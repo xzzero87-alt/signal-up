@@ -173,6 +173,7 @@ class SignalCardEntry(BaseModel):
     volume_ratio: float
     sparkline_prices: tuple[float, ...] | None = None  # 최대 14개 close 가격
     feedback: str | None = None  # "helpful" | "confusing" | "bad" | None
+    chart_url: str | None = None  # BB+CCI 스냅샷 PNG URL (R-P1-7)
 
 
 class KrStockStateView(BaseModel):

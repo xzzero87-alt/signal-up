@@ -167,6 +167,7 @@ function buildSignalCard(entry) {
       <div class="signal-score">${scoreText}</div>
     </div>
     ${buildSparklineSvg(entry.sparkline_prices)}
+    ${entry.chart_url ? `<div class="mini-chart-wrap"><img class="mini-chart-img" src="${entry.chart_url}" alt="BB+CCI 차트" loading="lazy" onerror="this.parentElement.style.display='none'"></div>` : ''}
     <div class="score-bars">
       ${buildScoreBar('BB', bbScore)}
       ${buildScoreBar('CCI', cciScore)}
