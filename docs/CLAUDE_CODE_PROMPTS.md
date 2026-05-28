@@ -499,6 +499,149 @@ v1 코어(마일스톤 1~12) 완료 상태에서 v2.0 GUI 백엔드 골격을 �
 
 ---
 
+## 마일스톤 17 — 국장 Williams Fractal 전략 (`KrFractalStrategy`)
+
+> **선행 조건:** 마일스톤 1~16 완료 상태. `kr_runner.py`·`kis_api.py` 이미 존재.
+> **설계 근거:** `docs/adr/0018-kr-fractal-strategy.md` 반드시 먼저 읽기.
+
+```
+docs/adr/0018-kr-fractal-strategy.md를 먼저 읽고, 아래 요구사항을 구현해줘.
+
+## 변경 파일 (5개, 기존 코드 최소 변경 원칙)
+
+### 1. src/signal_program/enums.py
+StrategyMode에 값 1개 추가. 기존 값 변경 금지.
+
+  FRACTAL_BREAKOUT = "D"   # KrFractalStrategy 전용
+
+### 2. src/signal_program/models.py
+IndicatorSnapshot에 선택적 필드 4개 추가. 기존 필드 변경 금지.
+
+  fractal_up: float | None = None       # 가장 최근 확정 Up Fractal 고점 레벨
+  fractal_down: float | None = None     # 가장 최근 확정 Down Fractal 저점 레벨
+  fractal_up_age: int | None = None     # Up Fractal 이후 경과 봉 수
+  fractal_down_age: int | None = None   # Down Fractal 이후 경과 봉 수
+
+### 3. src/signal_program/strategies/kr_fractal.py  [신규 파일]
+
+핵심 알고리즘:
+
+  Up Fractal(저항) 조건:
+    high[n] > high[n-1] AND high[n] > high[n-2]
+    AND high[n] > high[n+1] AND high[n] > high[n+2]
+
+  Down Fractal(지지) 조건:
+    low[n] < low[n-1] AND low[n] < low[n-2]
+    AND low[n] < low[n+1] AND low[n] < low[n+2]
+
+  봉 마감 기준 → 위치 n의 프랙탈은 n+2 봉이 닫힌 뒤 확정.
+  DataFrame에서 가장 최근 확정 프랙탈: n = len(df) - 3.
+
+BUY 시그널 조건 (Mode D):
+  close[-1] > nearest_confirmed_up_fractal_high
+  AND volume_ratio[-1] >= fractal_volume_threshold
+  AND fractal_up_age <= fractal_lookback
+
+SELL 시그널 조건 (Mode D):
+  close[-1] < nearest_confirmed_down_fractal_low
+  AND volume_ratio[-1] >= fractal_volume_threshold
+  AND fractal_down_age <= fractal_lookback
+
+강도:
+  volume_ratio[-1] >= fractal_volume_strong → STRONG
+  그 외 조건 충족 → NORMAL
+
+클래스 시그니처:
+
+  class KrFractalStrategy:
+      name: str = "kr_fractal_v1"
+
+      def __init__(
+          self,
+          fractal_lookback: int = 100,
+          fractal_volume_threshold: float = 1.2,
+          fractal_volume_strong: float = 2.0,
+      ) -> None: ...
+
+      def evaluate(self, market: str, candles: pd.DataFrame) -> list[Signal]: ...
+
+      @staticmethod
+      def _find_fractals(
+          df: pd.DataFrame, lookback: int
+      ) -> tuple[float | None, int, float | None, int]:
+          """(up_level, up_age, down_level, down_age) 반환.
+          프랙탈 없으면 level=None, age=lookback+1."""
+          ...
+
+  volume_ratio 계산: candles['volume'].iloc[-1] / candles['volume'].iloc[-21:-1].mean()
+
+### 4. src/signal_program/config.py
+Settings에 필드 추가. 기존 필드 변경 금지.
+
+  kr_strategy: Literal["bb_cci", "fractal"] = "fractal"
+  fractal_lookback: int = 100
+  fractal_volume_threshold: float = 1.2
+  fractal_volume_strong: float = 2.0
+
+### 5. src/signal_program/cli.py
+signal serve 기동 시 kr_strategy 값에 따라 전략 분기.
+
+  if settings.kr_strategy == "fractal":
+      kr_strategy_obj = KrFractalStrategy(
+          fractal_lookback=settings.fractal_lookback,
+          fractal_volume_threshold=settings.fractal_volume_threshold,
+          fractal_volume_strong=settings.fractal_volume_strong,
+      )
+  else:
+      kr_strategy_obj = BbCciStrategy(...)  # 기존 fallback
+
+## 테스트 (TDD 순서 엄수)
+
+tests/unit/test_kr_fractal_strategy.py
+
+RED → GREEN 순서:
+
+1. _find_fractals 단위 테스트
+   - 합성 DataFrame으로 Up Fractal 정확 탐지
+   - 합성 DataFrame으로 Down Fractal 정확 탐지
+   - 프랙탈 없을 때 (None, lookback+1) 반환
+   - fractal_lookback 초과 시 None 처리
+
+2. evaluate() 시그널 조건 테스트 (최소 10종 parametrize)
+   - BUY 정상: 종가 > up fractal + 거래량 충족
+   - BUY 거래량 미달: 시그널 없음
+   - BUY 종가 미달 (프랙탈 미돌파): 시그널 없음
+   - SELL 정상: 종가 < down fractal + 거래량 충족
+   - SELL 거래량 미달: 시그널 없음
+   - SELL 종가 미달: 시그널 없음
+   - STRONG BUY: volume_ratio >= fractal_volume_strong
+   - NORMAL BUY: fractal_volume_threshold <= volume_ratio < fractal_volume_strong
+   - 프랙탈 고령화(age > lookback): 시그널 없음
+   - IndicatorSnapshot.fractal_up/down/age 값 검증
+
+3. Strategy Protocol 적합성
+   - KrFractalStrategy가 Strategy Protocol을 만족하는지
+   - name 속성 존재 확인
+
+## 금지
+
+- BbCciStrategy 코드 수정 (별도 파일에 신규 구현)
+- DESIGN.md §8.1~8.5 기존 필드 수정 (추가만 허용)
+- 자동매매 로직 (ADR-0002 영구 금지)
+- Alligator·RSI·MACD 등 추가 지표 (ADR-0018 Alternative로 기각됨)
+
+## 산출물
+
+1. 변경/생성 파일 목록 + 이유
+2. 코드 전체 (5개 파일)
+3. uv run pytest tests/unit/test_kr_fractal_strategy.py -v --cov=src/signal_program/strategies/kr_fractal 결과
+4. uv run ruff check src/ --fix && uv run mypy src/ 통과 출력
+5. signal serve --dry-run으로 KR 루프 기동 → 첫 사이클 로그 (kr_strategy=fractal 확인)
+6. 다음 단계 제안 (국장 백테스트 파이프라인 등)
+```
+
+---
+
 ## 일반 패턴 지시문
 
 ### 새 ADR이 필요한 결정이 발생했을 때
