@@ -135,9 +135,9 @@ def test_dashboard_js_no_duplicate_const_declaration() -> None:
 
 
 def test_dashboard_countdown_label_is_next_poll(client: TestClient) -> None:
-    """R_P1_7: 대시보드 HTML에 '다음 갱신' 카운트다운 라벨이 있어야 한다."""
+    """R_P1_7: 대시보드 HTML에 폴링 카운트다운 라벨이 있어야 한다 (M18 재설계: '초 후 갱신')."""
     resp = client.get("/")
-    assert "다음 갱신" in resp.text, "카운트다운 라벨 '다음 갱신'이 없음"
+    assert "초 후 갱신" in resp.text, "카운트다운 라벨 '초 후 갱신'이 없음"
 
 
 def test_dashboard_filter_bar_is_sticky() -> None:
@@ -154,7 +154,7 @@ def test_dashboard_filter_bar_is_sticky() -> None:
         / "app.css"
     )
     text = css.read_text(encoding="utf-8")
-    assert "filter-bar" in text, ".filter-bar 규칙 없음"
+    assert "topbar" in text, ".topbar 규칙 없음 (M18 재설계 sticky 툴바)"
     assert "sticky" in text, "position: sticky 없음"
 
 
@@ -172,5 +172,5 @@ def test_dashboard_js_countdown_shows_remaining_time() -> None:
         / "dashboard.js"
     )
     text = js.read_text(encoding="utf-8")
-    assert "초 후" in text, "tickCountdown에 '초 후' 표현 없음"
+    assert "_tickCountdown" in text, "카운트다운 함수 _tickCountdown 없음 (M18 재설계)"
     assert "POLL_INTERVAL_MS" in text, "POLL_INTERVAL_MS 참조 없음"

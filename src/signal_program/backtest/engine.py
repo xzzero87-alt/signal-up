@@ -71,14 +71,16 @@ class BacktestEngine:
                 signals = self.strategy.evaluate(market, candles_df.iloc[: i + 1])
                 buy_sig = next((s for s in signals if s.direction == SignalDirection.BUY), None)
                 if buy_sig is not None and i + 1 < len(candles_df):
-                    position = {
-                        "signal_bar_idx": i,
-                        "entry_price": float(candles_df.iloc[i + 1]["open"]),
-                        "entry_at": candles_df.iloc[i + 1]["opened_at"],
-                        "bb_middle": buy_sig.indicators.bb_middle,
-                        "mode": buy_sig.mode,
-                        "direction": buy_sig.direction,
-                    }
+                    entry_price = float(candles_df.iloc[i + 1]["open"])
+                    if entry_price > 0:  # entry=0(비정상 봉)이면 진입 안 함 → 0除算 방지
+                        position = {
+                            "signal_bar_idx": i,
+                            "entry_price": entry_price,
+                            "entry_at": candles_df.iloc[i + 1]["opened_at"],
+                            "bb_middle": buy_sig.indicators.bb_middle,
+                            "mode": buy_sig.mode,
+                            "direction": buy_sig.direction,
+                        }
             else:
                 bars_held = i - position["signal_bar_idx"]
                 close = float(candles_df.iloc[i]["close"])

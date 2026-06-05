@@ -349,7 +349,9 @@ class TestFetchCandles120m:
 class TestConfigKisFields:
     """Settings에 KIS 필드가 올바르게 추가됐는지 확인한다."""
 
-    def test_defaults(self) -> None:
+    def test_defaults(self, monkeypatch: object, tmp_path: object) -> None:
+        # 개발 머신의 .env(실제 KIS 키 포함)를 읽지 않도록 빈 디렉토리로 격리
+        monkeypatch.chdir(tmp_path)  # type: ignore[attr-defined]
         from signal_program.config import Settings
 
         s = Settings(whitelist_markets=["KRW-BTC"])
