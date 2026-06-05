@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import (
     BaseSettings,
     DotEnvSettingsSource,
@@ -113,8 +113,8 @@ class Settings(BaseSettings):
     signals_log_path: Path = Path(STATE_DIR) / STATE_SIGNALS_FILE
     charts_dir: Path = Path("state/charts")
 
-    # V2 전략 (ADR-0010)
-    strategy_version: Literal["v1", "v2"] = "v1"
+    # V2 전략 (ADR-0010) / 전략 확장 v2.3 (v3 Fractal · v4 Donchian · v5 RSI2)
+    strategy_version: Literal["v1", "v2", "v3", "v4", "v5"] = "v1"
     # 가중치 (합 = 1.00)
     bb_weight: float = 0.20
     cci_weight: float = 0.20
@@ -139,11 +139,21 @@ class Settings(BaseSettings):
     kr_cooldown_hours_60m: int = 2
     kr_cooldown_hours_120m: int = 4
 
-    # KR 전략 선택 (ADR-0018)
+    # KR 전략 선택 (ADR-0018) — fractal_* 는 암호화폐 V3(FractalStrategy)도 공유
     kr_strategy: Literal["bb_cci", "fractal"] = "fractal"
-    fractal_lookback: int = 100
-    fractal_volume_threshold: float = 1.2
-    fractal_volume_strong: float = 2.0
+    fractal_lookback: int = Field(default=100, ge=2, le=500)
+    fractal_volume_threshold: float = Field(default=1.2, ge=0.0, le=100.0)
+    fractal_volume_strong: float = Field(default=2.0, ge=0.0, le=100.0)
+
+    # 전략 확장 v2.3 파라미터 (설계 §3, 범위 검증)
+    fractal_max_age: int = Field(default=20, ge=1, le=500)
+    donchian_entry_period: int = Field(default=20, ge=2, le=500)
+    donchian_exit_period: int = Field(default=10, ge=2, le=500)
+    donchian_volume_strong: float = Field(default=1.5, ge=0.0, le=100.0)
+    rsi2_period: int = Field(default=2, ge=2, le=500)
+    rsi2_oversold: float = Field(default=10.0, ge=0.0, le=100.0)
+    rsi2_overbought: float = Field(default=90.0, ge=0.0, le=100.0)
+    rsi2_trend_period: int = Field(default=200, ge=2, le=500)
 
     # 운영
     log_level: str = "INFO"

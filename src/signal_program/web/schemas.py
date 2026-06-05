@@ -36,8 +36,8 @@ class SettingsView(BaseModel):
     squeeze_quantile: float = Field(gt=0, lt=1)
     cooldown_hours: int = Field(ge=0, le=72)
     dry_run: bool
-    # V2 전략 필드 (ADR-0010)
-    strategy_version: Literal["v1", "v2"] = "v1"
+    # V2 전략 필드 (ADR-0010) / 전략 확장 v2.3
+    strategy_version: Literal["v1", "v2", "v3", "v4", "v5"] = "v1"
     bb_weight: float = Field(default=0.20, ge=0.0, le=1.0)
     cci_weight: float = Field(default=0.20, ge=0.0, le=1.0)
     sto_weight: float = Field(default=0.20, ge=0.0, le=1.0)
@@ -46,6 +46,17 @@ class SettingsView(BaseModel):
     sell_threshold: float = Field(default=0.65, ge=0.0, le=1.0)
     sto_oversold: int = Field(default=15, ge=1, le=50)
     sto_overbought: int = Field(default=85, ge=50, le=99)
+    # 전략 확장 v2.3 (V3 Fractal · V4 Donchian · V5 RSI2)
+    fractal_volume_threshold: float = Field(default=1.2, ge=0.0, le=100.0)
+    fractal_volume_strong: float = Field(default=2.0, ge=0.0, le=100.0)
+    fractal_max_age: int = Field(default=20, ge=1, le=500)
+    donchian_entry_period: int = Field(default=20, ge=2, le=500)
+    donchian_exit_period: int = Field(default=10, ge=2, le=500)
+    donchian_volume_strong: float = Field(default=1.5, ge=0.0, le=100.0)
+    rsi2_period: int = Field(default=2, ge=2, le=500)
+    rsi2_oversold: float = Field(default=10.0, ge=0.0, le=100.0)
+    rsi2_overbought: float = Field(default=90.0, ge=0.0, le=100.0)
+    rsi2_trend_period: int = Field(default=200, ge=2, le=500)
     # KIS / 국장 설정 (ADR-0016)
     kis_app_key_masked: str = ""
     kis_app_secret_masked: str = ""
@@ -75,8 +86,8 @@ class SettingsUpdate(BaseModel):
     squeeze_quantile: float | None = Field(default=None, gt=0, lt=1)
     cooldown_hours: int | None = Field(default=None, ge=0, le=72)
     dry_run: bool | None = None
-    # V2 전략 필드 (ADR-0010) — None이면 변경 안 함
-    strategy_version: Literal["v1", "v2"] | None = None
+    # V2 전략 필드 (ADR-0010) / 전략 확장 v2.3 — None이면 변경 안 함
+    strategy_version: Literal["v1", "v2", "v3", "v4", "v5"] | None = None
     bb_weight: float | None = Field(default=None, ge=0.0, le=1.0)
     cci_weight: float | None = Field(default=None, ge=0.0, le=1.0)
     sto_weight: float | None = Field(default=None, ge=0.0, le=1.0)
@@ -85,6 +96,17 @@ class SettingsUpdate(BaseModel):
     sell_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
     sto_oversold: int | None = Field(default=None, ge=1, le=50)
     sto_overbought: int | None = Field(default=None, ge=50, le=99)
+    # 전략 확장 v2.3 (V3 Fractal · V4 Donchian · V5 RSI2)
+    fractal_volume_threshold: float | None = Field(default=None, ge=0.0, le=100.0)
+    fractal_volume_strong: float | None = Field(default=None, ge=0.0, le=100.0)
+    fractal_max_age: int | None = Field(default=None, ge=1, le=500)
+    donchian_entry_period: int | None = Field(default=None, ge=2, le=500)
+    donchian_exit_period: int | None = Field(default=None, ge=2, le=500)
+    donchian_volume_strong: float | None = Field(default=None, ge=0.0, le=100.0)
+    rsi2_period: int | None = Field(default=None, ge=2, le=500)
+    rsi2_oversold: float | None = Field(default=None, ge=0.0, le=100.0)
+    rsi2_overbought: float | None = Field(default=None, ge=0.0, le=100.0)
+    rsi2_trend_period: int | None = Field(default=None, ge=2, le=500)
     # KIS / 국장 설정 (ADR-0016)
     kis_app_key: str | None = None
     kis_app_secret: str | None = None

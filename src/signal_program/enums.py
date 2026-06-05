@@ -17,7 +17,9 @@ class StrategyMode(StrEnum):
     MEAN_REVERSION = "A"
     SQUEEZE_BREAKOUT = "B"
     WEIGHTED_SCORE = "C"  # V2 FourIndicatorStrategy (ADR-0010)
-    FRACTAL_BREAKOUT = "D"  # KrFractalStrategy (ADR-0018)
+    FRACTAL_BREAKOUT = "D"  # KrFractalStrategy / 암호화폐 FractalStrategy (ADR-0018, v2.3)
+    DONCHIAN_BREAKOUT = "E"  # DonchianStrategy (v2.3 §3.2)
+    RSI2_REVERSION = "F"  # Rsi2Strategy (v2.3 §3.3)
 
 
 class SignalDirection(StrEnum):

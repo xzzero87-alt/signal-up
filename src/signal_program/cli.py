@@ -453,7 +453,7 @@ def _make_strategy(strategy_version: str, settings: Settings) -> Strategy:
 @app.command(name="scan-once")
 def scan_once(
     market: Annotated[str, typer.Option("--market", "-m", help="마켓 코드 (예: KRW-BTC)")],
-    strategy: Annotated[str, typer.Option("--strategy", help="전략 버전 (v1 / v2)")] = "v1",
+    strategy: Annotated[str, typer.Option("--strategy", help="전략 버전 (v1~v5)")] = "v1",
 ) -> None:
     """단발성 단일 마켓 즉시 평가 (텔레그램 미전송)."""
     import asyncio
@@ -540,7 +540,7 @@ def backtest(
     from_date: Annotated[str, typer.Option("--from", help="시작일 (YYYY-MM-DD)")],
     to_date: Annotated[str, typer.Option("--to", help="종료일 (YYYY-MM-DD)")],
     mode: Annotated[str, typer.Option("--mode", help="전략 모드 (A / B / A,B)")] = "A,B",
-    strategy: Annotated[str, typer.Option("--strategy", help="전략 버전 (v1 / v2)")] = "v1",
+    strategy: Annotated[str, typer.Option("--strategy", help="전략 버전 (v1~v5)")] = "v1",
     report_html: Annotated[
         str,
         typer.Option("--report-html", help="HTML 리포트 출력 경로 (미지정 시 콘솔만)"),
@@ -685,7 +685,7 @@ def walkforward(
     grid: Annotated[
         str, typer.Option("--grid", help="파라미터 그리드 (예: bb_std_mult:1.5,2.0,2.5)")
     ] = "bb_std_mult:1.5,2.0,2.5",
-    strategy: Annotated[str, typer.Option("--strategy", help="전략 버전 (v1 / v2)")] = "v1",
+    strategy: Annotated[str, typer.Option("--strategy", help="전략 버전 (v1~v5)")] = "v1",
     report_html: Annotated[str, typer.Option("--report-html", help="HTML 리포트 출력 경로")] = "",
 ) -> None:
     """워크포워드 파라미터 검증 실행. 학습/검증 슬라이딩 윈도우 + 그리드 서치."""

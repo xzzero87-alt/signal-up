@@ -17,4 +17,15 @@ SETTING_HELP: dict[str, str] = {
     "telegram_bot_token": "BotFather에서 발급받은 봇 토큰. 비워두면 기존 값 유지.",
     "telegram_chat_id": "알림을 받을 채팅 ID. 본인 사용자 ID 또는 그룹 ID.",
     "dry_run": "켜면 시그널 계산은 하지만 텔레그램 송출은 하지 않음. 테스트용.",
+    # 전략 확장 v2.3 (V3 Fractal · V4 Donchian · V5 RSI2)
+    "fractal_volume_threshold": "V3 프랙탈 진입 최소 거래량 배수. 기본 1.2배.",
+    "fractal_volume_strong": "V3 프랙탈 강한 신호 거래량 배수. 기본 2.0배.",
+    "fractal_max_age": "V3 확정 프랙탈 유효 봉 수. 이보다 오래되면 신호 제외. 기본 20봉.",
+    "donchian_entry_period": "V4 진입 채널 기간. 직전 N봉 최고가 돌파 시 매수. 기본 20봉.",
+    "donchian_exit_period": "V4 청산 채널 기간. 직전 N봉 최저가 이탈 시 매도. 기본 10봉.",
+    "donchian_volume_strong": "V4 강한 신호 거래량 배수 (강도 표시 전용). 기본 1.5배.",
+    "rsi2_period": "V5 RSI 계산 기간. Connors 기본 2.",
+    "rsi2_oversold": "V5 매수 과매도 기준. rsi2가 이 값 미만일 때 매수. 기본 10.",
+    "rsi2_overbought": "V5 매도 과매수 기준. rsi2가 이 값 초과일 때 매도. 기본 90.",
+    "rsi2_trend_period": "V5 추세필터 SMA 기간. 이 위에서만 매수, 아래에서만 매도. 기본 200봉.",
 }

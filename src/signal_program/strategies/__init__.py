@@ -9,6 +9,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from signal_program.strategies.bb_cci import BbCciStrategy
+from signal_program.strategies.donchian import DonchianStrategy
+from signal_program.strategies.fractal import FractalStrategy
+from signal_program.strategies.rsi2 import Rsi2Strategy
 from signal_program.strategies.v2_4indicator import FourIndicatorStrategy
 
 if TYPE_CHECKING:
@@ -33,10 +36,42 @@ def _build_v1(settings: Settings) -> BbCciStrategy:
     )
 
 
-#: 전략 버전 → 팩토리 매핑 (ADR-0010 §4)
+def _build_fractal(settings: Settings) -> FractalStrategy:
+    """Settings → 암호화폐 FractalStrategy (V3, 설계 v2.3 §3.1)."""
+    return FractalStrategy(
+        fractal_lookback=settings.fractal_lookback,
+        fractal_volume_threshold=settings.fractal_volume_threshold,
+        fractal_volume_strong=settings.fractal_volume_strong,
+        fractal_max_age=settings.fractal_max_age,
+    )
+
+
+def _build_donchian(settings: Settings) -> DonchianStrategy:
+    """Settings → DonchianStrategy (V4, 설계 v2.3 §3.2)."""
+    return DonchianStrategy(
+        donchian_entry_period=settings.donchian_entry_period,
+        donchian_exit_period=settings.donchian_exit_period,
+        donchian_volume_strong=settings.donchian_volume_strong,
+    )
+
+
+def _build_rsi2(settings: Settings) -> Rsi2Strategy:
+    """Settings → Rsi2Strategy (V5, 설계 v2.3 §3.3)."""
+    return Rsi2Strategy(
+        rsi2_period=settings.rsi2_period,
+        rsi2_oversold=settings.rsi2_oversold,
+        rsi2_overbought=settings.rsi2_overbought,
+        rsi2_trend_period=settings.rsi2_trend_period,
+    )
+
+
+#: 전략 버전 → 팩토리 매핑 (ADR-0010 §4 / 전략 확장 v2.3)
 STRATEGY_CATALOG: dict[str, Callable[[Settings], Strategy]] = {
     "v1": _build_v1,
     "v2": FourIndicatorStrategy,
+    "v3": _build_fractal,
+    "v4": _build_donchian,
+    "v5": _build_rsi2,
 }
 
 

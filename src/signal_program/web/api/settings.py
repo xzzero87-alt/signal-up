@@ -41,6 +41,17 @@ def _to_view(settings: object) -> SettingsView:
         sell_threshold=s.sell_threshold,
         sto_oversold=s.sto_oversold,
         sto_overbought=s.sto_overbought,
+        # 전략 확장 v2.3 (V3/V4/V5)
+        fractal_volume_threshold=s.fractal_volume_threshold,
+        fractal_volume_strong=s.fractal_volume_strong,
+        fractal_max_age=s.fractal_max_age,
+        donchian_entry_period=s.donchian_entry_period,
+        donchian_exit_period=s.donchian_exit_period,
+        donchian_volume_strong=s.donchian_volume_strong,
+        rsi2_period=s.rsi2_period,
+        rsi2_oversold=s.rsi2_oversold,
+        rsi2_overbought=s.rsi2_overbought,
+        rsi2_trend_period=s.rsi2_trend_period,
         # KIS / 국장 (ADR-0016)
         kis_app_key_masked=mask_secret_value(s.kis_app_key),
         kis_app_secret_masked=mask_secret_value(s.kis_app_secret),
