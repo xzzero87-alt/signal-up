@@ -12,6 +12,7 @@ from signal_program.enums import SignalDirection, SignalStrength, StrategyMode, 
 from signal_program.indicators.bollinger import bollinger
 from signal_program.indicators.cci import cci
 from signal_program.models import IndicatorSnapshot, Signal
+from signal_program.strategies.base import calc_change_pct
 
 _KST = ZoneInfo("Asia/Seoul")
 
@@ -73,6 +74,7 @@ class BbCciStrategy:
             dt = dt.replace(tzinfo=_KST)
 
         signals: list[Signal] = []
+        chg = calc_change_pct(candles)
 
         # ── 모드 A: 평균회귀 ──────────────────────────────────────────────────
         buy_a = self._check_buy(close_last, bb_lower, cci_val, volume_ratio)
@@ -92,6 +94,7 @@ class BbCciStrategy:
                     volume_ratio,
                     bb_width_quantile=None,
                     mode=StrategyMode.MEAN_REVERSION,
+                    change_pct=chg,
                 )
             )
 
@@ -112,6 +115,7 @@ class BbCciStrategy:
                     volume_ratio,
                     bb_width_quantile=None,
                     mode=StrategyMode.MEAN_REVERSION,
+                    change_pct=chg,
                 )
             )
 
@@ -149,6 +153,7 @@ class BbCciStrategy:
                         volume_ratio,
                         bb_width_quantile=bb_width_quantile,
                         mode=StrategyMode.SQUEEZE_BREAKOUT,
+                        change_pct=chg,
                     )
                 )
 
@@ -177,6 +182,7 @@ class BbCciStrategy:
                         volume_ratio,
                         bb_width_quantile=bb_width_quantile,
                         mode=StrategyMode.SQUEEZE_BREAKOUT,
+                        change_pct=chg,
                     )
                 )
 
@@ -287,6 +293,7 @@ class BbCciStrategy:
         volume_ratio: float,
         bb_width_quantile: float | None,
         mode: StrategyMode,
+        change_pct: float | None = None,
     ) -> Signal:
         direction, strength = direction_strength
         dt: datetime = triggered_at  # type: ignore[assignment]
@@ -309,4 +316,5 @@ class BbCciStrategy:
                 volume_ratio=volume_ratio,
                 bb_width_quantile=bb_width_quantile,
             ),
+            change_pct=change_pct,
         )

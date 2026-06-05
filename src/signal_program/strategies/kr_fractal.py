@@ -8,7 +8,9 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 from signal_program.enums import SignalDirection, SignalStrength, StrategyMode, Timeframe
+from signal_program.indicators.fractal import find_fractals as _find_fractals
 from signal_program.models import IndicatorSnapshot, Signal
+from signal_program.strategies.base import calc_change_pct
 
 _KST = ZoneInfo("Asia/Seoul")
 _90M = timedelta(minutes=90)
@@ -19,46 +21,6 @@ def _infer_timeframe(candles: pd.DataFrame) -> Timeframe:
         return Timeframe.HOUR_1
     delta = candles["opened_at"].iloc[-1] - candles["opened_at"].iloc[-2]
     return Timeframe.HOUR_2 if delta >= _90M else Timeframe.HOUR_1
-
-
-def _find_fractals(df: pd.DataFrame, lookback: int) -> tuple[float | None, int, float | None, int]:
-    """최근 확정 Williams Fractal (up/down) 레벨과 봉 거리(age)를 반환한다.
-
-    확정 기준: n번째 봉의 프랙탈은 n+2 봉 마감 후 확정 → 최근 확정 인덱스 = iloc[-3].
-    """
-    n = len(df)
-    high = df["high"].to_numpy(dtype=float)
-    low = df["low"].to_numpy(dtype=float)
-
-    up_level: float | None = None
-    up_age: int = 0
-    down_level: float | None = None
-    down_age: int = 0
-
-    start = n - 3  # 최근 확정 위치
-    stop = max(2, start - lookback)
-
-    for i in range(start, stop - 1, -1):
-        if up_level is None and (
-            high[i] > high[i - 1]
-            and high[i] > high[i - 2]
-            and high[i] > high[i + 1]
-            and high[i] > high[i + 2]
-        ):
-            up_level = float(high[i])
-            up_age = n - 1 - i
-        if down_level is None and (
-            low[i] < low[i - 1]
-            and low[i] < low[i - 2]
-            and low[i] < low[i + 1]
-            and low[i] < low[i + 2]
-        ):
-            down_level = float(low[i])
-            down_age = n - 1 - i
-        if up_level is not None and down_level is not None:
-            break
-
-    return up_level, up_age, down_level, down_age
 
 
 class KrFractalStrategy:
@@ -99,6 +61,7 @@ class KrFractalStrategy:
 
         timeframe = _infer_timeframe(candles)
         signals: list[Signal] = []
+        chg = calc_change_pct(candles)
 
         if up_level is not None and close_last > up_level:
             strength = (
@@ -119,6 +82,7 @@ class KrFractalStrategy:
                     up_age,
                     down_level,
                     down_age,
+                    change_pct=chg,
                 )
             )
 
@@ -141,6 +105,7 @@ class KrFractalStrategy:
                     up_age,
                     down_level,
                     down_age,
+                    change_pct=chg,
                 )
             )
 
@@ -159,6 +124,7 @@ class KrFractalStrategy:
         fractal_up_age: int,
         fractal_down: float | None,
         fractal_down_age: int,
+        change_pct: float | None = None,
     ) -> Signal:
         return Signal(
             market=market,
@@ -181,4 +147,5 @@ class KrFractalStrategy:
                 fractal_up_age=fractal_up_age if fractal_up is not None else None,
                 fractal_down_age=fractal_down_age if fractal_down is not None else None,
             ),
+            change_pct=change_pct,
         )

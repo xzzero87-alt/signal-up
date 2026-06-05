@@ -2,6 +2,7 @@
 {% block title %}설정{% endblock %}
 
 {% block content %}
+<div class="page-content">
 <div class="page-header">
   <h1>설정</h1>
   <p class="header-subtitle">전략 파라미터·텔레그램·국장 API 설정을 관리합니다.</p>
@@ -44,24 +45,58 @@
 
   <section class="settings-section">
     <h2>전략 파라미터</h2>
-    {% for field_name, label in [
-      ('bb_period', 'BB Period'),
-      ('bb_std_mult', 'BB Std Mult'),
-      ('cci_period', 'CCI Period'),
-      ('cci_threshold_normal', 'CCI Threshold (Normal)'),
-      ('cci_threshold_strong', 'CCI Threshold (Strong)'),
-      ('volume_ratio_min_a', 'Volume Ratio Min A'),
-      ('volume_ratio_min_b', 'Volume Ratio Min B'),
-      ('squeeze_lookback', 'Squeeze Lookback'),
-      ('squeeze_quantile', 'Squeeze Quantile'),
+    <p style="font-size:0.8rem;color:var(--color-muted);margin:-0.3rem 0 1rem">
+      지표를 클릭하면 파라미터를 펼쳐서 조정합니다.
+    </p>
+
+    {#- 지표 그룹: (마크, 마크클래스, 제목, 설명, [(필드, 라벨, 설명, step)]) -#}
+    {% for mark, mclass, title, gdesc, params in [
+      ('BB', '', '볼린저밴드', '밴드 이탈·스퀴즈 기반 진입 판단', [
+        ('bb_period', '기간 (Period)', '이동평균·표준편차 계산 봉 수', '1'),
+        ('bb_std_mult', '표준편차 승수 (Std Mult)', '밴드 폭. 값이 클수록 신호가 보수적', '0.1'),
+      ]),
+      ('CCI', 'cci', 'CCI', '과매수·과매도 모멘텀 확인', [
+        ('cci_period', '기간 (Period)', 'CCI 산출 봉 수', '1'),
+        ('cci_threshold_normal', '임계값 — 일반', '기본 신호 발생 기준', '5'),
+        ('cci_threshold_strong', '임계값 — 강함', '강한 신호(★) 기준', '5'),
+      ]),
+      ('VOL', 'vol', '거래량 필터', '신호 확정에 필요한 최소 거래량 비율', [
+        ('volume_ratio_min_a', '최소 거래량 비율 A', '일반 신호 조건', '0.1'),
+        ('volume_ratio_min_b', '최소 거래량 비율 B', '강한 신호 조건', '0.1'),
+      ]),
+      ('SQZ', 'sqz', '스퀴즈', '밴드 수축 구간 탐지', [
+        ('squeeze_lookback', '조회 기간 (Lookback)', '스퀴즈 판단 비교 구간', '1'),
+        ('squeeze_quantile', '분위수 (Quantile)', '하위 N% 폭이면 스퀴즈로 판단', '0.05'),
+      ]),
     ] %}
-    <div class="field-row">
-      <label for="{{ field_name }}">{{ label }}
-        <span class="help" title="{{ help[field_name] }}">?</span>
-      </label>
-      <input id="{{ field_name }}" name="{{ field_name }}" type="number" step="any"
-             value="{{ settings[field_name] }}" data-field="{{ field_name }}">
-      <span class="field-error" id="err-{{ field_name }}"></span>
+    <div class="ind">
+      <div class="ind-head" onclick="this.parentElement.classList.toggle('open')">
+        <div class="ind-mark {{ mclass }}">{{ mark }}</div>
+        <div>
+          <div class="ind-title">{{ title }}</div>
+          <div class="ind-desc">{{ gdesc }}</div>
+        </div>
+        <div class="ind-meta"><span class="ind-chev">▼</span></div>
+      </div>
+      <div class="ind-body">
+        {% for field_name, label, pdesc, step in params %}
+        <div class="ind-param">
+          <div class="ind-param-info">
+            <div class="pl">{{ label }}
+              <span class="help" title="{{ help[field_name] }}">?</span>
+            </div>
+            <div class="ph">{{ pdesc }}</div>
+          </div>
+          <div class="stepper">
+            <button type="button" onclick="stepField('{{ field_name }}', -{{ step }})">−</button>
+            <input id="{{ field_name }}" name="{{ field_name }}" type="number" step="{{ step }}"
+                   value="{{ settings[field_name] }}" data-field="{{ field_name }}">
+            <button type="button" onclick="stepField('{{ field_name }}', {{ step }})">+</button>
+          </div>
+          <span class="field-error" id="err-{{ field_name }}"></span>
+        </div>
+        {% endfor %}
+      </div>
     </div>
     {% endfor %}
   </section>
@@ -88,23 +123,29 @@
   </section>
 
   <section class="settings-section">
-    <h2>전략 버전 (ADR-0010)</h2>
+    <h2>전략 버전 (ADR-0010 / 전략 확장 v2.3)</h2>
     <div class="field-row">
       <label>전략 선택</label>
-      <label style="display:flex;align-items:center;gap:0.5rem;min-width:unset">
-        <input type="radio" name="strategy_version" value="v1"
-          {% if settings.strategy_version == 'v2' %}{% else %}checked{% endif %}
-          onchange="updateV2Dim()"> V1 (BB+CCI)
-      </label>
-      <label style="display:flex;align-items:center;gap:0.5rem;min-width:unset;margin-left:1rem">
-        <input type="radio" name="strategy_version" value="v2"
-          {% if settings.strategy_version == 'v2' %}checked{% endif %}
-          onchange="updateV2Dim()"> V2 (4지표 가중치)
-      </label>
+      <div style="display:flex;flex-direction:column;gap:0.4rem">
+        {% for ver, lbl in [
+          ('v1', 'V1 BB+CCI — 횡보·과열 반전 (평균회귀)'),
+          ('v2', 'V2 4지표 — 횡보+거래량 확인 (가중 평균회귀)'),
+          ('v3', 'V3 프랙탈 — 구조 전환·돌파 (구조 돌파)'),
+          ('v4', 'V4 Donchian — 강한 추세 (추세추종)'),
+          ('v5', 'V5 RSI2 — 추세 중 단기 눌림 (단기 평균회귀)'),
+        ] %}
+        <label style="display:flex;align-items:center;gap:0.5rem;min-width:unset">
+          <input type="radio" name="strategy_version" value="{{ ver }}"
+            {% if settings.strategy_version == ver %}checked{% endif %}
+            onchange="updateV2Dim()"> {{ lbl }}
+        </label>
+        {% endfor %}
+      </div>
     </div>
     <div id="v2-section" class="v2-section {% if settings.strategy_version != 'v2' %}dimmed{% endif %}">
       <p style="font-size:0.8rem;color:var(--color-muted);margin:0.25rem 0 0.75rem">
         가중치 합 = 1.00 권장. OBV 0.40 기본 (거래량 중시, ADR-0010 §2).
+        현재 합: <strong id="v2-weight-sum" style="font-variant-numeric:tabular-nums">—</strong>
       </p>
       {% for fname, lbl, step in [
         ('bb_weight','BB 가중치','0.05'),
@@ -115,6 +156,59 @@
         ('sell_threshold','매도 임계값','0.05'),
         ('sto_oversold','Sto 과매도 기준','1'),
         ('sto_overbought','Sto 과매수 기준','1'),
+      ] %}
+      <div class="field-row">
+        <label for="{{ fname }}">{{ lbl }}</label>
+        <input id="{{ fname }}" name="{{ fname }}" type="number" step="{{ step }}"
+               value="{{ settings[fname] if fname in settings else '' }}" data-field="{{ fname }}">
+        <span class="field-error" id="err-{{ fname }}"></span>
+      </div>
+      {% endfor %}
+    </div>
+    <div id="v3-section" class="v2-section {% if settings.strategy_version != 'v3' %}dimmed{% endif %}">
+      <p style="font-size:0.8rem;color:var(--color-muted);margin:0.25rem 0 0.75rem">
+        프랙탈 구조 돌파 — 확정 up/down 프랙탈을 종가가 돌파할 때 발신 (거래량 필터).
+      </p>
+      {% for fname, lbl, step in [
+        ('fractal_volume_threshold','거래량 임계 배수','0.1'),
+        ('fractal_volume_strong','강한 신호 거래량 배수','0.1'),
+        ('fractal_max_age','프랙탈 유효 봉 수','1'),
+      ] %}
+      <div class="field-row">
+        <label for="{{ fname }}">{{ lbl }}</label>
+        <input id="{{ fname }}" name="{{ fname }}" type="number" step="{{ step }}"
+               value="{{ settings[fname] if fname in settings else '' }}" data-field="{{ fname }}">
+        <span class="field-error" id="err-{{ fname }}"></span>
+      </div>
+      {% endfor %}
+    </div>
+    <div id="v4-section" class="v2-section {% if settings.strategy_version != 'v4' %}dimmed{% endif %}">
+      <p style="font-size:0.8rem;color:var(--color-muted);margin:0.25rem 0 0.75rem">
+        Donchian 추세추종 — 종가가 직전 entry봉 최고가 돌파 시 매수 / exit봉 최저가 이탈 시 매도.
+        거래량은 강도 표시에만 사용(진입 게이트 아님).
+      </p>
+      {% for fname, lbl, step in [
+        ('donchian_entry_period','진입 채널 기간','1'),
+        ('donchian_exit_period','청산 채널 기간','1'),
+        ('donchian_volume_strong','강한 신호 거래량 배수','0.1'),
+      ] %}
+      <div class="field-row">
+        <label for="{{ fname }}">{{ lbl }}</label>
+        <input id="{{ fname }}" name="{{ fname }}" type="number" step="{{ step }}"
+               value="{{ settings[fname] if fname in settings else '' }}" data-field="{{ fname }}">
+        <span class="field-error" id="err-{{ fname }}"></span>
+      </div>
+      {% endfor %}
+    </div>
+    <div id="v5-section" class="v2-section {% if settings.strategy_version != 'v5' %}dimmed{% endif %}">
+      <p style="font-size:0.8rem;color:var(--color-muted);margin:0.25rem 0 0.75rem">
+        RSI(2) 평균회귀 — 추세필터(SMA) 위에서 단기 과매도 매수 / 아래에서 단기 과열 매도.
+      </p>
+      {% for fname, lbl, step in [
+        ('rsi2_period','RSI 기간','1'),
+        ('rsi2_oversold','과매도 기준','1'),
+        ('rsi2_overbought','과매수 기준','1'),
+        ('rsi2_trend_period','추세 SMA 기간','1'),
       ] %}
       <div class="field-row">
         <label for="{{ fname }}">{{ lbl }}</label>
@@ -188,11 +282,50 @@
 </form>
 <script>
 function updateV2Dim() {
-  const v2 = document.querySelector('input[name="strategy_version"][value="v2"]');
-  const sec = document.getElementById('v2-section');
-  if (sec) sec.classList.toggle('dimmed', !v2.checked);
+  // 선택된 전략의 파라미터 섹션만 활성화, 나머지는 dimmed (v2~v5)
+  const sel = document.querySelector('input[name="strategy_version"]:checked');
+  const v = sel ? sel.value : 'v1';
+  ['v2', 'v3', 'v4', 'v5'].forEach(function(ver) {
+    const sec = document.getElementById(ver + '-section');
+    if (sec) sec.classList.toggle('dimmed', v !== ver);
+  });
 }
+
+// 스텝퍼: 지표 파라미터 +/- 버튼
+function stepField(fieldId, delta) {
+  const el = document.getElementById(fieldId);
+  if (!el) return;
+  const cur = parseFloat(el.value);
+  const next = (isNaN(cur) ? 0 : cur) + delta;
+  // 부동소수 오차 정리 (step 소수 자릿수에 맞춤)
+  const decimals = (String(delta).split('.')[1] || '').length;
+  el.value = decimals > 0 ? next.toFixed(decimals) : String(next);
+  updateWeightSum();
+}
+
+// V2 가중치 실시간 합계 — 1.00이면 초록, 아니면 주황 경고
+function updateWeightSum() {
+  const out = document.getElementById('v2-weight-sum');
+  if (!out) return;
+  let sum = 0;
+  ['bb_weight', 'cci_weight', 'sto_weight', 'obv_weight'].forEach(function(id) {
+    const el = document.getElementById(id);
+    const v = el ? parseFloat(el.value) : NaN;
+    if (!isNaN(v)) sum += v;
+  });
+  out.textContent = sum.toFixed(2);
+  const ok = Math.abs(sum - 1.0) < 0.005;
+  out.style.color = ok ? 'var(--color-success)' : 'var(--color-strong)';
+  out.title = ok ? '' : '가중치 합이 1.00이 아닙니다';
+}
+
+['bb_weight', 'cci_weight', 'sto_weight', 'obv_weight'].forEach(function(id) {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', updateWeightSum);
+});
+updateWeightSum();
 </script>
+</div>
 {% endblock %}
 
 {% block scripts %}

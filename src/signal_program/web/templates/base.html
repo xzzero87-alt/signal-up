@@ -7,57 +7,96 @@
   <link rel="stylesheet" href="/static/css/app.css">
 </head>
 <body>
-<nav class="nav">
-  <span class="nav-brand">&#128202; 업비트 시그널</span>
-  <ul class="nav-links">
-    <li><a href="/" {% if active == 'dashboard' %}class="active"{% endif %}>대시보드</a></li>
-    <li><a href="/settings" {% if active == 'settings' %}class="active"{% endif %}>설정</a></li>
-    <li><a href="/backtest" {% if active == 'backtest' %}class="active"{% endif %}>백테스트</a></li>
-    <li><a href="/failures" {% if active == 'failures' %}class="active"{% endif %}>알림 실패</a></li>
-  </ul>
-  <div class="nav-daemon" id="nav-daemon">
-    <span id="nav-daemon-status" class="daemon-indicator">데몬: <strong>확인 중</strong></span>
-    <button id="nav-daemon-btn" class="btn-daemon" onclick="toggleDaemon()">—</button>
-    <button class="btn-theme" onclick="toggleTheme()" id="btn-theme" title="다크/라이트 모드 전환" aria-label="다크/라이트 모드 전환">
-      <span id="themeIcon" aria-hidden="true">🌙</span>
-    </button>
-  </div>
-</nav>
 <script>
-/* ── 다크 모드 초기화 (R_P1_8) ─────────────────────────────────────────────
-   FOUC 방지: DOMContentLoaded 이전에 data-theme 속성을 설정한다.
-   저장값 없으면 data-theme 미설정 → CSS @media가 OS 설정을 자동 follow. */
+/* FOUC 방지: DOMContentLoaded 이전에 data-theme 설정 (M18: 다크 기본) */
 (function(){
   var saved = localStorage.getItem('signal-theme');
-  if (saved === 'dark' || saved === 'light') {
-    document.documentElement.setAttribute('data-theme', saved);
-  }
-  document.addEventListener('DOMContentLoaded', function(){
-    var icon = document.getElementById('themeIcon');
-    if (!icon) return;
-    var isDark = saved === 'dark' ||
-      (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    icon.textContent = isDark ? '☀️' : '🌙';
-  });
+  document.documentElement.setAttribute('data-theme', saved === 'light' ? 'light' : 'dark');
 })();
+</script>
+
+<header class="topbar">
+  <span class="topbar-brand">SIGNAL</span>
+  <div class="topbar-right">
+    <span id="topbar-market-status" class="topbar-market-tag" style="display:none"></span>
+    <div class="topbar-daemon">
+      <span class="daemon-dot" id="topbar-daemon-dot"></span>
+      <span id="topbar-daemon-text">데몬 확인 중</span>
+    </div>
+    <button class="btn-daemon" id="nav-daemon-btn" onclick="toggleDaemon()">—</button>
+    <button class="btn-theme" id="btn-theme" onclick="toggleTheme()" aria-label="테마 전환">
+      <span id="themeIcon">☀️</span>
+    </button>
+    <span class="topbar-clock" id="topbar-clock"></span>
+  </div>
+</header>
+
+<div class="app-body">
+  <aside class="sidebar">
+    <div class="sb-group-label">마켓</div>
+    <a href="/?market=crypto" class="sb-item {% if market=='crypto' or (not market and active=='dashboard') %}on{% endif %}">
+      <span class="sb-icon">₿</span>코인
+      <span class="sb-badge" id="sb-badge-crypto">—</span>
+    </a>
+    <a href="/?market=kr" class="sb-item {% if market=='kr' %}on{% endif %}">
+      <span class="sb-icon">⊞</span>국장
+      <span class="sb-badge" id="sb-badge-kr">—</span>
+    </a>
+
+
+    <div class="sb-divider"></div>
+    <div class="sb-group-label">오늘 현황</div>
+    <div class="sb-stat-box">
+      <div class="sb-stat-row"><span>전체</span><span id="sb-total" class="sb-stat-val">—</span></div>
+      <div class="sb-stat-row"><span>매수</span><span id="sb-buy"   class="sb-stat-val" style="color:var(--color-buy)">—</span></div>
+      <div class="sb-stat-row"><span>매도</span><span id="sb-sell"  class="sb-stat-val" style="color:var(--color-sell)">—</span></div>
+    </div>
+
+    <div class="sb-divider"></div>
+    <div class="sb-group-label">메뉴</div>
+    <a href="/backtest" class="sb-item {% if active=='backtest' %}on{% endif %}">
+      <span class="sb-icon">📈</span>백테스트
+    </a>
+    <a href="/settings" class="sb-item {% if active=='settings' %}on{% endif %}">
+      <span class="sb-icon">⚙</span>설정
+    </a>
+    <a href="/system" class="sb-item {% if active=='system' %}on{% endif %}">
+      <span class="sb-icon">⊡</span>시스템
+    </a>
+    <a href="/failures" class="sb-item {% if active=='failures' %}on{% endif %}">
+      <span class="sb-icon">⚠</span>알림 실패
+    </a>
+  </aside>
+
+  <div class="main-area">
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<script>
+/* ── 테마 토글 (M18: 다크 기본) ── */
 function toggleTheme(){
   var html = document.documentElement;
-  var cur = html.getAttribute('data-theme');
-  var isDark = cur === 'dark' ||
-    (cur !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  var next = isDark ? 'light' : 'dark';
+  var next = html.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
   html.setAttribute('data-theme', next);
   localStorage.setItem('signal-theme', next);
   var icon = document.getElementById('themeIcon');
   if (icon) icon.textContent = next === 'dark' ? '☀️' : '🌙';
 }
+document.addEventListener('DOMContentLoaded', function(){
+  var saved = localStorage.getItem('signal-theme') || 'dark';
+  var icon = document.getElementById('themeIcon');
+  if (icon) icon.textContent = saved === 'dark' ? '☀️' : '🌙';
+});
+
+/* ── 시각 ── */
+(function tickClock(){
+  var el = document.getElementById('topbar-clock');
+  if (el) el.textContent = new Date().toLocaleTimeString('ko-KR', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  setTimeout(tickClock, 1000);
+})();
+
 </script>
-<main class="main">
-  {% block content %}{% endblock %}
-</main>
-<footer class="footer">
-  <small>업비트 시그널 프로그램 v2.0 — 참고용 시그널. 자동매매 아님.</small>
-</footer>
 {% block scripts %}{% endblock %}
 </body>
 </html>

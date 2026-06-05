@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from jinja2 import Environment, FileSystemLoader
 
@@ -33,9 +34,10 @@ def _env() -> Environment:
 @router.get("/", response_class=HTMLResponse)
 def index(
     request: Request,  # noqa: ARG001
+    market: str = "",
     store: SettingsStore = Depends(get_settings_store),
 ) -> HTMLResponse:
-    html = _env().get_template("index.html").render(active="dashboard")
+    html = _env().get_template("index.html").render(active="dashboard", market=market or "crypto")
     return HTMLResponse(content=html)
 
 
@@ -80,4 +82,24 @@ def backtest_page(
             kr_whitelist_symbols=list(settings_data.kr_whitelist_symbols),
         )
     )
+    return HTMLResponse(content=html)
+
+
+@router.get("/system", response_class=HTMLResponse)
+def system_page(
+    request: Request,  # noqa: ARG001
+) -> HTMLResponse:
+    html = _env().get_template("system.html").render(active="system")
+    return HTMLResponse(content=html)
+
+
+@router.get("/_styleguide", response_class=HTMLResponse)
+def styleguide_page(
+    request: Request,  # noqa: ARG001
+) -> HTMLResponse:
+    # 개발 전용 (collaboration-prd.md R3 / §7-Q2). 기본 노출, 운영에서 끄려면
+    # 환경변수 SIGNAL_STYLEGUIDE=0 설정.
+    if os.environ.get("SIGNAL_STYLEGUIDE", "1") == "0":
+        raise HTTPException(status_code=404)
+    html = _env().get_template("styleguide.html").render(active="styleguide")
     return HTMLResponse(content=html)

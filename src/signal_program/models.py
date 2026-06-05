@@ -43,6 +43,11 @@ class IndicatorSnapshot(BaseModel):
     fractal_down: float | None = None
     fractal_up_age: int | None = None
     fractal_down_age: int | None = None
+    # 전략 확장 v2.3 필드 — None=해당 전략 외 시그널
+    dc_upper: float | None = None
+    dc_lower: float | None = None
+    rsi2: float | None = None
+    trend_sma: float | None = None
 
 
 class Signal(BaseModel):
@@ -56,3 +61,4 @@ class Signal(BaseModel):
     price: float
     triggered_at: datetime
     indicators: IndicatorSnapshot
+    change_pct: float | None = None

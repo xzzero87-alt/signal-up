@@ -28,6 +28,7 @@ from signal_program.indicators.cci import cci
 from signal_program.indicators.obv import compute_obv
 from signal_program.indicators.stochastic import compute_stochastic_slow
 from signal_program.models import IndicatorSnapshot, Signal
+from signal_program.strategies.base import calc_change_pct
 
 _KST = ZoneInfo("Asia/Seoul")
 
@@ -135,6 +136,7 @@ class FourIndicatorStrategy:
         )
 
         signals: list[Signal] = []
+        chg = calc_change_pct(candles)
 
         # ── 매수 판정 ──────────────────────────────────────────────────────
         buy_score = (
@@ -146,7 +148,7 @@ class FourIndicatorStrategy:
         if buy_score >= self.buy_threshold:
             signals.append(
                 self._build_signal(
-                    market, SignalDirection.BUY, buy_score, close_last, dt, indicators
+                    market, SignalDirection.BUY, buy_score, close_last, dt, indicators, chg
                 )
             )
 
@@ -160,7 +162,7 @@ class FourIndicatorStrategy:
         if sell_score >= self.sell_threshold:
             signals.append(
                 self._build_signal(
-                    market, SignalDirection.SELL, sell_score, close_last, dt, indicators
+                    market, SignalDirection.SELL, sell_score, close_last, dt, indicators, chg
                 )
             )
 
@@ -219,6 +221,7 @@ class FourIndicatorStrategy:
         price: float,
         triggered_at: object,
         indicators: IndicatorSnapshot,
+        change_pct: float | None = None,
     ) -> Signal:
         dt: datetime = triggered_at  # type: ignore[assignment]
         # 강도: threshold + 0.15 이상이면 STRONG
@@ -233,4 +236,5 @@ class FourIndicatorStrategy:
             price=price,
             triggered_at=dt,
             indicators=indicators,
+            change_pct=change_pct,
         )

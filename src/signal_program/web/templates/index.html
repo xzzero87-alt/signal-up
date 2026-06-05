@@ -2,139 +2,113 @@
 {% block title %}대시보드{% endblock %}
 
 {% block content %}
-<div class="page-header">
-  <h1>시그널 대시보드</h1>
-  <div class="header-info">
-    <span class="daemon-status">데몬: <strong id="daemon-status-text">확인 중...</strong></span>
-    <span class="last-signal">최근 시그널: <strong id="last-signal-text">—</strong></span>
-  </div>
+<!-- SUMMARY STRIP -->
+<div class="summary-strip">
+  <div class="sum-cell"><div class="sum-label">전체</div><div class="sum-val" id="sum-total">—</div></div>
+  <div class="sum-cell"><div class="sum-label">매수</div><div class="sum-val" id="sum-buy"   style="color:var(--color-buy)">—</div></div>
+  <div class="sum-cell"><div class="sum-label">매도</div><div class="sum-val" id="sum-sell"  style="color:var(--color-sell)">—</div></div>
+  <div class="sum-cell"><div class="sum-label">STRONG</div><div class="sum-val" id="sum-strong" style="color:var(--color-strong)">—</div></div>
 </div>
 
-<!-- 탭 전환 -->
-<div class="tab-bar" style="margin-bottom:12px">
-  <button id="tab-crypto" class="tab-btn tab-active" onclick="switchTab('crypto')">코인</button>
-  <button id="tab-kr"     class="tab-btn"             onclick="switchTab('kr')">국장</button>
+<!-- TOOLBAR -->
+<div class="toolbar">
+  <select id="filter-market" class="tb-select" onchange="applyFilters()">
+    <option value="">전체 마켓</option>
+  </select>
+  <select id="filter-mode" class="tb-select" onchange="applyFilters()">
+    <option value="">전체 전략</option>
+    <option value="BB_CCI">BB+CCI</option>
+    <option value="FRACTAL">프랙탈</option>
+  </select>
+  <button class="tb-tag on"  data-dir=""     onclick="setDirFilter(this,'')">전체</button>
+  <button class="tb-tag"     data-dir="buy"  onclick="setDirFilter(this,'buy')">매수</button>
+  <button class="tb-tag"     data-dir="sell" onclick="setDirFilter(this,'sell')">매도</button>
+  <button class="tb-tag"     data-str="strong" id="tb-strong-btn" onclick="toggleStrFilter(this)">STRONG</button>
+  <span class="tb-spacer"></span>
+  <span id="fb-rate-badge" class="fb-rate-badge" style="display:none"
+        title="최근 신호 중 '👎 거짓'으로 회고된 비율 — 행을 클릭해 회고를 남기면 집계됩니다"></span>
+  <span class="tb-refresh">↻ <span id="refresh-countdown">30</span>초 후 갱신</span>
 </div>
 
-<!-- 코인 탭 -->
-<div id="section-crypto">
-<div class="filter-bar">
-  <label>코인
-    <select id="filter-market" onchange="applyFilters()">
-      <option value="">전체</option>
-    </select>
-  </label>
-  <label>방향
-    <select id="filter-direction" onchange="applyFilters()">
-      <option value="">전체</option>
-      <option value="buy">BUY</option>
-      <option value="sell">SELL</option>
-    </select>
-  </label>
-  <label>모드
-    <select id="filter-mode" onchange="applyFilters()">
-      <option value="">전체</option>
-      <option value="A">A (평균회귀)</option>
-      <option value="B">B (스퀴즈)</option>
-      <option value="C">C (V2 가중치)</option>
-    </select>
-  </label>
-  <label>강도
-    <select id="filter-strength" onchange="applyFilters()">
-      <option value="">전체</option>
-      <option value="normal">NORMAL</option>
-      <option value="strong">STRONG</option>
-    </select>
-  </label>
-  <span class="countdown">다음 갱신: <span id="last-update">—</span></span>
-  <span class="sep" id="falserate-sep" style="display:none">·</span>
-  <span id="falserate-badge" style="display:none" aria-live="polite">
-    <i class="ti ti-shield-x" style="font-size:14px; vertical-align:-2px; margin-right:2px" aria-hidden="true"></i>거짓신호율
-    <span class="sticky-falserate" id="falserate-value">0%</span>
-    <span class="falserate-window" id="falserate-window">(최근 30건)</span>
-  </span>
-</div>
+<div id="error-msg" class="error-box" style="display:none;margin:8px 14px"></div>
 
-<div id="error-msg" class="error-box" style="display:none"></div>
-
-<div id="signal-cards" class="signal-cards-container">
-  <div class="empty-cards" id="signal-empty">
+<!-- SIGNAL TABLE -->
+<div class="tbl-wrap">
+  <table id="signal-table" {% if market=='kr' %}style="display:none"{% endif %}>
+    <colgroup>
+      <col style="width:16%"><col style="width:10%"><col style="width:13%">
+      <col style="width:17%"><col style="width:11%"><col style="width:11%">
+      <col style="width:11%">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>마켓</th><th>방향</th><th>전략</th>
+        <th class="r">현재가</th><th class="r">등락률</th>
+        <th class="r">강도</th><th class="r">시각</th>
+      </tr>
+    </thead>
+    <tbody id="signal-tbody"></tbody>
+  </table>
+  <div id="signal-empty" class="tbl-empty" style="display:none">
     시그널 없음 — 데몬 실행 후 시그널이 수신되면 여기에 표시됩니다.
   </div>
-</div>
-</div><!-- /section-crypto -->
 
-<!-- 국장 탭 -->
-<div id="section-kr" style="display:none">
-  <div class="filter-bar">
-    <label>타임프레임
-      <select id="kr-filter-timeframe" onchange="loadKrSignals()">
-        <option value="">전체</option>
-        <option value="60">60분봉</option>
-        <option value="120">120분봉</option>
-      </select>
-    </label>
-    <span class="countdown">다음 갱신: <span id="kr-last-update">—</span></span>
+  <!-- 국장 테이블 -->
+  <table id="kr-signal-table" {% if market!='kr' %}style="display:none"{% endif %}>
+    <colgroup>
+      <col style="width:16%"><col style="width:10%"><col style="width:13%">
+      <col style="width:17%"><col style="width:11%"><col style="width:11%">
+      <col style="width:11%">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>종목</th><th>방향</th><th>전략</th>
+        <th class="r">현재가</th><th class="r">등락률</th>
+        <th class="r">강도</th><th class="r">시각</th>
+      </tr>
+    </thead>
+    <tbody id="kr-signal-tbody"></tbody>
+  </table>
+  <div id="kr-signal-empty" class="tbl-empty" style="display:none">
+    국장 시그널 없음
   </div>
-  <div id="kr-error-msg" class="error-box" style="display:none"></div>
-  <div id="kr-signal-cards" class="signal-cards-container">
-    <div class="empty-cards" id="kr-signal-empty">
-      국장 시그널 없음
-    </div>
-  </div>
-</div><!-- /section-kr -->
+</div>
+
+<!-- PAGE FOOTER -->
+<footer class="page-footer">
+  <span class="footer-item">💾 signals.jsonl</span>
+  <span class="footer-item">🕐 마지막 스캔: <span id="footer-last-scan">—</span></span>
+  <span class="footer-item footer-right">참고용 시그널 · 자동매매 아님</span>
+</footer>
 {% endblock %}
 
 {% block scripts %}
-<script>const POLL_INTERVAL_MS = 30_000;</script>
+<script>
+const POLL_INTERVAL_MS = 30_000;
+const _MARKET_MODE = "{{ market }}";
+</script>
 <script src="/static/js/dashboard.js"></script>
 <script>
-// ── 탭 전환 ─────────────────────────────────────────────────────────────────
-function switchTab(tab) {
-  document.getElementById('section-crypto').style.display = tab === 'crypto' ? '' : 'none';
-  document.getElementById('section-kr').style.display     = tab === 'kr'     ? '' : 'none';
-  document.getElementById('tab-crypto').classList.toggle('tab-active', tab === 'crypto');
-  document.getElementById('tab-kr').classList.toggle('tab-active',     tab === 'kr');
-  if (tab === 'kr') loadKrSignals();
-}
+document.addEventListener('DOMContentLoaded', function(){
+  var mTag = document.getElementById('topbar-market-status');
+  if (mTag){ mTag.textContent = _MARKET_MODE === 'kr' ? '국장' : '코인'; mTag.style.display = ''; }
+  if (_MARKET_MODE === 'kr') loadKrSignals();
+});
 
-// ── 국장 시그널 로드 ──────────────────────────────────────────────────────────
 async function loadKrSignals() {
-  const tf = document.getElementById('kr-filter-timeframe').value;
-  const url = '/api/kr/signals?limit=50' + (tf ? '&timeframe=' + tf : '');
+  const url = '/api/kr/signals?limit=100';
   try {
     const resp = await fetch(url);
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const records = await resp.json();
-    renderKrCards(records);
-    document.getElementById('kr-last-update').textContent = new Date().toLocaleTimeString('ko-KR');
+    renderTable(records, 'kr-signal-tbody', 'kr-signal-empty');
+    updateCounters(records);
+    document.getElementById('footer-last-scan').textContent = new Date().toLocaleTimeString('ko-KR');
   } catch (e) {
-    const box = document.getElementById('kr-error-msg');
+    const box = document.getElementById('error-msg');
     box.textContent = '국장 시그널 로드 실패: ' + e.message;
     box.style.display = '';
   }
-}
-
-function renderKrCards(records) {
-  const container = document.getElementById('kr-signal-cards');
-  const empty     = document.getElementById('kr-signal-empty');
-  container.querySelectorAll('.signal-card').forEach(el => el.remove());
-  if (!records.length) { empty.style.display = ''; return; }
-  empty.style.display = 'none';
-  records.forEach(rec => {
-    const sig = rec.signal || rec;
-    const card = document.createElement('div');
-    card.className = 'signal-card';
-    const dir = sig.direction || '—';
-    const tf  = sig.timeframe === '60' ? '60분' : sig.timeframe === '120' ? '120분' : sig.timeframe;
-    card.innerHTML = `
-      <div class="card-market">${sig.market || '—'}</div>
-      <div class="card-detail">${dir.toUpperCase()} · ${tf} · ${sig.strength || '—'}</div>
-      <div class="card-price">${sig.price != null ? Number(sig.price).toLocaleString() + '원' : '—'}</div>
-      <div class="card-time">${sig.triggered_at ? new Date(sig.triggered_at).toLocaleString('ko-KR') : '—'}</div>
-    `;
-    container.appendChild(card);
-  });
 }
 </script>
 {% endblock %}

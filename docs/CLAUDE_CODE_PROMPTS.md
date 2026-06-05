@@ -642,6 +642,36 @@ RED → GREEN 순서:
 
 ---
 
+## 마일스톤 18 — GUI 트레이딩 터미널 리디자인
+
+```
+docs/ui-redesign-spec.md 를 읽고 §6 구현 순서대로 진행해줘.
+
+목표:
+- 기존 상단 nav + 카드 레이아웃 → 왼쪽 사이드바 + 테이블 레이아웃으로 전환
+- 다크 네이비 테마 (#232f45 계열), 매수=빨강·매도=파랑 (한국 관행)
+- 등락률(change_pct) 컬럼 추가
+
+구현 순서 (스펙 §6):
+1. models.py — Signal에 change_pct: float | None = None 추가, mypy 통과 확인
+2. strategies/ — calc_change_pct() 헬퍼 + bb_cci.py·kr_fractal.py에 전달
+3. app.css — 디자인 토큰 전면 교체 (스펙 §2 그대로)
+4. base.html — topbar + sidebar + app-body 구조 (스펙 §3-1, §3-2)
+5. index.html — summary-strip + toolbar + table (스펙 §3-3~§3-5)
+6. dashboard.js — renderTable(), updateCounters() 추가, 기존 renderCards() 제거
+7. settings.html·backtest.html·failures.html — CSS 조정만 (로직 변경 없음)
+8. pytest --cov=src/ 통과
+9. uv run signal serve 로 브라우저 직접 확인
+
+하드라인:
+- Signal·Candle·IndicatorSnapshot 기존 필드 수정 금지 (추가만 허용)
+- API 엔드포인트 URL 변경 금지
+- settings.js·backtest.js 로직 변경 금지
+- 자동매매 코드 없음
+```
+
+---
+
 ## 일반 패턴 지시문
 
 ### 새 ADR이 필요한 결정이 발생했을 때
