@@ -128,6 +128,38 @@ body {
 
 .main-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 
+/* ── 시스템 상태 패널 (M20) ── */
+.status-panel { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; padding: 14px 16px 0; flex-shrink: 0; }
+.st-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: 10px; padding: 12px 15px; }
+.st-label { font-size: 10px; color: var(--color-muted-2); text-transform: uppercase; letter-spacing: .05em; font-weight: 700; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+.st-main { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.st-sub { font-size: 11.5px; color: var(--color-muted); margin-top: 3px; }
+.st-link { font-size: 11px; color: var(--color-primary); cursor: pointer; text-decoration: none; margin-left: auto; }
+.st-link:hover { text-decoration: underline; }
+.st-strategy { font-size: 13px; background: var(--color-primary-soft); color: var(--color-primary); font-weight: 700; padding: 2px 10px; border-radius: 8px; }
+.st-progress { height: 4px; background: var(--color-surface-3); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+.st-progress i { display: block; height: 100%; width: 0; background: var(--color-primary); border-radius: 2px; transition: width 1s linear; }
+.st-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--color-muted); }
+.st-dot.ok { background: var(--color-success); box-shadow: 0 0 0 3px rgba(34,197,94,0.18); }
+.st-dot.off { background: var(--color-danger); }
+
+/* 운용 현황 목록: 마켓그룹 ↔ 전략 매핑 */
+.st-card-wide { grid-column: span 2; }
+@media (max-width: 900px) { .st-card-wide { grid-column: span 1; } }
+.run-list { display: flex; flex-direction: column; gap: 6px; }
+.run-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; flex-wrap: wrap; }
+.run-scope { font-weight: 700; min-width: 52px; }
+.run-strat { font-size: 11px; background: var(--color-primary-soft); color: var(--color-primary); font-weight: 700; padding: 2px 9px; border-radius: 8px; white-space: nowrap; }
+.run-detail { color: var(--color-muted); font-size: 11.5px; }
+.run-off { color: var(--color-muted-2); font-size: 11.5px; }
+.run-warn { color: var(--color-danger); font-size: 11.5px; font-weight: 600; text-decoration: none; }
+.run-warn:hover { text-decoration: underline; }
+
+/* 설명형 빈 상태 (M20) */
+.empty-rich { padding: 36px; text-align: center; }
+.empty-rich h4 { margin: 0 0 6px; font-size: 14px; color: var(--color-text); }
+.empty-rich p { margin: 0; font-size: 12.5px; color: var(--color-muted); line-height: 1.6; }
+
 /* ── SUMMARY STRIP ── */
 .summary-strip {
   display: flex; flex-shrink: 0;
@@ -251,6 +283,57 @@ tr.row-new td { animation: row-flash 2.5s ease-out; }
   border-bottom: 1px solid var(--color-border);
   padding-bottom: 0.6rem;
 }
+
+/* ── 설정 재구성 (M20): 번호 헤더·전략 카드·sticky 저장바 ── */
+.sec-num { display: inline-flex; width: 22px; height: 22px; border-radius: 50%; background: var(--color-primary-soft); color: var(--color-primary); font-weight: 800; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0; margin-right: 8px; }
+.settings-section h2 { display: flex; align-items: center; }
+.sec-desc { margin-left: auto; font-size: 11.5px; color: var(--color-muted-2); font-weight: 400; }
+
+.strat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.strat-card { border: 1px solid var(--color-border-2); border-radius: 10px; padding: 12px 14px; cursor: pointer; background: var(--color-surface-2); transition: border-color var(--transition); position: relative; }
+.strat-card:hover { border-color: var(--color-muted); }
+.strat-card.on { border-color: var(--color-primary); background: var(--color-primary-soft); box-shadow: 0 0 0 1px var(--color-primary); }
+.strat-card input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
+.strat-name { font-weight: 800; font-size: 14px; margin-bottom: 3px; }
+.strat-regime { font-size: 11px; color: var(--color-muted); line-height: 1.45; }
+.regime-tag { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 8px; margin-bottom: 6px; }
+.rt-rev   { background: var(--color-sell-bg); color: var(--color-sell); }
+.rt-trend { background: rgba(34,197,94,0.12); color: var(--color-success); }
+.rt-break { background: rgba(245,166,35,0.12); color: var(--color-strong); }
+
+.active-params { margin-top: 14px; border: 1px dashed var(--color-border-2); border-radius: 10px; padding: 14px 16px; background: var(--color-bg); }
+.ap-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.ap-head b { font-size: 13px; }
+.ap-chip { font-size: 10px; background: var(--color-primary-soft); color: var(--color-primary); padding: 2px 8px; border-radius: 8px; font-weight: 700; }
+.pr-default { font-size: 10px; color: var(--color-muted-2); }
+
+/* 변경 추적 */
+.param-changed { box-shadow: 0 0 0 1px var(--color-strong) !important; border-radius: 7px; }
+
+/* 토글 스위치 */
+.toggle { position: relative; width: 38px; height: 21px; background: var(--color-surface-3); border-radius: 11px; cursor: pointer; transition: background var(--transition); flex-shrink: 0; display: inline-block; vertical-align: middle; }
+.toggle.on { background: var(--color-primary); }
+.toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 17px; height: 17px; border-radius: 50%; background: #fff; transition: left var(--transition); }
+.toggle.on::after { left: 19px; }
+.toggle-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+.toggle-info b { font-size: 13px; display: block; }
+.toggle-info span { font-size: 11px; color: var(--color-muted); }
+
+/* 접힘 섹션 (국장) */
+.settings-section.collapsed .sec-fold-body { display: none; }
+.sec-fold-toggle { cursor: pointer; user-select: none; }
+
+/* sticky 저장 바 */
+.savebar { position: sticky; bottom: 0; background: var(--color-surface); border-top: 1px solid var(--color-border-2); padding: 12px 0; display: flex; align-items: center; gap: 14px; z-index: 50; margin: 1.5rem -2rem -1.5rem; padding-left: 2rem; padding-right: 2rem; }
+.sb-changes { font-size: 13px; }
+.sb-changes b { color: var(--color-strong); }
+.sb-changes-detail { font-size: 11px; color: var(--color-muted); margin-top: 2px; max-width: 480px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.savebar .btn-primary { margin-left: auto; padding: 10px 26px; font-weight: 700; }
+.savebar-applied { display: none; align-items: center; gap: 8px; font-size: 13px; color: var(--color-success); }
+
+/* 테스트 발송 */
+.test-ok { font-size: 12px; color: var(--color-success); margin-top: 8px; }
+.test-fail { font-size: 12px; color: var(--color-danger); margin-top: 8px; }
 
 /* ── 폼 필드 ── */
 .field-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
@@ -395,8 +478,8 @@ tr.row-new td { animation: row-flash 2.5s ease-out; }
 .btn-stop  { background: var(--color-danger); color: #fff; border: none; border-radius: var(--radius); padding: 0.5rem 1.5rem; cursor: pointer; font-size: 0.9rem; transition: opacity var(--transition); }
 .btn-stop:hover  { opacity: 0.85; }
 
-/* ── 지표 아코디언 (설정 전략 파라미터, M19) ── */
-.ind { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); margin-bottom: 0.7rem; overflow: hidden; transition: border-color var(--transition); }
+/* ── 지표 카드 (아코디언, M19) ── */
+.ind { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); margin-bottom: 0.625rem; overflow: hidden; transition: border-color var(--transition); }
 .ind.open { border-color: var(--color-border-2); }
 .ind-head { display: flex; align-items: center; gap: 0.8rem; padding: 0.9rem 1rem; cursor: pointer; user-select: none; }
 .ind-head:hover { background: var(--color-surface-2); }

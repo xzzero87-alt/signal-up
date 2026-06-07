@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}스타일가이드{% endblock %}
+
+{# 라이브 스타일가이드 (collaboration-prd.md R3).
+   실제 app.css 클래스를 그대로 렌더하므로 토큰을 바꾸면 여기서 즉시 확인된다.
+   신규 컴포넌트는 이 페이지에 추가해 일관성 기준으로 삼는다. #}
+
+{% block content %}
+<div class="page-content">
+  <div class="page-header">
+    <h1>스타일가이드</h1>
+    <p class="header-subtitle">실제 <code>app.css</code> 토큰·컴포넌트를 한 페이지에 렌더합니다. 상단 ☀️/🌙로 다크·라이트를 토글해 비교하세요.</p>
+  </div>
+
+  <!-- ── 색상 토큰 ── -->
+  <section class="settings-section">
+    <h2>색상 토큰</h2>
+    <div class="sg-swatches">
+      {% for name in [
+        'color-bg','color-surface','color-surface-2','color-surface-3',
+        'color-border','color-border-2','color-text','color-muted','color-muted-2',
+        'color-primary','color-buy','color-sell','color-strong','color-success','color-danger'
+      ] %}
+      <div class="sg-swatch">
+        <div class="sg-chip" style="background: var(--{{ name }})"></div>
+        <div class="sg-name">--{{ name }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ── 시그널 방향·강도 배지 ── -->
+  <section class="settings-section">
+    <h2>시그널 배지 (매수=빨강 / 매도=파랑 / 강도)</h2>
+    <div class="sg-row">
+      <span class="dir-buy">매수 ▲</span>
+      <span class="dir-sell">매도 ▼</span>
+      <span class="str-strong">★ 강함</span>
+      <span class="str-normal">일반</span>
+      <span class="strat-badge">BB_CCI</span>
+      <span class="strat-badge">FRACTAL</span>
+    </div>
+    <div class="sg-row" style="margin-top:0.75rem">
+      <span class="chip chip-vol--high">거래량 高</span>
+      <span class="chip chip-vol--mid">거래량 中</span>
+      <span class="chip chip-vol--low">거래량 低</span>
+      <span class="chip chip-cooldown">쿨다운</span>
+    </div>
+    <div class="sg-row" style="margin-top:0.75rem">
+      <span class="chg-up">+2.34%</span>
+      <span class="chg-down">−1.45%</span>
+      <span class="chg-flat">0.00%</span>
+    </div>
+  </section>
+
+  <!-- ── 버튼 ── -->
+  <section class="settings-section">
+    <h2>버튼</h2>
+    <div class="sg-row">
+      <button class="btn-primary">Primary</button>
+      <button class="btn-secondary">Secondary</button>
+      <button class="btn-sm">Small</button>
+      <button class="btn-daemon">Daemon</button>
+      <button class="btn-theme">◐ Theme</button>
+      <button class="btn-start">Start</button>
+      <button class="btn-stop">Stop</button>
+    </div>
+  </section>
+
+  <!-- ── 스텝퍼 입력 ── -->
+  <section class="settings-section">
+    <h2>스텝퍼 입력</h2>
+    <div class="stepper">
+      <button type="button" onclick="sgStep(this,-1)">−</button>
+      <input type="number" value="20">
+      <button type="button" onclick="sgStep(this,1)">+</button>
+    </div>
+  </section>
+
+  <!-- ── 지표 아코디언 ── -->
+  <section class="settings-section">
+    <h2>지표 아코디언</h2>
+    <div class="ind open">
+      <div class="ind-head" onclick="this.parentElement.classList.toggle('open')">
+        <div class="ind-mark">BB</div>
+        <div>
+          <div class="ind-title">볼린저밴드</div>
+          <div class="ind-desc">밴드 이탈·스퀴즈 기반 진입 판단</div>
+        </div>
+        <div class="ind-meta"><span class="ind-chev">▼</span></div>
+      </div>
+      <div class="ind-body">
+        <div class="ind-param">
+          <div class="ind-param-info">
+            <div class="pl">기간 (Period)</div>
+            <div class="ph">이동평균·표준편차 계산 봉 수</div>
+          </div>
+          <div class="stepper">
+            <button type="button" onclick="sgStep(this,-1)">−</button>
+            <input type="number" value="20">
+            <button type="button" onclick="sgStep(this,1)">+</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ind">
+      <div class="ind-head" onclick="this.parentElement.classList.toggle('open')">
+        <div class="ind-mark cci">CCI</div>
+        <div>
+          <div class="ind-title">CCI</div>
+          <div class="ind-desc">과매수·과매도 모멘텀 확인 (클릭하여 펼침)</div>
+        </div>
+        <div class="ind-meta"><span class="ind-chev">▼</span></div>
+      </div>
+      <div class="ind-body">
+        <div class="ind-param">
+          <div class="ind-param-info"><div class="pl">기간 (Period)</div><div class="ph">CCI 산출 봉 수</div></div>
+          <div class="stepper"><button type="button" onclick="sgStep(this,-1)">−</button><input type="number" value="20"><button type="button" onclick="sgStep(this,1)">+</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 폼 필드 ── -->
+  <section class="settings-section">
+    <h2>폼 필드</h2>
+    <div class="field-row">
+      <label>텍스트 입력 <span class="help" title="도움말 예시">?</span></label>
+      <input type="text" value="KRW-BTC">
+    </div>
+    <div class="field-row">
+      <label>숫자 입력</label>
+      <input type="number" value="2.0" step="any">
+    </div>
+    <div class="field-row field-row-check">
+      <label><input type="checkbox" checked> 체크박스 옵션</label>
+    </div>
+    <div class="field-note">필드 설명용 note 텍스트입니다.</div>
+  </section>
+
+  <!-- ── 테이블 ── -->
+  <section class="settings-section">
+    <h2>시그널 테이블</h2>
+    <div class="tbl-wrap" style="max-height:none">
+      <table>
+        <thead><tr><th>마켓</th><th>방향</th><th>전략</th><th class="r">현재가</th><th class="r">등락률</th><th class="r">강도</th></tr></thead>
+        <tbody>
+          <tr><td>KRW-BTC</td><td><span class="dir-buy">매수 ▲</span></td><td><span class="strat-badge">BB_CCI</span></td><td class="r">96,420,000</td><td class="r chg-up">+2.34%</td><td class="r str-strong">★ 강함</td></tr>
+          <tr><td>KRW-SOL</td><td><span class="dir-sell">매도 ▼</span></td><td><span class="strat-badge">FRACTAL</span></td><td class="r">284,500</td><td class="r chg-down">−3.07%</td><td class="r str-normal">일반</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ── 알림 박스 ── -->
+  <section class="settings-section">
+    <h2>알림 박스</h2>
+    <div class="error-box" style="margin-bottom:0.75rem">에러 박스 — 입력값을 확인하세요.</div>
+    <div class="info-box">정보 박스 — 다음 폴링 사이클부터 반영됩니다.</div>
+  </section>
+</div>
+
+<style>
+/* 스타일가이드 전용 보조 레이아웃 (컴포넌트 색상은 모두 토큰 사용) */
+.sg-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.75rem; }
+.sg-swatch { font-size: 0.72rem; color: var(--color-muted); }
+.sg-chip { height: 44px; border-radius: var(--radius); border: 1px solid var(--color-border-2); margin-bottom: 4px; }
+.sg-name { font-variant-numeric: tabular-nums; }
+.sg-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+</style>
+<script>
+function sgStep(btn, dir) {
+  const input = btn.parentElement.querySelector('input');
+  if (!input) return;
+  const cur = parseFloat(input.value) || 0;
+  input.value = cur + dir;
+}
+</script>
+{% endblock %}

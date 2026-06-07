@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signal — 시그널 프로그램</title>
+<style>
+/* ═══════════════════════════════════════════════════
+   Design Tokens (ui-redesign-spec.md 확정본)
+═══════════════════════════════════════════════════ */
+:root {
+  --bg:          #232f45;
+  --surface:     #1c2840;
+  --surface-2:   #243350;
+  --border:      #2a3a54;
+  --border-2:    #2e4060;
+  --text:        #c8d4e2;
+  --muted:       #6a8098;
+  --muted-2:     #4a6280;
+  --primary:     #6ab0ff;
+
+  --buy:         #e05252;   /* 매수 = 빨강 (한국 관례) */
+  --buy-bg:      #351515;
+  --buy-bd:      #552525;
+  --sell:        #6ab0ff;   /* 매도 = 파랑 */
+  --sell-bg:     #112240;
+  --sell-bd:     #1e3e6a;
+
+  --strong:      #e8a020;
+  --success:     #2cb56a;
+  --danger:      #e05252;
+  --warn:        #e8a020;
+
+  --sidebar-w:   168px;
+  --topbar-h:    42px;
+}
+
+/* ── Reset & base ─────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+}
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ── Topbar ───────────────────────────────────── */
+.topbar {
+  height: var(--topbar-h);
+  min-height: var(--topbar-h);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  z-index: 100;
+}
+.tb-logo {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-right: 1px solid var(--border);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--primary);
+  letter-spacing: 0.5px;
+}
+.tb-logo-icon { font-size: 16px; }
+.tb-meta {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 18px;
+  flex: 1;
+}
+.tb-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.tb-stat-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+}
+.dot-on  { background: var(--success); animation: pulse 2s infinite; }
+.dot-off { background: var(--muted); }
+.dot-warn{ background: var(--warn); animation: pulse 1.2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+.tb-stat-lbl { color: var(--muted); }
+.tb-stat-val { color: var(--text); font-weight: 600; }
+.tb-sep { width: 1px; height: 18px; background: var(--border); }
+.tb-right { margin-left: auto; padding-right: 18px; display: flex; align-items: center; gap: 14px; }
+.tb-time { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tb-scan {
+  font-size: 10px; color: var(--muted);
+  display: flex; align-items: center; gap: 4px;
+}
+
+/* ── Body layout ──────────────────────────────── */
+.body-layout { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+
+/* ── Sidebar ──────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.sb-section { padding: 10px 0; border-bottom: 1px solid var(--border); }
+.sb-section-title {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--muted-2);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding: 0 14px 6px;
+}
+.sb-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background .1s;
+  color: var(--muted);
+  font-size: 12px;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  border-left: 2px solid transparent;
+}
+.sb-item:hover { background: var(--surface-2); color: var(--text); }
+.sb-item.active {
+  color: var(--primary);
+  background: rgba(106,176,255,.08);
+  border-left-color: var(--primary);
+}
+.sb-item-ico { font-size: 14px; flex-shrink: 0; width: 18px; text-align: center; }
+.sb-item-txt { flex: 1; }
+.sb-badge {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: var(--buy-bg);
+  color: var(--buy);
+}
+.sb-badge.sell-badge { background: var(--sell-bg); color: var(--sell); }
+.sb-badge.ok-badge   { background: rgba(44,181,106,.15); color: var(--success); }
+.sb-badge.warn-badge { background: rgba(232,160,32,.15); color: var(--strong); }
+
+.sb-footer { margin-top: auto; padding: 10px; border-top: 1px solid var(--border); }
+.sb-daemon-box {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.sb-daemon-row { display: flex; justify-content: space-between; align-items: center; }
+.sb-daemon-lbl { font-size: 10px; color: var(--muted); }
+.sb-daemon-val { font-size: 11px; font-weight: 600; }
+
+/* ── Main content ─────────────────────────────── */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.view { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+.view.active { display: flex; }
+
+/* ── Summary strip ────────────────────────────── */
+.sum-strip {
+  display: flex;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.si {
+  flex: 1;
+  padding: 9px 16px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.si:last-child { border-right: none; }
+.si-lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; }
+.si-val { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.si-sub { font-size: 10px; color: var(--muted); }
+.si-sub.buy-t  { color: var(--buy); }
+.si-sub.sell-t { color: var(--sell); }
+.si-sub.ok-t   { color: var(--success); }
+
+/* ── Board header ─────────────────────────────── */
+.board-hd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.board-title { font-size: 12px; font-weight: 700; }
+.cnt-badge {
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.cnt-buy  { background: var(--buy-bg);  color: var(--buy);  border: 1px solid var(--buy-bd); }
+.cnt-sell { background: var(--sell-bg); color: var(--sell); border: 1px solid var(--sell-bd); }
+.cnt-all  { background: rgba(106,176,255,.1); color: var(--primary); border: 1px solid rgba(106,176,255,.2); }
+
+.filter-row { display: flex; gap: 6px; align-items: center; margin-left: auto; flex-wrap: wrap; }
+.f-sel {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 4px 7px;
+  color: var(--text);
+  font-size: 11px;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+}
+.f-sel:focus { border-color: var(--primary); }
+.f-search {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 4px 8px;
+  color: var(--text);
+  font-size: 11px;
+  font-family: inherit;
+  outline: none;
+  width: 130px;
+}
+.f-search:focus { border-color: var(--primary); }
+.f-search::placeholder { color: var(--muted); }
+
+/* ── Signal table ─────────────────────────────── */
+.tbl-wrap { flex: 1; overflow-y: auto; }
+table.sig-tbl { width: 100%; border-collapse: collapse; }
+.sig-tbl th {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--surface-2);
+  border-bottom: 2px solid var(--border-2);
+  padding: 7px 12px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  white-space: nowrap;
+  user-select: none;
+  cursor: pointer;
+}
+.sig-tbl th:hover { color: var(--text); }
+.sig-tbl th.s-asc::after  { content: ' ↑'; color: var(--primary); }
+.sig-tbl th.s-desc::after { content: ' ↓'; color: var(--primary); }
+.sig-tbl td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.sig-tbl tr { cursor: pointer; transition: background .1s; }
+.sig-tbl tr:hover td { background: var(--surface-2); }
+
+/* Direction badge */
+.dir {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .5px;
+}
+.dir-buy  { background: var(--buy-bg);  color: var(--buy);  border: 1px solid var(--buy-bd); }
+.dir-sell { background: var(--sell-bg); color: var(--sell); border: 1px solid var(--sell-bd); }
+
+/* Strategy tag */
+.stag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  background: rgba(106,176,255,.1);
+  color: var(--primary);
+  border: 1px solid rgba(106,176,255,.15);
+}
+.stag-fr {
+  background: rgba(232,160,32,.1);
+  color: var(--strong);
+  border-color: rgba(232,160,32,.2);
+}
+
+/* Market cell */
+.mkt-cell { display: flex; flex-direction: column; gap: 2px; }
+.mkt-sym { font-size: 13px; font-weight: 700; }
+.mkt-tag {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  display: inline-block;
+  width: fit-content;
+}
+.mkt-crypto { background: rgba(232,160,32,.12); color: var(--strong); font-weight: 700; }
+.mkt-stock  { background: rgba(106,176,255,.12); color: var(--primary); font-weight: 700; }
+
+/* Price cell */
+.price-cell { display: flex; flex-direction: column; gap: 2px; }
+.price-val { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.price-chg { font-size: 11px; font-variant-numeric: tabular-nums; }
+.chg-up { color: var(--buy); }
+.chg-dn { color: var(--sell); }
+.chg-nc { color: var(--muted); }
+
+/* Strength dots */
+.strength-cell { display: flex; align-items: center; gap: 3px; }
+.str-dot { width: 7px; height: 7px; border-radius: 50%; }
+.str-dot.on  { background: var(--primary); }
+.str-dot.off { background: var(--border-2); }
+
+/* Time */
+.time-val { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Empty state */
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--muted);
+  padding: 40px;
+}
+.empty-icon { font-size: 36px; opacity: .4; }
+.empty-txt  { font-size: 13px; }
+
+/* ═══ Settings View ═══════════════════════════ */
+.settings-inner { flex: 1; overflow-y: auto; padding: 16px; }
+.settings-title { font-size: 14px; font-weight: 700; margin-bottom: 14px; }
+
+/* Settings status summary */
+.settings-status {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.ss-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid;
+}
+.ss-ok   { background: rgba(44,181,106,.08); color: var(--success); border-color: rgba(44,181,106,.25); }
+.ss-warn { background: rgba(232,160,32,.08); color: var(--strong);  border-color: rgba(232,160,32,.25); }
+.ss-err  { background: var(--buy-bg); color: var(--buy); border-color: var(--buy-bd); }
+
+.s-tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 14px; }
+.s-tab {
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color .1s;
+}
+.s-tab:hover  { color: var(--text); }
+.s-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+.s-panel { display: none; }
+.s-panel.active { display: block; }
+
+/* Market list */
+.mkt-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.mkt-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 12px;
+}
+.mkt-row-sym { font-size: 13px; font-weight: 700; flex: 1; }
+.mkt-row-type { font-size: 10px; color: var(--muted); }
+.mkt-toggle {
+  position: relative;
+  width: 34px; height: 18px;
+  flex-shrink: 0;
+}
+.mkt-toggle input { opacity: 0; width: 0; height: 0; }
+.mkt-slider {
+  position: absolute; inset: 0;
+  cursor: pointer;
+  border-radius: 9px;
+  background: var(--border-2);
+  transition: background .2s;
+}
+.mkt-slider::before {
+  content: '';
+  position: absolute;
+  width: 14px; height: 14px;
+  left: 2px; bottom: 2px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform .2s;
+}
+.mkt-toggle input:checked + .mkt-slider { background: var(--primary); }
+.mkt-toggle input:checked + .mkt-slider::before { transform: translateX(16px); }
+.del-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--muted); font-size: 14px; padding: 2px 4px;
+  border-radius: 3px;
+}
+.del-btn:hover { background: var(--buy-bg); color: var(--buy); }
+.add-mkt-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.add-input {
+  flex: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+}
+.add-input:focus { border-color: var(--primary); }
+.add-btn {
+  padding: 6px 14px;
+  background: rgba(106,176,255,.12);
+  border: 1px solid rgba(106,176,255,.25);
+  border-radius: 4px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.add-btn:hover { background: rgba(106,176,255,.2); }
+
+/* Strategy params */
+.strat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.strat-card-hd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.strat-card-name { font-size: 13px; font-weight: 700; flex: 1; }
+.strat-enabled-toggle {
+  position: relative; width: 34px; height: 18px;
+}
+.strat-enabled-toggle input { opacity: 0; width: 0; height: 0; }
+.strat-param-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.param-row { display: flex; flex-direction: column; gap: 4px; }
+.param-lbl { font-size: 10px; color: var(--muted); }
+.param-input {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 5px 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.param-input:focus { border-color: var(--primary); }
+
+.save-btn {
+  margin-top: 14px;
+  padding: 8px 20px;
+  background: var(--primary);
+  border: none;
+  border-radius: 4px;
+  color: #0d1a2b;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.save-btn:hover { filter: brightness(1.1); }
+
+/* Telegram settings */
+.tg-form { display: flex; flex-direction: column; gap: 8px; }
+.tg-row { display: flex; align-items: center; gap: 8px; }
+.tg-lbl { font-size: 11px; color: var(--muted); width: 70px; flex-shrink: 0; }
+.tg-input {
+  flex: 1;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 5px 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+}
+.tg-input:focus { border-color: var(--primary); }
+.tg-status {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 10px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.tg-ok   { background: rgba(44,181,106,.1); color: var(--success); border: 1px solid rgba(44,181,106,.2); }
+.tg-fail { background: var(--buy-bg); color: var(--buy); border: 1px solid var(--buy-bd); }
+
+/* ═══ Backtest View ═══════════════════════════ */
+.bt-inner { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.bt-form-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 14px;
+}
+.bt-form-title { font-size: 12px; font-weight: 700; margin-bottom: 12px; color: var(--text); }
+.bt-form-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.bt-field { display: flex; flex-direction: column; gap: 4px; }
+.bt-lbl { font-size: 10px; color: var(--muted); }
+.bt-input, .bt-select {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 6px 8px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+}
+.bt-input:focus, .bt-select:focus { border-color: var(--primary); }
+.bt-run-btn {
+  padding: 7px 22px;
+  background: rgba(106,176,255,.15);
+  border: 1px solid rgba(106,176,255,.3);
+  border-radius: 4px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .1s;
+}
+.bt-run-btn:hover { background: rgba(106,176,255,.25); }
+.bt-run-btn.running { color: var(--muted); cursor: wait; }
+
+/* Backtest result summary */
+.bt-result-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.bt-stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+.bt-stat-lbl { font-size: 10px; color: var(--muted); margin-bottom: 4px; }
+.bt-stat-val { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* Trade record table */
+.bt-trade-tbl { width: 100%; border-collapse: collapse; }
+.bt-trade-tbl th {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border-2);
+  padding: 6px 10px;
+  text-align: left;
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  white-space: nowrap;
+}
+.bt-trade-tbl td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.bt-trade-tbl tr:hover td { background: var(--surface-2); }
+
+/* ═══ System View ═════════════════════════════ */
+.sys-inner { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.sys-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 14px;
+}
+.sys-card-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 12px; }
+.sys-daemon-row { display: flex; align-items: center; gap: 12px; }
+.daemon-status-big {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px;
+  border-radius: 5px;
+  font-size: 14px;
+  font-weight: 700;
+  flex: 1;
+}
+.daemon-on  { background: rgba(44,181,106,.1);  color: var(--success); border: 1px solid rgba(44,181,106,.25); }
+.daemon-off { background: rgba(90,120,152,.1);  color: var(--muted);   border: 1px solid var(--border); }
+.daemon-btn {
+  padding: 8px 18px;
+  border-radius: 4px;
+  border: none;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-stop  { background: var(--buy-bg);  color: var(--buy);     border: 1px solid var(--buy-bd); }
+.btn-start { background: rgba(44,181,106,.15); color: var(--success); border: 1px solid rgba(44,181,106,.3); }
+.btn-stop:hover  { filter: brightness(1.15); }
+.btn-start:hover { filter: brightness(1.15); }
+
+.sys-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.sys-info-item {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.sys-info-lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+.sys-info-val { font-size: 13px; font-weight: 600; }
+
+/* Log viewer */
+.log-box {
+  background: #0d1521;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+  font-family: 'Consolas', 'D2Coding', monospace;
+  font-size: 11px;
+  line-height: 1.7;
+  max-height: 220px;
+  overflow-y: auto;
+  color: #7ea8cc;
+}
+.log-info  { color: #6ab0ff; }
+.log-ok    { color: #2cb56a; }
+.log-warn  { color: #e8a020; }
+.log-err   { color: #e05252; }
+
+/* ── Toast ────────────────────────────────────── */
+.toast-wrap {
+  position: fixed; bottom: 20px; left: 50%;
+  transform: translateX(-50%);
+  display: flex; flex-direction: column; gap: 5px;
+  z-index: 9999; pointer-events: none;
+}
+.toast {
+  background: var(--surface);
+  border-radius: 5px;
+  padding: 8px 18px;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 4px 18px rgba(0,0,0,.6);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: all .3s;
+}
+.toast.show   { opacity: 1; transform: translateY(0); }
+.toast.buy    { border: 1px solid var(--buy-bd);  color: var(--buy); }
+.toast.sell   { border: 1px solid var(--sell-bd); color: var(--sell); }
+.toast.ok     { border: 1px solid rgba(44,181,106,.4); color: var(--success); }
+.toast.system { border: 1px solid var(--border-2); color: var(--muted); }
+
+/* ── Mobile ───────────────────────────────────── */
+@media (max-width: 768px) {
+  :root { --sidebar-w: 0px; }
+  .sidebar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    width: 100%; height: 52px;
+    flex-direction: row;
+    border-right: none; border-top: 1px solid var(--border);
+    padding: 0; z-index: 200;
+  }
+  .sb-section { display: none; }
+  .sb-section.mobile-only { display: flex; flex: 1; }
+  .sb-item { justify-content: center; flex: 1; padding: 0; height: 100%; gap: 2px; flex-direction: column; align-items: center; border-left: none; border-top: 2px solid transparent; }
+  .sb-item.active { border-left: none; border-top-color: var(--primary); }
+  .sb-item-txt { font-size: 9px; }
+  .sb-badge  { display: none; }
+  .sb-footer { display: none; }
+  .topbar { padding-right: 12px; }
+  .tb-logo { width: 48px; min-width: 48px; font-size: 13px; }
+  .tb-meta { gap: 10px; padding: 0 10px; overflow-x: auto; }
+  .tb-stat-lbl { display: none; }
+  .sum-strip { flex-wrap: wrap; }
+  .si { min-width: 50%; flex: none; }
+  .bt-form-grid { grid-template-columns: 1fr 1fr; }
+  .bt-result-grid { grid-template-columns: 1fr 1fr; }
+  .sys-info-grid { grid-template-columns: 1fr; }
+  .main { padding-bottom: 52px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Topbar ──────────────────────────────────── -->
+<header class="topbar">
+  <div class="tb-logo">
+    <span class="tb-logo-icon">📡</span>
+    Signal
+  </div>
+  <div class="tb-meta">
+    <div class="tb-stat">
+      <div class="tb-stat-dot dot-on"></div>
+      <span class="tb-stat-lbl">데몬</span>
+      <span class="tb-stat-val">실행 중</span>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-stat">
+      <div class="tb-stat-dot dot-on"></div>
+      <span class="tb-stat-lbl">텔레그램</span>
+      <span class="tb-stat-val">연결됨</span>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-stat">
+      <span class="tb-stat-lbl">마지막 스캔</span>
+      <span class="tb-stat-val" id="lastScan">09:32:00</span>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-stat">
+      <span class="tb-stat-lbl">감시 종목</span>
+      <span class="tb-stat-val" id="watchCount">12</span>
+    </div>
+  </div>
+  <div class="tb-right">
+    <span class="tb-time" id="topTime">--:--:--</span>
+  </div>
+</header>
+
+<div class="body-layout">
+
+<!-- ── Sidebar ─────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="sb-section">
+    <div class="sb-section-title">메인</div>
+    <button class="sb-item active" data-view="home" onclick="nav('home')">
+      <span class="sb-item-ico">📊</span>
+      <span class="sb-item-txt">시그널 현황</span>
+      <span class="sb-badge" id="sbbuy">0</span>
+    </button>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-section-title">관리</div>
+    <button class="sb-item" data-view="settings" onclick="nav('settings')">
+      <span class="sb-item-ico">⚙️</span>
+      <span class="sb-item-txt">설정</span>
+      <span class="sb-badge ok-badge" id="sbSettings">완료</span>
+    </button>
+    <button class="sb-item" data-view="backtest" onclick="nav('backtest')">
+      <span class="sb-item-ico">🔬</span>
+      <span class="sb-item-txt">백테스트</span>
+    </button>
+  </div>
+
+  <div class="sb-section">
+    <div class="sb-section-title">시스템</div>
+    <button class="sb-item" data-view="system" onclick="nav('system')">
+      <span class="sb-item-ico">🖥️</span>
+      <span class="sb-item-txt">시스템</span>
+    </button>
+  </div>
+
+  <!-- Mobile nav (bottom) -->
+  <div class="sb-section mobile-only">
+    <button class="sb-item active" data-view="home" onclick="nav('home')">
+      <span class="sb-item-ico">📊</span>
+      <span class="sb-item-txt">시그널</span>
+    </button>
+    <button class="sb-item" data-view="settings" onclick="nav('settings')">
+      <span class="sb-item-ico">⚙️</span>
+      <span class="sb-item-txt">설정</span>
+    </button>
+    <button class="sb-item" data-view="backtest" onclick="nav('backtest')">
+      <span class="sb-item-ico">🔬</span>
+      <span class="sb-item-txt">백테스트</span>
+    </button>
+    <button class="sb-item" data-view="system" onclick="nav('system')">
+      <span class="sb-item-ico">🖥️</span>
+      <span class="sb-item-txt">시스템</span>
+    </button>
+  </div>
+
+  <div class="sb-footer">
+    <div class="sb-daemon-box">
+      <div class="sb-daemon-row">
+        <span class="sb-daemon-lbl">데몬 상태</span>
+        <span class="sb-daemon-val" style="color:var(--success)">● 실행 중</span>
+      </div>
+      <div class="sb-daemon-row">
+        <span class="sb-daemon-lbl">다음 스캔</span>
+        <span class="sb-daemon-val" id="nextScan">00:28</span>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ── Main area ──────────────────────────────── -->
+<div class="main">
+
+  <!-- ══════ 시그널 현황 ════════════════════════ -->
+  <div class="view active" id="view-home">
+
+    <!-- Summary strip -->
+    <div class="sum-strip" id="sumStrip"></div>
+
+    <!-- Board header + filters -->
+    <div class="board-hd">
+      <span class="board-title">활성 시그널</span>
+      <span class="cnt-badge cnt-buy" id="cntBuy">매수 0</span>
+      <span class="cnt-badge cnt-sell" id="cntSell">매도 0</span>
+      <div class="filter-row">
+        <input class="f-search" id="fSearch" placeholder="🔍 종목 검색..." oninput="applyFilters()">
+        <select class="f-sel" id="fMkt" onchange="applyFilters()">
+          <option value="">전체 시장</option>
+          <option value="UPBIT">업비트 (코인)</option>
+          <option value="KRX">국내 주식</option>
+        </select>
+        <select class="f-sel" id="fDir" onchange="applyFilters()">
+          <option value="">매수+매도</option>
+          <option value="BUY">매수만</option>
+          <option value="SELL">매도만</option>
+        </select>
+        <select class="f-sel" id="fStr" onchange="applyFilters()">
+          <option value="">전체 전략</option>
+          <option value="BB_CCI">BB+CCI</option>
+          <option value="FRACTAL">Fractal</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Signal table -->
+    <div class="tbl-wrap">
+      <table class="sig-tbl" id="sigTbl">
+        <thead>
+          <tr>
+            <th onclick="sortBy('market')">마켓</th>
+            <th onclick="sortBy('direction')">방향</th>
+            <th onclick="sortBy('strategy')">전략</th>
+            <th onclick="sortBy('price')">현재가</th>
+            <th onclick="sortBy('change_pct')">등락률</th>
+            <th onclick="sortBy('strength')">강도</th>
+            <th onclick="sortBy('age')">발생 시각</th>
+          </tr>
+        </thead>
+        <tbody id="sigBody"></tbody>
+      </table>
+      <div class="empty-state" id="emptyState" style="display:none">
+        <div class="empty-icon">📡</div>
+        <div class="empty-txt">조건에 맞는 시그널이 없습니다</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ 설정 ══════════════════════════════ -->
+  <div class="view" id="view-settings">
+    <div class="settings-inner">
+      <div class="settings-title">설정</div>
+
+      <!-- 설정 완료 상태 요약 -->
+      <div class="settings-status" id="settingsStatus"></div>
+
+      <div class="s-tabs">
+        <button class="s-tab active" data-stab="markets"  onclick="sTab('markets')">감시 종목</button>
+        <button class="s-tab"        data-stab="strategy" onclick="sTab('strategy')">전략 파라미터</button>
+        <button class="s-tab"        data-stab="telegram" onclick="sTab('telegram')">텔레그램 알림</button>
+      </div>
+
+      <!-- 감시 종목 -->
+      <div class="s-panel active" id="spanel-markets">
+        <div class="mkt-list" id="mktList"></div>
+        <div class="add-mkt-row">
+          <input class="add-input" id="newMkt" placeholder="예: KRW-ADA, 035420" oninput="this.value=this.value.toUpperCase()">
+          <button class="add-btn" onclick="addMarket()">+ 추가</button>
+        </div>
+      </div>
+
+      <!-- 전략 파라미터 -->
+      <div class="s-panel" id="spanel-strategy">
+        <div class="strat-card">
+          <div class="strat-card-hd">
+            <span class="sb stag">BB+CCI</span>
+            <span class="strat-card-name">볼린저밴드 + CCI 전략</span>
+            <label class="strat-enabled-toggle mkt-toggle">
+              <input type="checkbox" checked onchange="">
+              <span class="mkt-slider"></span>
+            </label>
+          </div>
+          <div class="strat-param-grid">
+            <div class="param-row">
+              <label class="param-lbl">BB 기간</label>
+              <input class="param-input" type="number" value="20" min="5">
+            </div>
+            <div class="param-row">
+              <label class="param-lbl">BB 표준편차 배수</label>
+              <input class="param-input" type="number" value="2.0" step="0.1" min="0.5">
+            </div>
+            <div class="param-row">
+              <label class="param-lbl">CCI 기간</label>
+              <input class="param-input" type="number" value="20" min="5">
+            </div>
+            <div class="param-row">
+              <label class="param-lbl">CCI 임계값</label>
+              <input class="param-input" type="number" value="100" min="50">
+            </div>
+          </div>
+        </div>
+        <div class="strat-card">
+          <div class="strat-card-hd">
+            <span class="sb stag stag-fr">Fractal</span>
+            <span class="strat-card-name">Williams Fractal 전략</span>
+            <label class="strat-enabled-toggle mkt-toggle">
+              <input type="checkbox" checked onchange="">
+              <span class="mkt-slider"></span>
+            </label>
+          </div>
+          <div class="strat-param-grid">
+            <div class="param-row">
+              <label class="param-lbl">Fractal 기간</label>
+              <input class="param-input" type="number" value="5" min="3">
+            </div>
+            <div class="param-row">
+              <label class="param-lbl">확인 봉 수</label>
+              <input class="param-input" type="number" value="2" min="1">
+            </div>
+          </div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:8px">
+          ※ 모든 시그널은 1시간 봉 마감 기준으로 평가됩니다 (진행 중인 봉 제외)
+        </div>
+        <button class="save-btn" onclick="saveSettings()">설정 저장</button>
+      </div>
+
+      <!-- 텔레그램 -->
+      <div class="s-panel" id="spanel-telegram">
+        <div style="margin-bottom:12px">
+          <div class="tg-status tg-ok" id="tgStatus" style="display:inline-flex;margin-bottom:12px">
+            ✓ &nbsp; 텔레그램 연결 확인됨
+          </div>
+        </div>
+        <div class="tg-form">
+          <div class="tg-row">
+            <span class="tg-lbl">Bot Token</span>
+            <input class="tg-input" type="password" value="7123456789:AAxxxxxx••••••••••••XXXX" placeholder="텔레그램 봇 토큰">
+          </div>
+          <div class="tg-row">
+            <span class="tg-lbl">Chat ID</span>
+            <input class="tg-input" type="text" value="••••••••4567" placeholder="텔레그램 채팅 ID">
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px">
+            <button class="add-btn" onclick="testTelegram()">연결 테스트</button>
+            <button class="save-btn" onclick="saveSettings()">저장</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ 백테스트 ═══════════════════════════ -->
+  <div class="view" id="view-backtest">
+    <div class="bt-inner">
+      <!-- 실행 폼 -->
+      <div class="bt-form-card">
+        <div class="bt-form-title">백테스트 실행</div>
+        <div class="bt-form-grid">
+          <div class="bt-field">
+            <label class="bt-lbl">종목</label>
+            <select class="bt-select" id="btMarket">
+              <option value="KRW-BTC">KRW-BTC</option>
+              <option value="KRW-ETH">KRW-ETH</option>
+              <option value="005930">005930 삼성전자</option>
+              <option value="000660">000660 SK하이닉스</option>
+            </select>
+          </div>
+          <div class="bt-field">
+            <label class="bt-lbl">전략</label>
+            <select class="bt-select" id="btStrat">
+              <option value="BB_CCI">BB+CCI</option>
+              <option value="FRACTAL">Fractal</option>
+            </select>
+          </div>
+          <div class="bt-field">
+            <label class="bt-lbl">시작일</label>
+            <input class="bt-input" type="date" id="btFrom" value="2025-01-01">
+          </div>
+          <div class="bt-field">
+            <label class="bt-lbl">종료일</label>
+            <input class="bt-input" type="date" id="btTo" value="2026-04-30">
+          </div>
+        </div>
+        <button class="bt-run-btn" id="btRunBtn" onclick="runBacktest()">▶ 백테스트 실행</button>
+      </div>
+
+      <!-- 결과 요약 -->
+      <div id="btResults" style="display:none">
+        <div class="bt-result-grid" id="btStats"></div>
+        <div class="bt-form-card" style="padding:12px 14px">
+          <div class="bt-form-title" style="margin-bottom:10px">거래 내역</div>
+          <div style="overflow-x:auto">
+            <table class="bt-trade-tbl">
+              <thead>
+                <tr>
+                  <th>진입일시</th><th>방향</th><th>진입가</th>
+                  <th>청산일시</th><th>청산가</th><th>수익률</th><th>전략</th>
+                </tr>
+              </thead>
+              <tbody id="btTrades"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ 시스템 ═════════════════════════════ -->
+  <div class="view" id="view-system">
+    <div class="sys-inner">
+      <!-- 데몬 제어 -->
+      <div class="sys-card">
+        <div class="sys-card-title">데몬 제어</div>
+        <div class="sys-daemon-row">
+          <div class="daemon-status-big daemon-on" id="daemonStatus">
+            ● &nbsp; 데몬 실행 중
+          </div>
+          <button class="daemon-btn btn-stop" id="daemonBtn" onclick="toggleDaemon()">■ 중지</button>
+        </div>
+      </div>
+
+      <!-- 시스템 정보 -->
+      <div class="sys-card">
+        <div class="sys-card-title">시스템 정보</div>
+        <div class="sys-info-grid">
+          <div class="sys-info-item">
+            <div class="sys-info-lbl">마지막 스캔</div>
+            <div class="sys-info-val" id="sysLastScan">09:32:00</div>
+          </div>
+          <div class="sys-info-item">
+            <div class="sys-info-lbl">다음 스캔까지</div>
+            <div class="sys-info-val" id="sysNextScan">00:28</div>
+          </div>
+          <div class="sys-info-item">
+            <div class="sys-info-lbl">오늘 처리한 시그널</div>
+            <div class="sys-info-val" id="sysTodaySig">8</div>
+          </div>
+          <div class="sys-info-item">
+            <div class="sys-info-lbl">텔레그램 발송</div>
+            <div class="sys-info-val" id="sysTgSent">8</div>
+          </div>
+          <div class="sys-info-item">
+            <div class="sys-info-lbl">감시 종목 수</div>
+            <div class="sys-info-val">12</div>
+          </div>
+          <div class="sys-info-item">
+            <div class="sys-info-lbl">웹서버</div>
+            <div class="sys-info-val" style="color:var(--success)">127.0.0.1:8000</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 로그 -->
+      <div class="sys-card">
+        <div class="sys-card-title">최근 로그</div>
+        <div class="log-box" id="logBox"></div>
+      </div>
+
+      <!-- Doctor 결과 -->
+      <div class="sys-card">
+        <div class="sys-card-title">환경 점검 (signal doctor)</div>
+        <div id="doctorResult"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+</div><!-- /body-layout -->
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+'use strict';
+
+// ── 실제 Signal 모델 기반 목 데이터 ──────────────────────────────────────────
+// Signal { market, direction, strategy, price, change_pct, strength, created_at }
+
+const SIGNALS = [
+  { market:'KRW-BTC',  exchange:'UPBIT', direction:'BUY',  strategy:'BB_CCI',  price:134800000, change_pct: 1.20, strength:4, created_at:'09:32' },
+  { market:'KRW-ETH',  exchange:'UPBIT', direction:'BUY',  strategy:'FRACTAL', price:5120000,   change_pct: 0.85, strength:3, created_at:'09:58' },
+  { market:'005930',   exchange:'KRX',   direction:'BUY',  strategy:'BB_CCI',  price:73800,     change_pct: 1.20, strength:5, created_at:'09:32' },
+  { market:'KRW-SOL',  exchange:'UPBIT', direction:'SELL', strategy:'FRACTAL', price:213000,    change_pct:-2.14, strength:4, created_at:'10:42' },
+  { market:'035720',   exchange:'KRX',   direction:'SELL', strategy:'BB_CCI',  price:48100,     change_pct:-2.14, strength:3, created_at:'10:42' },
+  { market:'000660',   exchange:'KRX',   direction:'BUY',  strategy:'BB_CCI',  price:182000,    change_pct:-0.80, strength:4, created_at:'10:18' },
+  { market:'KRW-XRP',  exchange:'UPBIT', direction:'BUY',  strategy:'FRACTAL', price:1240,      change_pct: 2.30, strength:3, created_at:'11:05' },
+  { market:'005380',   exchange:'KRX',   direction:'BUY',  strategy:'BB_CCI',  price:198000,    change_pct: 0.51, strength:5, created_at:'09:55' },
+  { market:'KRW-DOGE', exchange:'UPBIT', direction:'SELL', strategy:'BB_CCI',  price:185,       change_pct:-1.60, strength:2, created_at:'11:22' },
+  { market:'KRW-ADA',  exchange:'UPBIT', direction:'BUY',  strategy:'BB_CCI',  price:680,       change_pct: 3.10, strength:3, created_at:'11:38' },
+];
+
+const MARKETS_CONFIG = [
+  { market:'KRW-BTC',  exchange:'UPBIT', enabled:true  },
+  { market:'KRW-ETH',  exchange:'UPBIT', enabled:true  },
+  { market:'KRW-SOL',  exchange:'UPBIT', enabled:true  },
+  { market:'KRW-XRP',  exchange:'UPBIT', enabled:true  },
+  { market:'KRW-DOGE', exchange:'UPBIT', enabled:false },
+  { market:'KRW-ADA',  exchange:'UPBIT', enabled:true  },
+  { market:'005930',   exchange:'KRX',   enabled:true  },
+  { market:'000660',   exchange:'KRX',   enabled:true  },
+  { market:'005380',   exchange:'KRX',   enabled:true  },
+  { market:'035420',   exchange:'KRX',   enabled:true  },
+  { market:'035720',   exchange:'KRX',   enabled:true  },
+  { market:'068270',   exchange:'KRX',   enabled:false },
+];
+
+const BT_TRADES = [
+  { entry_dt:'2025-01-08 14:00', dir:'BUY',  entry:92000000,  exit_dt:'2025-01-12 10:00', exit:101000000, pct:9.78,  strat:'BB_CCI'  },
+  { entry_dt:'2025-01-20 09:00', dir:'SELL', entry:95000000,  exit_dt:'2025-01-22 15:00', exit:88000000,  pct:7.37,  strat:'FRACTAL' },
+  { entry_dt:'2025-02-03 11:00', dir:'BUY',  entry:105000000, exit_dt:'2025-02-06 13:00', exit:98000000,  pct:-6.67, strat:'BB_CCI'  },
+  { entry_dt:'2025-02-15 08:00', dir:'BUY',  entry:112000000, exit_dt:'2025-02-20 14:00', exit:124000000, pct:10.71, strat:'BB_CCI'  },
+  { entry_dt:'2025-03-01 10:00', dir:'SELL', entry:118000000, exit_dt:'2025-03-04 09:00', exit:109000000, pct:7.63,  strat:'FRACTAL' },
+  { entry_dt:'2025-03-14 12:00', dir:'BUY',  entry:125000000, exit_dt:'2025-03-18 16:00', exit:120000000, pct:-4.00, strat:'BB_CCI'  },
+  { entry_dt:'2025-04-02 09:00', dir:'BUY',  entry:130000000, exit_dt:'2025-04-07 11:00', exit:142000000, pct:9.23,  strat:'FRACTAL' },
+  { entry_dt:'2025-04-15 10:00', dir:'SELL', entry:138000000, exit_dt:'2025-04-17 14:00', exit:128000000, pct:7.25,  strat:'BB_CCI'  },
+];
+
+const LOGS = [
+  { level:'info', msg:'[09:00:00] 스캐너 시작. 감시 종목 12개, 전략 2개' },
+  { level:'info', msg:'[09:00:02] KRW-BTC 1H 캔들 로드 완료 (200봉)' },
+  { level:'ok',   msg:'[09:32:00] ✓ 시그널 발생 — KRW-BTC BUY (BB_CCI, 강도:4)' },
+  { level:'ok',   msg:'[09:32:01] ✓ 텔레그램 발송 완료' },
+  { level:'ok',   msg:'[09:55:00] ✓ 시그널 발생 — 005380 BUY (BB_CCI, 강도:5)' },
+  { level:'info', msg:'[10:00:00] 정시 스캔 — 12개 종목 처리 중...' },
+  { level:'ok',   msg:'[10:18:00] ✓ 시그널 발생 — 000660 BUY (BB_CCI, 강도:4)' },
+  { level:'warn', msg:'[10:25:00] ⚠ KRW-ETH 캔들 조회 지연 (retry 1/3)' },
+  { level:'ok',   msg:'[10:25:01] ✓ 재시도 성공' },
+  { level:'ok',   msg:'[10:42:00] ✓ 시그널 발생 — KRW-SOL SELL (Fractal, 강도:4)' },
+  { level:'ok',   msg:'[10:42:01] ✓ 시그널 발생 — 035720 SELL (BB_CCI, 강도:3)' },
+  { level:'info', msg:'[11:00:00] 정시 스캔 완료. 이상 없음.' },
+];
+
+const DOCTOR_CHECKS = [
+  { name:'Python / uv',         ok:true,  note:'uv 0.4.18' },
+  { name:'.env 파일',           ok:true,  note:'로드됨' },
+  { name:'Upbit API 응답',      ok:true,  note:'200 OK' },
+  { name:'한투 API (국내주식)', ok:true,  note:'200 OK' },
+  { name:'텔레그램 봇',         ok:true,  note:'연결됨' },
+  { name:'DB / 상태 파일',      ok:true,  note:'state/settings.json 존재' },
+  { name:'uv run signal serve', ok:true,  note:'127.0.0.1:8000 응답' },
+];
+
+// ── State ──────────────────────────────────────────────────────────────────
+let sortCol = 'created_at', sortDir = 'desc';
+let filtered = [...SIGNALS];
+let daemonRunning = true;
+let countdown = 28 * 60; // seconds
+
+// ── Formatters ─────────────────────────────────────────────────────────────
+const fmtPrice = (p, mkt) => {
+  if (mkt.startsWith('KRW-') && p >= 1000000) return (p/10000).toFixed(0) + '만';
+  return p.toLocaleString();
+};
+const pctStr = p => (p > 0 ? '+' : '') + p.toFixed(2) + '%';
+const clsPct = p => p > 0 ? 'chg-up' : p < 0 ? 'chg-dn' : 'chg-nc';
+
+function strengthDots(n, max=5) {
+  const dots = [];
+  for (let i=1; i<=max; i++) {
+    dots.push(`<div class="str-dot ${i<=n?'on':'off'}"></div>`);
+  }
+  return `<div class="strength-cell">${dots.join('')}</div>`;
+}
+
+// ── Summary strip ──────────────────────────────────────────────────────────
+function renderSummary() {
+  const allBuy  = SIGNALS.filter(s=>s.direction==='BUY').length;
+  const allSell = SIGNALS.filter(s=>s.direction==='SELL').length;
+  const coins   = SIGNALS.filter(s=>s.exchange==='UPBIT').length;
+  const stocks  = SIGNALS.filter(s=>s.exchange==='KRX').length;
+  const enabled = MARKETS_CONFIG.filter(m=>m.enabled).length;
+
+  document.getElementById('sbbuy').textContent   = allBuy;
+  document.getElementById('cntBuy').textContent  = `매수 ${allBuy}`;
+  document.getElementById('cntSell').textContent = `매도 ${allSell}`;
+  document.getElementById('watchCount').textContent = enabled;
+
+  document.getElementById('sumStrip').innerHTML = `
+    <div class="si">
+      <div class="si-lbl">활성 시그널</div>
+      <div class="si-val">${SIGNALS.length}</div>
+      <div class="si-sub">오늘 누적</div>
+    </div>
+    <div class="si">
+      <div class="si-lbl">매수 시그널</div>
+      <div class="si-val" style="color:var(--buy)">${allBuy}</div>
+      <div class="si-sub buy-t">▲ 매수</div>
+    </div>
+    <div class="si">
+      <div class="si-lbl">매도 시그널</div>
+      <div class="si-val" style="color:var(--sell)">${allSell}</div>
+      <div class="si-sub sell-t">▼ 매도</div>
+    </div>
+    <div class="si">
+      <div class="si-lbl">업비트 (코인)</div>
+      <div class="si-val">${coins}</div>
+      <div class="si-sub">시그널 수</div>
+    </div>
+    <div class="si">
+      <div class="si-lbl">국내 주식</div>
+      <div class="si-val">${stocks}</div>
+      <div class="si-sub">시그널 수</div>
+    </div>
+    <div class="si">
+      <div class="si-lbl">감시 종목</div>
+      <div class="si-val">${enabled}</div>
+      <div class="si-sub ok-t">● 모니터링 중</div>
+    </div>
+  `;
+}
+
+// ── Signal table ───────────────────────────────────────────────────────────
+function applyFilters() {
+  const q   = document.getElementById('fSearch').value.trim().toLowerCase();
+  const mkt = document.getElementById('fMkt').value;
+  const dir = document.getElementById('fDir').value;
+  const str = document.getElementById('fStr').value;
+
+  filtered = SIGNALS.filter(s => {
+    if (q && !s.market.toLowerCase().includes(q)) return false;
+    if (mkt === 'UPBIT' && s.exchange !== 'UPBIT') return false;
+    if (mkt === 'KRX'   && s.exchange !== 'KRX')   return false;
+    if (dir && s.direction !== dir) return false;
+    if (str && s.strategy !== str)  return false;
+    return true;
+  });
+  renderTable();
+}
+
+function sortBy(col) {
+  sortDir = (sortCol === col && sortDir === 'desc') ? 'asc' : 'desc';
+  sortCol = col;
+  document.querySelectorAll('.sig-tbl th').forEach(th => {
+    th.classList.remove('s-asc','s-desc');
+  });
+  const ths = document.querySelectorAll('.sig-tbl th');
+  const colNames = ['market','direction','strategy','price','change_pct','strength','age'];
+  const idx = colNames.indexOf(col);
+  if (idx >= 0) ths[idx].classList.add(sortDir === 'asc' ? 's-asc' : 's-desc');
+  renderTable();
+}
+
+function renderTable() {
+  const sorted = [...filtered].sort((a, b) => {
+    let va, vb;
+    const dirOrder = {BUY:0, SELL:1};
+    const strOrder = {BB_CCI:0, FRACTAL:1};
+    switch (sortCol) {
+      case 'market':     va=a.market;    vb=b.market;    break;
+      case 'direction':  va=dirOrder[a.direction]||0; vb=dirOrder[b.direction]||0; break;
+      case 'strategy':   va=strOrder[a.strategy]||0;  vb=strOrder[b.strategy]||0;  break;
+      case 'price':      va=a.price;     vb=b.price;     break;
+      case 'change_pct': va=a.change_pct||0; vb=b.change_pct||0; break;
+      case 'strength':   va=a.strength;  vb=b.strength;  break;
+      default:           va=a.created_at; vb=b.created_at;
+    }
+    if (typeof va === 'string') return sortDir==='asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    return sortDir === 'asc' ? va - vb : vb - va;
+  });
+
+  const tbody = document.getElementById('sigBody');
+  const empty = document.getElementById('emptyState');
+
+  if (!sorted.length) {
+    tbody.innerHTML = '';
+    empty.style.display = 'flex';
+    return;
+  }
+  empty.style.display = 'none';
+
+  tbody.innerHTML = sorted.map(s => {
+    const isBuy = s.direction === 'BUY';
+    const chgStr = s.change_pct != null ? pctStr(s.change_pct) : '—';
+    const isCrypto = s.exchange === 'UPBIT';
+    return `
+    <tr onclick="rowClick('${s.market}')">
+      <td>
+        <div class="mkt-cell">
+          <span class="mkt-sym">${s.market}</span>
+          <span class="mkt-tag ${isCrypto?'mkt-crypto':'mkt-stock'}">${isCrypto?'UPBIT':'KRX'}</span>
+        </div>
+      </td>
+      <td>
+        <span class="dir ${isBuy?'dir-buy':'dir-sell'}">
+          ${isBuy?'▲ 매수':'▼ 매도'}
+        </span>
+      </td>
+      <td>
+        <span class="stag ${s.strategy==='FRACTAL'?'stag-fr':''}">${s.strategy==='BB_CCI'?'BB+CCI':'Fractal'}</span>
+      </td>
+      <td>
+        <div class="price-cell">
+          <span class="price-val">${fmtPrice(s.price, s.market)}</span>
+          <span class="price-chg ${clsPct(s.change_pct||0)}">${chgStr}</span>
+        </div>
+      </td>
+      <td>
+        <span class="${clsPct(s.change_pct||0)}" style="font-size:13px;font-weight:700;font-variant-numeric:tabular-nums">
+          ${chgStr}
+        </span>
+      </td>
+      <td>${strengthDots(s.strength)}</td>
+      <td><span class="time-val">${s.created_at}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function rowClick(market) {
+  toast(`📡 ${market} — 상세 정보 (구현 예정)`, 'system');
+}
+
+// ── Settings ───────────────────────────────────────────────────────────────
+function renderSettingsStatus() {
+  const enabledMarkets = MARKETS_CONFIG.filter(m=>m.enabled).length;
+  document.getElementById('settingsStatus').innerHTML = `
+    <div class="ss-chip ss-ok">✓ 감시 종목 ${enabledMarkets}개 설정됨</div>
+    <div class="ss-chip ss-ok">✓ BB+CCI 전략 활성화</div>
+    <div class="ss-chip ss-ok">✓ Fractal 전략 활성화</div>
+    <div class="ss-chip ss-ok">✓ 텔레그램 연결됨</div>
+  `;
+}
+
+function renderMarketList() {
+  document.getElementById('mktList').innerHTML = MARKETS_CONFIG.map((m, i) => `
+    <div class="mkt-row">
+      <span class="mkt-sym">${m.market}</span>
+      <span class="mkt-row-type">${m.exchange}</span>
+      <label class="mkt-toggle">
+        <input type="checkbox" ${m.enabled?'checked':''} onchange="toggleMarket(${i})">
+        <span class="mkt-slider"></span>
+      </label>
+      <button class="del-btn" onclick="deleteMarket(${i})" title="삭제">✕</button>
+    </div>
+  `).join('');
+}
+
+function toggleMarket(i) {
+  MARKETS_CONFIG[i].enabled = !MARKETS_CONFIG[i].enabled;
+  renderSettingsStatus();
+  renderSummary();
+}
+function deleteMarket(i) {
+  MARKETS_CONFIG.splice(i, 1);
+  renderMarketList();
+  renderSettingsStatus();
+  renderSummary();
+}
+function addMarket() {
+  const val = document.getElementById('newMkt').value.trim();
+  if (!val) return;
+  const isKRX = /^\d{6}$/.test(val);
+  MARKETS_CONFIG.push({ market:val, exchange: isKRX?'KRX':'UPBIT', enabled:true });
+  document.getElementById('newMkt').value = '';
+  renderMarketList();
+  renderSettingsStatus();
+  toast(`✓ ${val} 추가됨`, 'ok');
+}
+
+function sTab(tab) {
+  document.querySelectorAll('.s-tab').forEach(t  => t.classList.toggle('active',   t.dataset.stab===tab));
+  document.querySelectorAll('.s-panel').forEach(p => p.classList.toggle('active',  p.id===`spanel-${tab}`));
+}
+
+function saveSettings() { toast('✓ 설정이 저장되었습니다', 'ok'); }
+function testTelegram() { toast('✓ 텔레그램 테스트 메시지 발송 완료', 'ok'); }
+
+// ── Backtest ───────────────────────────────────────────────────────────────
+function runBacktest() {
+  const btn = document.getElementById('btRunBtn');
+  btn.textContent = '⏳ 실행 중...';
+  btn.classList.add('running');
+  document.getElementById('btResults').style.display = 'none';
+
+  setTimeout(() => {
+    btn.textContent = '▶ 백테스트 실행';
+    btn.classList.remove('running');
+    renderBtResults();
+    document.getElementById('btResults').style.display = 'block';
+    toast('✓ 백테스트 완료 (KRW-BTC · BB+CCI)', 'ok');
+  }, 1800);
+}
+
+function renderBtResults() {
+  const wins   = BT_TRADES.filter(t=>t.pct>0).length;
+  const total  = BT_TRADES.length;
+  const sumPct = BT_TRADES.reduce((a,t)=>a+t.pct,0);
+  const maxDD  = -6.67;
+
+  document.getElementById('btStats').innerHTML = `
+    <div class="bt-stat">
+      <div class="bt-stat-lbl">총 거래 수</div>
+      <div class="bt-stat-val">${total}회</div>
+    </div>
+    <div class="bt-stat">
+      <div class="bt-stat-lbl">누적 수익률</div>
+      <div class="bt-stat-val" style="color:var(--buy)">+${sumPct.toFixed(1)}%</div>
+    </div>
+    <div class="bt-stat">
+      <div class="bt-stat-lbl">승률</div>
+      <div class="bt-stat-val" style="color:var(--success)">${(wins/total*100).toFixed(0)}%</div>
+    </div>
+    <div class="bt-stat">
+      <div class="bt-stat-lbl">최대 낙폭</div>
+      <div class="bt-stat-val" style="color:var(--sell)">${maxDD}%</div>
+    </div>
+  `;
+
+  document.getElementById('btTrades').innerHTML = BT_TRADES.map(t => {
+    const isBuy = t.dir==='BUY';
+    const pctCls = t.pct>0 ? 'chg-up' : 'chg-dn';
+    return `<tr>
+      <td>${t.entry_dt}</td>
+      <td><span class="dir ${isBuy?'dir-buy':'dir-sell'}" style="font-size:10px;padding:2px 6px">${isBuy?'▲ 매수':'▼ 매도'}</span></td>
+      <td>${(t.entry/10000).toFixed(0)}만</td>
+      <td>${t.exit_dt}</td>
+      <td>${(t.exit/10000).toFixed(0)}만</td>
+      <td class="${pctCls}" style="font-weight:700">${t.pct>0?'+':''}${t.pct.toFixed(2)}%</td>
+      <td><span class="stag ${t.strat==='FRACTAL'?'stag-fr':''}">${t.strat==='BB_CCI'?'BB+CCI':'Fractal'}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── System ─────────────────────────────────────────────────────────────────
+function renderSystem() {
+  document.getElementById('logBox').innerHTML = LOGS.map(l =>
+    `<div class="log-${l.level}">${l.msg}</div>`
+  ).join('');
+
+  document.getElementById('doctorResult').innerHTML = DOCTOR_CHECKS.map(c => `
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px">${c.ok?'✅':'❌'}</span>
+      <span style="flex:1;font-size:12px">${c.name}</span>
+      <span style="font-size:11px;color:${c.ok?'var(--success)':'var(--buy)'}">${c.note}</span>
+    </div>
+  `).join('');
+}
+
+function toggleDaemon() {
+  daemonRunning = !daemonRunning;
+  const statusEl = document.getElementById('daemonStatus');
+  const btnEl    = document.getElementById('daemonBtn');
+  const tbDot    = document.querySelector('.tb-stat .tb-stat-dot');
+  const sbVal    = document.querySelector('.sb-daemon-val');
+
+  if (daemonRunning) {
+    statusEl.className = 'daemon-status-big daemon-on';
+    statusEl.textContent = '●   데몬 실행 중';
+    btnEl.className = 'daemon-btn btn-stop';
+    btnEl.textContent = '■ 중지';
+    if(tbDot) { tbDot.className='tb-stat-dot dot-on'; }
+    if(sbVal) { sbVal.style.color='var(--success)'; sbVal.textContent='● 실행 중'; }
+    toast('▶ 데몬이 시작되었습니다', 'ok');
+  } else {
+    statusEl.className = 'daemon-status-big daemon-off';
+    statusEl.textContent = '○   데몬 중지됨';
+    btnEl.className = 'daemon-btn btn-start';
+    btnEl.textContent = '▶ 시작';
+    if(tbDot) { tbDot.className='tb-stat-dot dot-off'; }
+    if(sbVal) { sbVal.style.color='var(--muted)'; sbVal.textContent='○ 중지됨'; }
+    toast('■ 데몬이 중지되었습니다', 'system');
+  }
+}
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+function nav(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.sb-item').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById('view-'+view);
+  if (el) el.classList.add('active');
+  document.querySelectorAll(`[data-view="${view}"]`).forEach(b => b.classList.add('active'));
+  if (view === 'system') renderSystem();
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function toast(msg, type='system') {
+  const wrap = document.getElementById('toastWrap');
+  const el   = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  wrap.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => { el.classList.remove('show'); setTimeout(() => el.remove(), 350); }, 2800);
+}
+
+// ── Clock + countdown ──────────────────────────────────────────────────────
+function tick() {
+  const now = new Date();
+  const ts  = now.toLocaleTimeString('ko-KR',{hour12:false});
+  document.getElementById('topTime').textContent     = ts;
+  document.getElementById('sysLastScan').textContent = document.getElementById('lastScan').textContent;
+
+  countdown--;
+  if (countdown <= 0) countdown = 3600;
+  const m = Math.floor(countdown/60).toString().padStart(2,'0');
+  const s = (countdown%60).toString().padStart(2,'0');
+  const cd = `${m}:${s}`;
+  const nsEl = document.getElementById('nextScan');
+  const snsEl= document.getElementById('sysNextScan');
+  if (nsEl)  nsEl.textContent  = cd;
+  if (snsEl) snsEl.textContent = cd;
+}
+
+// ── Live price jitter (시각적 효과) ───────────────────────────────────────
+setInterval(() => {
+  SIGNALS.forEach(s => {
+    s.price = Math.round(s.price * (1 + (Math.random()-0.5)*0.0004));
+  });
+  if (document.getElementById('view-home').classList.contains('active')) {
+    renderTable();
+  }
+}, 4000);
+
+// ── Init ───────────────────────────────────────────────────────────────────
+renderSummary();
+applyFilters();
+renderMarketList();
+renderSettingsStatus();
+tick();
+setInterval(tick, 1000);
+
+setTimeout(()=>toast('🔴 KRW-SOL 매도 시그널 발생 (Fractal, 강도:4)', 'sell'), 900);
+setTimeout(()=>toast('🔵 000660 매수 시그널 발생 (BB+CCI, 강도:4)', 'buy'), 2400);
+</script>
+</body>
+</html>

@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}시스템{% endblock %}
+
+{% block content %}
+<div class="page-content">
+<div class="page-header">
+  <h1>시스템</h1>
+  <p class="header-subtitle">데몬 제어 및 시스템 상태를 확인합니다.</p>
+</div>
+
+<!-- 데몬 제어 -->
+<section class="settings-section">
+  <h2>데몬 제어</h2>
+  <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="daemon-dot" id="sys-daemon-dot"></span>
+      <span id="sys-daemon-text" style="font-size:0.9rem;font-weight:600;">확인 중…</span>
+    </div>
+    <button class="btn-start" id="sys-btn-start" onclick="sysStart()" style="display:none">▶ 시작</button>
+    <button class="btn-stop"  id="sys-btn-stop"  onclick="sysStop()"  style="display:none">■ 정지</button>
+  </div>
+</section>
+
+<!-- 상태 그리드 -->
+<section class="settings-section">
+  <h2>상태 정보</h2>
+  <div class="sys-grid">
+    <div class="sys-card">
+      <div class="sys-card-label">버전</div>
+      <div class="sys-card-val" id="sys-version">—</div>
+    </div>
+    <div class="sys-card">
+      <div class="sys-card-label">시작 시각</div>
+      <div class="sys-card-val" id="sys-started-at" style="font-size:0.85rem;">—</div>
+    </div>
+    <div class="sys-card">
+      <div class="sys-card-label">마지막 시그널</div>
+      <div class="sys-card-val" id="sys-last-signal" style="font-size:0.85rem;">—</div>
+    </div>
+    <div class="sys-card">
+      <div class="sys-card-label">다음 스캔</div>
+      <div class="sys-card-val" id="sys-next-poll" style="font-size:0.85rem;">—</div>
+    </div>
+  </div>
+</section>
+
+<!-- 로그 뷰어 -->
+<section class="settings-section">
+  <h2>최근 로그
+    <button class="btn-sm" style="margin-left:0.75rem;" onclick="loadLogs()">↻ 새로고침</button>
+  </h2>
+  <div class="log-viewer" id="sys-log-viewer">로그 로드 중…</div>
+</section>
+
+<div id="sys-toast" class="toast" style="display:none;"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+'use strict';
+
+async function loadStatus() {
+  // 데몬 상태
+  try {
+    const r = await fetch('/api/daemon/status');
+    if (r.ok) {
+      const d = await r.json();
+      const running = d.running;
+      const dot  = document.getElementById('sys-daemon-dot');
+      const text = document.getElementById('sys-daemon-text');
+      const btnStart = document.getElementById('sys-btn-start');
+      const btnStop  = document.getElementById('sys-btn-stop');
+      if (dot)  dot.className = 'daemon-dot' + (running ? ' running' : '');
+      if (text) text.textContent = running ? '실행 중' : '정지됨';
+      if (btnStart) btnStart.style.display = running ? 'none' : '';
+      if (btnStop)  btnStop.style.display  = running ? '' : 'none';
+
+      function fmt(iso) {
+        if (!iso) return '—';
+        return new Date(iso).toLocaleString('ko-KR', {month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      }
+      const el = id => document.getElementById(id);
+      if (el('sys-started-at'))   el('sys-started-at').textContent   = fmt(d.started_at);
+      if (el('sys-last-signal'))  el('sys-last-signal').textContent  = fmt(d.last_signal_at);
+      if (el('sys-next-poll'))    el('sys-next-poll').textContent    = fmt(d.next_poll_at);
+    }
+  } catch (_) {}
+
+  // 버전
+  try {
+    const r2 = await fetch('/api/health');
+    if (r2.ok) {
+      const h = await r2.json();
+      const vEl = document.getElementById('sys-version');
+      if (vEl) vEl.textContent = h.version ?? '—';
+    }
+  } catch (_) {}
+}
+
+async function loadLogs() {
+  const el = document.getElementById('sys-log-viewer');
+  try {
+    const r = await fetch('/api/logs?limit=100');
+    if (r.ok) {
+      const lines = await r.json();
+      if (!lines.length) { el.textContent = '(로그 없음)'; return; }
+      el.innerHTML = lines.map(line => {
+        const lower = line.toLowerCase();
+        let cls = 'log-line-info';
+        if (lower.includes('error') || lower.includes('exception')) cls = 'log-line-error';
+        else if (lower.includes('warn')) cls = 'log-line-warn';
+        else if (lower.includes('signal') || lower.includes('ok')) cls = 'log-line-ok';
+        return `<span class="${cls}">${escHtml(line)}</span>`;
+      }).join('\n');
+      el.scrollTop = el.scrollHeight;
+    } else {
+      el.textContent = '로그 API 없음 — /logs 파일을 직접 확인하세요.';
+    }
+  } catch (_) {
+    el.textContent = '로그 API 없음 — /logs 파일을 직접 확인하세요.';
+  }
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function sysStart() {
+  document.getElementById('sys-btn-start').disabled = true;
+  try {
+    const r = await fetch('/api/daemon/start', {method:'POST'});
+    if (r.status === 409) { const d = await r.json(); showToast((d.detail?.message) || '이미 실행 중', true); }
+    else showToast('데몬을 시작했습니다');
+  } catch (e) { showToast('오류: ' + e.message, true); }
+  await loadStatus();
+}
+
+async function sysStop() {
+  document.getElementById('sys-btn-stop').disabled = true;
+  try {
+    const r = await fetch('/api/daemon/stop', {method:'POST'});
+    if (r.status === 409) { const d = await r.json(); showToast((d.detail?.message) || '이미 정지됨', true); }
+    else showToast('데몬을 정지했습니다');
+  } catch (e) { showToast('오류: ' + e.message, true); }
+  await loadStatus();
+}
+
+function showToast(msg, isErr) {
+  const el = document.getElementById('sys-toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.background = isErr ? 'var(--color-danger)' : 'var(--color-success)';
+  el.style.display = '';
+  setTimeout(() => { el.style.display = 'none'; }, 3000);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  loadStatus();
+  loadLogs();
+  setInterval(loadStatus, 10000);
+});
+</script>
+{% endblock %}

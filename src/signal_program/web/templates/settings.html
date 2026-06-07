@@ -5,18 +5,246 @@
 <div class="page-content">
 <div class="page-header">
   <h1>설정</h1>
-  <p class="header-subtitle">전략 파라미터·텔레그램·국장 API 설정을 관리합니다.</p>
+  <p class="header-subtitle">위에서 아래로: ① 어떤 전략으로 → ② 어떤 마켓을, 얼마나 자주 → ③ 어디로 알릴지. 선택한 전략의 파라미터만 표시됩니다.</p>
 </div>
 <div id="save-toast" class="toast" style="display:none"></div>
 <div id="form-errors" class="error-box" style="display:none"></div>
 
 <form id="settings-form" onsubmit="saveSettings(event)">
 
+  <!-- ① 전략 -->
   <section class="settings-section">
-    <h2>텔레그램</h2>
+    <h2><span class="sec-num">1</span>전략 <span class="sec-desc">하나만 운용됩니다 — 선택 즉시 아래 파라미터가 바뀝니다</span></h2>
+
+    <div class="strat-grid">
+      <label class="strat-card {% if settings.strategy_version != 'v2' %}on{% endif %}" id="card-v1">
+        <input type="radio" name="strategy_version" value="v1"
+          {% if settings.strategy_version != 'v2' %}checked{% endif %}
+          onchange="pickStrategy('v1')">
+        <span class="regime-tag rt-rev">평균회귀</span>
+        <div class="strat-name">V1 · BB+CCI</div>
+        <div class="strat-regime">횡보장 과열 반전 — 밴드 이탈 + CCI 확인</div>
+      </label>
+      <label class="strat-card {% if settings.strategy_version == 'v2' %}on{% endif %}" id="card-v2">
+        <input type="radio" name="strategy_version" value="v2"
+          {% if settings.strategy_version == 'v2' %}checked{% endif %}
+          onchange="pickStrategy('v2')">
+        <span class="regime-tag rt-rev">가중 평균회귀</span>
+        <div class="strat-name">V2 · 4지표</div>
+        <div class="strat-regime">BB·CCI·Sto·OBV 가중 점수제 (ADR-0010)</div>
+      </label>
+      <label class="strat-card {% if settings.strategy_version == 'v3' %}on{% endif %}" id="card-v3">
+        <input type="radio" name="strategy_version" value="v3"
+          {% if settings.strategy_version == 'v3' %}checked{% endif %}
+          onchange="pickStrategy('v3')">
+        <span class="regime-tag rt-break">구조 돌파</span>
+        <div class="strat-name">V3 · 프랙탈</div>
+        <div class="strat-regime">Williams Fractal 고/저점 돌파 + 거래량</div>
+      </label>
+      <label class="strat-card {% if settings.strategy_version == 'v4' %}on{% endif %}" id="card-v4">
+        <input type="radio" name="strategy_version" value="v4"
+          {% if settings.strategy_version == 'v4' %}checked{% endif %}
+          onchange="pickStrategy('v4')">
+        <span class="regime-tag rt-trend">추세추종</span>
+        <div class="strat-name">V4 · Donchian</div>
+        <div class="strat-regime">20봉 신고가 돌파 (터틀식)</div>
+      </label>
+      <label class="strat-card {% if settings.strategy_version == 'v5' %}on{% endif %}" id="card-v5">
+        <input type="radio" name="strategy_version" value="v5"
+          {% if settings.strategy_version == 'v5' %}checked{% endif %}
+          onchange="pickStrategy('v5')">
+        <span class="regime-tag rt-rev">단기 평균회귀</span>
+        <div class="strat-name">V5 · RSI(2)</div>
+        <div class="strat-regime">200SMA 추세 위 단기 눌림 매수</div>
+      </label>
+    </div>
+
+    <!-- V1 파라미터 (v1 선택 시에만 표시) -->
+    <div class="active-params" id="v1-params" {% if settings.strategy_version == 'v2' %}style="display:none"{% endif %}>
+      <div class="ap-head">
+        <b>V1 · BB+CCI 파라미터</b>
+      </div>
+
+      {#- 지표 그룹: (마크, 마크클래스, 제목, 설명, [(필드, 라벨, 설명, step, 기본값)]) -#}
+      {% for mark, mclass, title, gdesc, params in [
+        ('BB', '', '볼린저밴드', '밴드 이탈·스퀴즈 기반 진입 판단', [
+          ('bb_period', '기간 (Period)', '이동평균·표준편차 계산 봉 수', '1', '20'),
+          ('bb_std_mult', '표준편차 승수 (Std Mult)', '밴드 폭. 값이 클수록 신호가 보수적', '0.1', '2.0'),
+        ]),
+        ('CCI', 'cci', 'CCI', '과매수·과매도 모멘텀 확인', [
+          ('cci_period', '기간 (Period)', 'CCI 산출 봉 수', '1', '20'),
+          ('cci_threshold_normal', '임계값 — 일반', '기본 신호 발생 기준', '5', '100'),
+          ('cci_threshold_strong', '임계값 — 강함', '강한 신호(★) 기준', '5', '200'),
+        ]),
+        ('VOL', 'vol', '거래량 필터', '신호 확정에 필요한 최소 거래량 비율', [
+          ('volume_ratio_min_a', '최소 거래량 비율 A', '일반 신호 조건', '0.1', '1.0'),
+          ('volume_ratio_min_b', '최소 거래량 비율 B', '강한 신호 조건', '0.1', '1.5'),
+        ]),
+        ('SQZ', 'sqz', '스퀴즈', '밴드 수축 구간 탐지', [
+          ('squeeze_lookback', '조회 기간 (Lookback)', '스퀴즈 판단 비교 구간', '1', '120'),
+          ('squeeze_quantile', '분위수 (Quantile)', '하위 N% 폭이면 스퀴즈로 판단', '0.05', '0.20'),
+        ]),
+      ] %}
+      <div class="ind{% if mark == 'BB' %} open{% endif %}">
+        <div class="ind-head" onclick="this.parentElement.classList.toggle('open')">
+          <div class="ind-mark {{ mclass }}">{{ mark }}</div>
+          <div>
+            <div class="ind-title">{{ title }}</div>
+            <div class="ind-desc">{{ gdesc }}</div>
+          </div>
+          <div class="ind-meta"><span class="ind-chev">▼</span></div>
+        </div>
+        <div class="ind-body">
+          {% for field_name, label, pdesc, step, default in params %}
+          <div class="ind-param">
+            <div class="ind-param-info">
+              <div class="pl">{{ label }}
+                <span class="help" title="{{ help[field_name] }}">?</span>
+              </div>
+              <div class="ph">{{ pdesc }} <span class="pr-default">· 기본 {{ default }}</span></div>
+            </div>
+            <div class="stepper">
+              <button type="button" onclick="stepField('{{ field_name }}', -{{ step }})">−</button>
+              <input id="{{ field_name }}" name="{{ field_name }}" type="number" step="{{ step }}"
+                     value="{{ settings[field_name] }}" data-field="{{ field_name }}">
+              <button type="button" onclick="stepField('{{ field_name }}', {{ step }})">+</button>
+            </div>
+            <span class="field-error" id="err-{{ field_name }}"></span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- V2 파라미터 (v2 선택 시에만 표시) -->
+    <div class="active-params" id="v2-section" {% if settings.strategy_version != 'v2' %}style="display:none"{% endif %}>
+      <div class="ap-head">
+        <b>V2 · 4지표 가중치 파라미터</b>
+      </div>
+      <p style="font-size:0.8rem;color:var(--color-muted);margin:0.25rem 0 0.75rem">
+        가중치 합 = 1.00 권장. OBV 0.40 기본 (거래량 중시, ADR-0010 §2).
+        현재 합: <strong id="v2-weight-sum" style="font-variant-numeric:tabular-nums">—</strong>
+      </p>
+      {% for fname, lbl, step, default in [
+        ('bb_weight','BB 가중치','0.05','0.20'),
+        ('cci_weight','CCI 가중치','0.05','0.20'),
+        ('sto_weight','Sto 가중치','0.05','0.20'),
+        ('obv_weight','OBV 가중치','0.05','0.40'),
+        ('buy_threshold','매수 임계값','0.05','0.65'),
+        ('sell_threshold','매도 임계값','0.05','0.65'),
+        ('sto_oversold','Sto 과매도 기준','1','15'),
+        ('sto_overbought','Sto 과매수 기준','1','85'),
+      ] %}
+      <div class="ind-param">
+        <div class="ind-param-info">
+          <div class="pl">{{ lbl }}</div>
+          <div class="ph"><span class="pr-default">기본 {{ default }}</span></div>
+        </div>
+        <div class="stepper">
+          <button type="button" onclick="stepField('{{ fname }}', -{{ step }})">−</button>
+          <input id="{{ fname }}" name="{{ fname }}" type="number" step="{{ step }}"
+                 value="{{ settings[fname] if fname in settings else '' }}" data-field="{{ fname }}">
+          <button type="button" onclick="stepField('{{ fname }}', {{ step }})">+</button>
+        </div>
+        <span class="field-error" id="err-{{ fname }}"></span>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- V3/V4/V5 파라미터 (해당 전략 선택 시에만 표시, v2.3) -->
+    {% for ver, vtitle, fields in [
+      ('v3', 'V3 · 프랙탈 파라미터', [
+        ('fractal_lookback', '프랙탈 조회 기간', '1', '100'),
+        ('fractal_volume_threshold', '거래량 임계 (일반)', '0.1', '1.2'),
+        ('fractal_volume_strong', '거래량 임계 (강함)', '0.1', '2.0'),
+        ('fractal_max_age', '확정 프랙탈 유효 봉 수', '1', '20'),
+      ]),
+      ('v4', 'V4 · Donchian 파라미터', [
+        ('donchian_entry_period', '진입 채널 기간', '1', '20'),
+        ('donchian_exit_period', '청산 채널 기간', '1', '10'),
+        ('donchian_volume_strong', '거래량 임계 (강함)', '0.1', '1.5'),
+      ]),
+      ('v5', 'V5 · RSI(2) 파라미터', [
+        ('rsi2_period', 'RSI 기간', '1', '2'),
+        ('rsi2_oversold', '과매도 기준 (매수)', '1', '10'),
+        ('rsi2_overbought', '과매수 기준 (매도)', '1', '90'),
+        ('rsi2_trend_period', '추세 필터 SMA 기간', '10', '200'),
+      ]),
+    ] %}
+    <div class="active-params" id="{{ ver }}-params" {% if settings.strategy_version != ver %}style="display:none"{% endif %}>
+      <div class="ap-head"><b>{{ vtitle }}</b></div>
+      {% for fname, lbl, step, default in fields %}
+      <div class="ind-param">
+        <div class="ind-param-info">
+          <div class="pl">{{ lbl }}
+            <span class="help" title="{{ help[fname] if fname in help else '' }}">?</span>
+          </div>
+          <div class="ph"><span class="pr-default">기본 {{ default }}</span></div>
+        </div>
+        <div class="stepper">
+          <button type="button" onclick="stepField('{{ fname }}', -{{ step }})">−</button>
+          <input id="{{ fname }}" name="{{ fname }}" type="number" step="{{ step }}"
+                 value="{{ settings[fname] if fname in settings else default }}" data-field="{{ fname }}">
+          <button type="button" onclick="stepField('{{ fname }}', {{ step }})">+</button>
+        </div>
+        <span class="field-error" id="err-{{ fname }}"></span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </section>
+
+  <!-- ② 운영 -->
+  <section class="settings-section">
+    <h2><span class="sec-num">2</span>운영 <span class="sec-desc">어떤 마켓을, 얼마나 자주</span></h2>
 
     <div class="field-row">
-      <label for="telegram_bot_token">봇 토큰
+      <label for="whitelist_markets">감시 마켓 (화이트리스트)
+        <span class="help" title="{{ help.whitelist_markets }}">?</span>
+      </label>
+      <input id="whitelist_markets" name="whitelist_markets" type="text"
+             value="{{ settings.whitelist_markets | join(',') }}"
+             data-field="whitelist_markets" class="input-wide"
+             placeholder="쉼표 구분 (예: KRW-BTC,KRW-ETH)">
+      <span class="field-error" id="err-whitelist_markets"></span>
+    </div>
+    <div class="field-note" style="margin:-0.4rem 0 0.9rem">
+      현재 <strong id="wl-count">{{ settings.whitelist_markets | length }}</strong>개 마켓 감시 중
+    </div>
+
+    <div class="field-row">
+      <label for="cooldown_hours">재알림 쿨다운 (시간)
+        <span class="help" title="{{ help.cooldown_hours }}">?</span>
+      </label>
+      <div class="stepper">
+        <button type="button" onclick="stepField('cooldown_hours', -1)">−</button>
+        <input id="cooldown_hours" name="cooldown_hours" type="number"
+               value="{{ settings.cooldown_hours }}" data-field="cooldown_hours">
+        <button type="button" onclick="stepField('cooldown_hours', 1)">+</button>
+      </div>
+      <span style="font-size:0.78rem;color:var(--color-muted)">같은 마켓·같은 방향 신호 재발송 제한</span>
+      <span class="field-error" id="err-cooldown_hours"></span>
+    </div>
+
+    <div class="toggle-row">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+        <input id="dry_run" name="dry_run" type="checkbox"
+               {% if settings.dry_run %}checked{% endif %}>
+        <span class="toggle-info">
+          <b>dry-run (테스트 모드)</b>
+          <span>켜면 신호는 기록되지만 텔레그램 발송 안 함 <span class="help" title="{{ help.dry_run }}">?</span></span>
+        </span>
+      </label>
+    </div>
+  </section>
+
+  <!-- ③ 알림 채널 -->
+  <section class="settings-section">
+    <h2><span class="sec-num">3</span>알림 채널 <span class="sec-desc">신호를 어디로 보낼지</span></h2>
+
+    <div class="field-row">
+      <label for="telegram_bot_token">텔레그램 봇 토큰
         <span class="help" title="{{ help.telegram_bot_token }}">?</span>
       </label>
       <input id="telegram_bot_token" name="telegram_bot_token" type="password"
@@ -32,278 +260,115 @@
              value="{{ settings.telegram_chat_id or '' }}">
       <span class="field-error" id="err-telegram_chat_id"></span>
     </div>
-
-    <div class="field-row field-row-check">
-      <label>
-        <input id="dry_run" name="dry_run" type="checkbox"
-               {% if settings.dry_run %}checked{% endif %}>
-        dry_run — 텔레그램 송출 안 함 (테스트용)
-        <span class="help" title="{{ help.dry_run }}">?</span>
-      </label>
-    </div>
+    <div class="field-note">저장 후 dry-run을 끈 상태에서 신호가 발생하면 발송됩니다. 발송 실패는 대시보드 알림 카드와 [알림 실패] 메뉴에서 확인하세요.</div>
   </section>
 
-  <section class="settings-section">
-    <h2>전략 파라미터</h2>
-    <p style="font-size:0.8rem;color:var(--color-muted);margin:-0.3rem 0 1rem">
-      지표를 클릭하면 파라미터를 펼쳐서 조정합니다.
-    </p>
-
-    {#- 지표 그룹: (마크, 마크클래스, 제목, 설명, [(필드, 라벨, 설명, step)]) -#}
-    {% for mark, mclass, title, gdesc, params in [
-      ('BB', '', '볼린저밴드', '밴드 이탈·스퀴즈 기반 진입 판단', [
-        ('bb_period', '기간 (Period)', '이동평균·표준편차 계산 봉 수', '1'),
-        ('bb_std_mult', '표준편차 승수 (Std Mult)', '밴드 폭. 값이 클수록 신호가 보수적', '0.1'),
-      ]),
-      ('CCI', 'cci', 'CCI', '과매수·과매도 모멘텀 확인', [
-        ('cci_period', '기간 (Period)', 'CCI 산출 봉 수', '1'),
-        ('cci_threshold_normal', '임계값 — 일반', '기본 신호 발생 기준', '5'),
-        ('cci_threshold_strong', '임계값 — 강함', '강한 신호(★) 기준', '5'),
-      ]),
-      ('VOL', 'vol', '거래량 필터', '신호 확정에 필요한 최소 거래량 비율', [
-        ('volume_ratio_min_a', '최소 거래량 비율 A', '일반 신호 조건', '0.1'),
-        ('volume_ratio_min_b', '최소 거래량 비율 B', '강한 신호 조건', '0.1'),
-      ]),
-      ('SQZ', 'sqz', '스퀴즈', '밴드 수축 구간 탐지', [
-        ('squeeze_lookback', '조회 기간 (Lookback)', '스퀴즈 판단 비교 구간', '1'),
-        ('squeeze_quantile', '분위수 (Quantile)', '하위 N% 폭이면 스퀴즈로 판단', '0.05'),
-      ]),
-    ] %}
-    <div class="ind">
-      <div class="ind-head" onclick="this.parentElement.classList.toggle('open')">
-        <div class="ind-mark {{ mclass }}">{{ mark }}</div>
-        <div>
-          <div class="ind-title">{{ title }}</div>
-          <div class="ind-desc">{{ gdesc }}</div>
-        </div>
-        <div class="ind-meta"><span class="ind-chev">▼</span></div>
-      </div>
-      <div class="ind-body">
-        {% for field_name, label, pdesc, step in params %}
-        <div class="ind-param">
-          <div class="ind-param-info">
-            <div class="pl">{{ label }}
-              <span class="help" title="{{ help[field_name] }}">?</span>
-            </div>
-            <div class="ph">{{ pdesc }}</div>
-          </div>
-          <div class="stepper">
-            <button type="button" onclick="stepField('{{ field_name }}', -{{ step }})">−</button>
-            <input id="{{ field_name }}" name="{{ field_name }}" type="number" step="{{ step }}"
-                   value="{{ settings[field_name] }}" data-field="{{ field_name }}">
-            <button type="button" onclick="stepField('{{ field_name }}', {{ step }})">+</button>
-          </div>
-          <span class="field-error" id="err-{{ field_name }}"></span>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-    {% endfor %}
-  </section>
-
-  <section class="settings-section">
-    <h2>운영</h2>
-    <div class="field-row">
-      <label for="cooldown_hours">쿨다운 (시간)
-        <span class="help" title="{{ help.cooldown_hours }}">?</span>
-      </label>
-      <input id="cooldown_hours" name="cooldown_hours" type="number"
-             value="{{ settings.cooldown_hours }}" data-field="cooldown_hours">
-      <span class="field-error" id="err-cooldown_hours"></span>
-    </div>
-    <div class="field-row">
-      <label for="whitelist_markets">화이트리스트
-        <span class="help" title="{{ help.whitelist_markets }}">?</span>
-      </label>
-      <input id="whitelist_markets" name="whitelist_markets" type="text"
-             value="{{ settings.whitelist_markets | join(',') }}"
-             data-field="whitelist_markets" class="input-wide">
-      <span class="field-error" id="err-whitelist_markets"></span>
-    </div>
-  </section>
-
-  <section class="settings-section">
-    <h2>전략 버전 (ADR-0010 / 전략 확장 v2.3)</h2>
-    <div class="field-row">
-      <label>전략 선택</label>
-      <div style="display:flex;flex-direction:column;gap:0.4rem">
-        {% for ver, lbl in [
-          ('v1', 'V1 BB+CCI — 횡보·과열 반전 (평균회귀)'),
-          ('v2', 'V2 4지표 — 횡보+거래량 확인 (가중 평균회귀)'),
-          ('v3', 'V3 프랙탈 — 구조 전환·돌파 (구조 돌파)'),
-          ('v4', 'V4 Donchian — 강한 추세 (추세추종)'),
-          ('v5', 'V5 RSI2 — 추세 중 단기 눌림 (단기 평균회귀)'),
-        ] %}
-        <label style="display:flex;align-items:center;gap:0.5rem;min-width:unset">
-          <input type="radio" name="strategy_version" value="{{ ver }}"
-            {% if settings.strategy_version == ver %}checked{% endif %}
-            onchange="updateV2Dim()"> {{ lbl }}
+  <!-- ④ 국장 (접힘) -->
+  <section class="settings-section {% if not settings.kr_enabled %}collapsed{% endif %}" id="kr-section">
+    <h2 class="sec-fold-toggle" onclick="document.getElementById('kr-section').classList.toggle('collapsed')">
+      <span class="sec-num">4</span>국장 — 한국주식 (KIS)
+      <span class="sec-desc">{% if settings.kr_enabled %}활성{% else %}비활성 — 클릭해서 설정{% endif %}</span>
+    </h2>
+    <div class="sec-fold-body">
+      <div class="field-row field-row-check">
+        <label>
+          <input id="kr_enabled" name="kr_enabled" type="checkbox"
+                 {% if settings.kr_enabled %}checked{% endif %}>
+          국장 기능 활성화
+          <span class="help" title="kr_enabled — KIS App Key/Secret 입력 필수">?</span>
         </label>
-        {% endfor %}
+        <span class="field-error" id="err-kr_enabled"></span>
       </div>
-    </div>
-    <div id="v2-section" class="v2-section {% if settings.strategy_version != 'v2' %}dimmed{% endif %}">
-      <p style="font-size:0.8rem;color:var(--color-muted);margin:0.25rem 0 0.75rem">
-        가중치 합 = 1.00 권장. OBV 0.40 기본 (거래량 중시, ADR-0010 §2).
-        현재 합: <strong id="v2-weight-sum" style="font-variant-numeric:tabular-nums">—</strong>
-      </p>
-      {% for fname, lbl, step in [
-        ('bb_weight','BB 가중치','0.05'),
-        ('cci_weight','CCI 가중치','0.05'),
-        ('sto_weight','Sto 가중치','0.05'),
-        ('obv_weight','OBV 가중치','0.05'),
-        ('buy_threshold','매수 임계값','0.05'),
-        ('sell_threshold','매도 임계값','0.05'),
-        ('sto_oversold','Sto 과매도 기준','1'),
-        ('sto_overbought','Sto 과매수 기준','1'),
-      ] %}
       <div class="field-row">
-        <label for="{{ fname }}">{{ lbl }}</label>
-        <input id="{{ fname }}" name="{{ fname }}" type="number" step="{{ step }}"
-               value="{{ settings[fname] if fname in settings else '' }}" data-field="{{ fname }}">
-        <span class="field-error" id="err-{{ fname }}"></span>
+        <label for="kis_app_key">KIS App Key</label>
+        <input id="kis_app_key" name="kis_app_key" type="password"
+               placeholder="{{ settings.kis_app_key_masked or '비워두면 기존 값 유지' }}" value="">
+        <span class="field-error" id="err-kis_app_key"></span>
       </div>
-      {% endfor %}
-    </div>
-    <div id="v3-section" class="v2-section {% if settings.strategy_version != 'v3' %}dimmed{% endif %}">
-      <p style="font-size:0.8rem;color:var(--color-muted);margin:0.25rem 0 0.75rem">
-        프랙탈 구조 돌파 — 확정 up/down 프랙탈을 종가가 돌파할 때 발신 (거래량 필터).
-      </p>
-      {% for fname, lbl, step in [
-        ('fractal_volume_threshold','거래량 임계 배수','0.1'),
-        ('fractal_volume_strong','강한 신호 거래량 배수','0.1'),
-        ('fractal_max_age','프랙탈 유효 봉 수','1'),
-      ] %}
       <div class="field-row">
-        <label for="{{ fname }}">{{ lbl }}</label>
-        <input id="{{ fname }}" name="{{ fname }}" type="number" step="{{ step }}"
-               value="{{ settings[fname] if fname in settings else '' }}" data-field="{{ fname }}">
-        <span class="field-error" id="err-{{ fname }}"></span>
+        <label for="kis_app_secret">KIS App Secret</label>
+        <input id="kis_app_secret" name="kis_app_secret" type="password"
+               placeholder="{{ settings.kis_app_secret_masked or '비워두면 기존 값 유지' }}" value="">
+        <span class="field-error" id="err-kis_app_secret"></span>
       </div>
-      {% endfor %}
-    </div>
-    <div id="v4-section" class="v2-section {% if settings.strategy_version != 'v4' %}dimmed{% endif %}">
-      <p style="font-size:0.8rem;color:var(--color-muted);margin:0.25rem 0 0.75rem">
-        Donchian 추세추종 — 종가가 직전 entry봉 최고가 돌파 시 매수 / exit봉 최저가 이탈 시 매도.
-        거래량은 강도 표시에만 사용(진입 게이트 아님).
-      </p>
-      {% for fname, lbl, step in [
-        ('donchian_entry_period','진입 채널 기간','1'),
-        ('donchian_exit_period','청산 채널 기간','1'),
-        ('donchian_volume_strong','강한 신호 거래량 배수','0.1'),
-      ] %}
+      <div class="field-row field-row-check">
+        <label>
+          <input id="kis_is_paper" name="kis_is_paper" type="checkbox"
+                 {% if settings.kis_is_paper %}checked{% endif %}>
+          모의투자 서버 사용 (kis_is_paper)
+          <span class="help" title="체크=모의투자 / 미체크=실전투자 서버 (캔들 조회 전용)">?</span>
+        </label>
+        <span class="field-error" id="err-kis_is_paper"></span>
+      </div>
       <div class="field-row">
-        <label for="{{ fname }}">{{ lbl }}</label>
-        <input id="{{ fname }}" name="{{ fname }}" type="number" step="{{ step }}"
-               value="{{ settings[fname] if fname in settings else '' }}" data-field="{{ fname }}">
-        <span class="field-error" id="err-{{ fname }}"></span>
+        <label for="kr_whitelist_symbols">종목 화이트리스트
+          <span class="help" title="쉼표 구분 종목코드. 예: 005930,035720,000660">?</span>
+        </label>
+        <input id="kr_whitelist_symbols" name="kr_whitelist_symbols" type="text"
+               value="{{ settings.kr_whitelist_symbols | join(',') }}"
+               data-field="kr_whitelist_symbols" class="input-wide">
+        <span class="field-error" id="err-kr_whitelist_symbols"></span>
       </div>
-      {% endfor %}
-    </div>
-    <div id="v5-section" class="v2-section {% if settings.strategy_version != 'v5' %}dimmed{% endif %}">
-      <p style="font-size:0.8rem;color:var(--color-muted);margin:0.25rem 0 0.75rem">
-        RSI(2) 평균회귀 — 추세필터(SMA) 위에서 단기 과매도 매수 / 아래에서 단기 과열 매도.
-      </p>
-      {% for fname, lbl, step in [
-        ('rsi2_period','RSI 기간','1'),
-        ('rsi2_oversold','과매도 기준','1'),
-        ('rsi2_overbought','과매수 기준','1'),
-        ('rsi2_trend_period','추세 SMA 기간','1'),
-      ] %}
       <div class="field-row">
-        <label for="{{ fname }}">{{ lbl }}</label>
-        <input id="{{ fname }}" name="{{ fname }}" type="number" step="{{ step }}"
-               value="{{ settings[fname] if fname in settings else '' }}" data-field="{{ fname }}">
-        <span class="field-error" id="err-{{ fname }}"></span>
+        <label for="kr_cooldown_hours_60m">쿨다운 60분봉 (시간)</label>
+        <input id="kr_cooldown_hours_60m" name="kr_cooldown_hours_60m" type="number"
+               value="{{ settings.kr_cooldown_hours_60m }}" data-field="kr_cooldown_hours_60m">
+        <span class="field-error" id="err-kr_cooldown_hours_60m"></span>
       </div>
-      {% endfor %}
+      <div class="field-row">
+        <label for="kr_cooldown_hours_120m">쿨다운 120분봉 (시간)</label>
+        <input id="kr_cooldown_hours_120m" name="kr_cooldown_hours_120m" type="number"
+               value="{{ settings.kr_cooldown_hours_120m }}" data-field="kr_cooldown_hours_120m">
+        <span class="field-error" id="err-kr_cooldown_hours_120m"></span>
+      </div>
     </div>
   </section>
 
-  <section class="settings-section">
-    <h2>국장 — KIS Open API (ADR-0016)</h2>
-    <div class="field-row field-row-check">
-      <label>
-        <input id="kr_enabled" name="kr_enabled" type="checkbox"
-               {% if settings.kr_enabled %}checked{% endif %}>
-        국장 기능 활성화
-        <span class="help" title="kr_enabled — KIS App Key/Secret 입력 필수">?</span>
-      </label>
-      <span class="field-error" id="err-kr_enabled"></span>
+  <!-- sticky 저장 바 -->
+  <div class="savebar">
+    <div id="sb-pending">
+      <div class="sb-changes" id="sb-changes-count">변경사항 없음</div>
+      <div class="sb-changes-detail" id="sb-changes-detail"></div>
     </div>
-    <div class="field-row">
-      <label for="kis_app_key">KIS App Key</label>
-      <input id="kis_app_key" name="kis_app_key" type="password"
-             placeholder="{{ settings.kis_app_key_masked or '비워두면 기존 값 유지' }}" value="">
-      <span class="field-error" id="err-kis_app_key"></span>
-    </div>
-    <div class="field-row">
-      <label for="kis_app_secret">KIS App Secret</label>
-      <input id="kis_app_secret" name="kis_app_secret" type="password"
-             placeholder="{{ settings.kis_app_secret_masked or '비워두면 기존 값 유지' }}" value="">
-      <span class="field-error" id="err-kis_app_secret"></span>
-    </div>
-    <div class="field-row field-row-check">
-      <label>
-        <input id="kis_is_paper" name="kis_is_paper" type="checkbox"
-               {% if settings.kis_is_paper %}checked{% endif %}>
-        모의투자 서버 사용 (kis_is_paper)
-        <span class="help" title="체크=모의투자 / 미체크=실전투자 서버 (캔들 조회 전용)">?</span>
-      </label>
-      <span class="field-error" id="err-kis_is_paper"></span>
-    </div>
-    <div class="field-row">
-      <label for="kr_whitelist_symbols">종목 화이트리스트
-        <span class="help" title="쉼표 구분 종목코드. 예: 005930,035720,000660">?</span>
-      </label>
-      <input id="kr_whitelist_symbols" name="kr_whitelist_symbols" type="text"
-             value="{{ settings.kr_whitelist_symbols | join(',') }}"
-             data-field="kr_whitelist_symbols" class="input-wide">
-      <span class="field-error" id="err-kr_whitelist_symbols"></span>
-    </div>
-    <div class="field-row">
-      <label for="kr_cooldown_hours_60m">쿨다운 60분봉 (시간)</label>
-      <input id="kr_cooldown_hours_60m" name="kr_cooldown_hours_60m" type="number"
-             value="{{ settings.kr_cooldown_hours_60m }}" data-field="kr_cooldown_hours_60m">
-      <span class="field-error" id="err-kr_cooldown_hours_60m"></span>
-    </div>
-    <div class="field-row">
-      <label for="kr_cooldown_hours_120m">쿨다운 120분봉 (시간)</label>
-      <input id="kr_cooldown_hours_120m" name="kr_cooldown_hours_120m" type="number"
-             value="{{ settings.kr_cooldown_hours_120m }}" data-field="kr_cooldown_hours_120m">
-      <span class="field-error" id="err-kr_cooldown_hours_120m"></span>
-    </div>
-  </section>
-
-  <div class="form-actions">
-    <button type="submit" class="btn-primary">저장</button>
+    <div class="savebar-applied" id="sb-applied">✓ 저장됨 — 다음 폴링 사이클부터 새 설정으로 평가합니다</div>
     <button type="button" class="btn-secondary" onclick="resetToDefaults()">기본값 초기화</button>
+    <button type="submit" class="btn-primary">저장 후 적용</button>
   </div>
 </form>
+
 <script>
-function updateV2Dim() {
-  // 선택된 전략의 파라미터 섹션만 활성화, 나머지는 dimmed (v2~v5)
-  const sel = document.querySelector('input[name="strategy_version"]:checked');
-  const v = sel ? sel.value : 'v1';
-  ['v2', 'v3', 'v4', 'v5'].forEach(function(ver) {
-    const sec = document.getElementById(ver + '-section');
-    if (sec) sec.classList.toggle('dimmed', v !== ver);
+// ── 전략 카드 선택: 라디오 + 파라미터 패널 전환 ──
+// 전략별 파라미터 박스 id (v2만 'v2-section', 나머지는 'vN-params')
+const STRAT_PANELS = { v1: 'v1-params', v2: 'v2-section', v3: 'v3-params', v4: 'v4-params', v5: 'v5-params' };
+
+function pickStrategy(v) {
+  ['v1', 'v2', 'v3', 'v4', 'v5'].forEach(function(x) {
+    const card = document.getElementById('card-' + x);
+    if (card) card.classList.toggle('on', x === v);
+    const panel = document.getElementById(STRAT_PANELS[x]);
+    if (panel) panel.style.display = (x === v) ? '' : 'none';
   });
 }
 
-// 스텝퍼: 지표 파라미터 +/- 버튼
+// settings.js refreshForm()이 라디오 갱신 후 호출하는 훅 — 선택된 전략으로 동기화
+function updateV2Dim() {
+  const checked = document.querySelector('input[name="strategy_version"]:checked');
+  pickStrategy(checked ? checked.value : 'v1');
+}
+
+// ── 스텝퍼 ──
 function stepField(fieldId, delta) {
   const el = document.getElementById(fieldId);
   if (!el) return;
   const cur = parseFloat(el.value);
   const next = (isNaN(cur) ? 0 : cur) + delta;
-  // 부동소수 오차 정리 (step 소수 자릿수에 맞춤)
   const decimals = (String(delta).split('.')[1] || '').length;
   el.value = decimals > 0 ? next.toFixed(decimals) : String(next);
+  el.dispatchEvent(new Event('input', { bubbles: true }));
   updateWeightSum();
 }
 
-// V2 가중치 실시간 합계 — 1.00이면 초록, 아니면 주황 경고
+// ── V2 가중치 실시간 합계 ──
 function updateWeightSum() {
   const out = document.getElementById('v2-weight-sum');
   if (!out) return;
@@ -318,16 +383,82 @@ function updateWeightSum() {
   out.style.color = ok ? 'var(--color-success)' : 'var(--color-strong)';
   out.title = ok ? '' : '가중치 합이 1.00이 아닙니다';
 }
-
 ['bb_weight', 'cci_weight', 'sto_weight', 'obv_weight'].forEach(function(id) {
   const el = document.getElementById(id);
   if (el) el.addEventListener('input', updateWeightSum);
 });
 updateWeightSum();
+
+// ── 변경 추적 + sticky 저장바 ──
+const _initial = {};
+const _labels = {};
+(function initChangeTracking() {
+  const form = document.getElementById('settings-form');
+  form.querySelectorAll('input').forEach(function(el) {
+    const key = el.name || el.id;
+    if (!key) return;
+    _initial[key] = (el.type === 'checkbox') ? el.checked : el.value;
+    const row = el.closest('.ind-param, .field-row, .toggle-row');
+    const lbl = row ? row.querySelector('.pl, label') : null;
+    _labels[key] = lbl ? lbl.textContent.replace(/\?\s*$/, '').trim().split('\n')[0] : key;
+  });
+  form.addEventListener('input', renderChangebar);
+  form.addEventListener('change', renderChangebar);
+})();
+
+function getChanges() {
+  const changes = [];
+  document.querySelectorAll('#settings-form input').forEach(function(el) {
+    const key = el.name || el.id;
+    if (!key || !(key in _initial)) return;
+    const now = (el.type === 'checkbox') ? el.checked : el.value;
+    const stepperBox = el.closest('.stepper');
+    if (String(now) !== String(_initial[key])) {
+      changes.push({ key: key, label: _labels[key], from: _initial[key], to: now });
+      if (stepperBox) stepperBox.classList.add('param-changed');
+    } else if (stepperBox) {
+      stepperBox.classList.remove('param-changed');
+    }
+  });
+  return changes;
+}
+
+function renderChangebar() {
+  const changes = getChanges();
+  const cnt = document.getElementById('sb-changes-count');
+  const det = document.getElementById('sb-changes-detail');
+  document.getElementById('sb-applied').style.display = 'none';
+  document.getElementById('sb-pending').style.display = '';
+  if (!changes.length) {
+    cnt.textContent = '변경사항 없음';
+    det.textContent = '';
+    return;
+  }
+  cnt.innerHTML = '변경사항 <b>' + changes.length + '건</b> 저장 안 됨';
+  det.textContent = changes.slice(0, 3).map(function(c) {
+    const f = (typeof c.from === 'boolean') ? (c.from ? '켬' : '끔') : (c.from === '' ? '(비움)' : c.from);
+    const t = (typeof c.to === 'boolean') ? (c.to ? '켬' : '끔') : (c.to === '' ? '(비움)' : c.to);
+    return c.label + ' ' + f + ' → ' + t;
+  }).join(' · ') + (changes.length > 3 ? ' 외 ' + (changes.length - 3) + '건' : '');
+}
+
+// 저장 성공 시 settings.js가 'settings-saved' 이벤트 발행 → 기준값 리셋 + 반영 확인
+document.addEventListener('settings-saved', function() {
+  document.querySelectorAll('#settings-form input').forEach(function(el) {
+    const key = el.name || el.id;
+    if (key in _initial) _initial[key] = (el.type === 'checkbox') ? el.checked : el.value;
+  });
+  document.querySelectorAll('.param-changed').forEach(function(el) { el.classList.remove('param-changed'); });
+  document.getElementById('sb-pending').style.display = 'none';
+  document.getElementById('sb-applied').style.display = 'flex';
+  const wl = document.getElementById('whitelist_markets');
+  const wc = document.getElementById('wl-count');
+  if (wl && wc) wc.textContent = wl.value.split(',').map(function(s){return s.trim();}).filter(Boolean).length;
+});
 </script>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/settings.js"></script>
+<script src="/static/js/settings.js?v=m23"></script>
 {% endblock %}

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}업비트 시그널{% endblock %} — 업비트 시그널 프로그램</title>
-  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/app.css?v=m24">
 </head>
 <body>
 <script>
@@ -33,27 +33,10 @@
 
 <div class="app-body">
   <aside class="sidebar">
-    <div class="sb-group-label">마켓</div>
-    <a href="/?market=crypto" class="sb-item {% if market=='crypto' or (not market and active=='dashboard') %}on{% endif %}">
-      <span class="sb-icon">₿</span>코인
-      <span class="sb-badge" id="sb-badge-crypto">—</span>
-    </a>
-    <a href="/?market=kr" class="sb-item {% if market=='kr' %}on{% endif %}">
-      <span class="sb-icon">⊞</span>국장
-      <span class="sb-badge" id="sb-badge-kr">—</span>
-    </a>
-
-
-    <div class="sb-divider"></div>
-    <div class="sb-group-label">오늘 현황</div>
-    <div class="sb-stat-box">
-      <div class="sb-stat-row"><span>전체</span><span id="sb-total" class="sb-stat-val">—</span></div>
-      <div class="sb-stat-row"><span>매수</span><span id="sb-buy"   class="sb-stat-val" style="color:var(--color-buy)">—</span></div>
-      <div class="sb-stat-row"><span>매도</span><span id="sb-sell"  class="sb-stat-val" style="color:var(--color-sell)">—</span></div>
-    </div>
-
-    <div class="sb-divider"></div>
     <div class="sb-group-label">메뉴</div>
+    <a href="/" class="sb-item {% if active=='dashboard' %}on{% endif %}">
+      <span class="sb-icon">▦</span>대시보드
+    </a>
     <a href="/backtest" class="sb-item {% if active=='backtest' %}on{% endif %}">
       <span class="sb-icon">📈</span>백테스트
     </a>

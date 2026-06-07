@@ -2,6 +2,32 @@
 {% block title %}대시보드{% endblock %}
 
 {% block content %}
+<!-- 시스템 상태 패널 (M20): "지금 뭘 하고 있는지" -->
+<div class="status-panel">
+  <div class="st-card">
+    <div class="st-label">데몬</div>
+    <div class="st-main"><span class="st-dot" id="st-daemon-dot"></span> <span id="st-daemon-text">확인 중</span></div>
+    <div class="st-sub" id="st-daemon-sub">—</div>
+  </div>
+  <div class="st-card st-card-wide">
+    <div class="st-label">운용 현황 — 무엇을 어떤 전략으로 <a class="st-link" href="/settings">설정 →</a></div>
+    <div class="run-list" id="st-run-list">
+      <div class="run-row"><span class="st-sub">불러오는 중…</span></div>
+    </div>
+  </div>
+  <div class="st-card">
+    <div class="st-label">다음 갱신</div>
+    <div class="st-main"><span id="st-next">—</span></div>
+    <div class="st-progress"><i id="st-progress-bar"></i></div>
+    <div class="st-sub" id="st-next-sub">화면 30초 폴링 · 평가는 1시간봉 마감 기준</div>
+  </div>
+  <div class="st-card">
+    <div class="st-label">알림 <a class="st-link" href="/failures">실패 이력 →</a></div>
+    <div class="st-main"><span class="st-dot" id="st-notify-dot"></span> <span id="st-notify-text">—</span></div>
+    <div class="st-sub" id="st-notify-sub">—</div>
+  </div>
+</div>
+
 <!-- SUMMARY STRIP -->
 <div class="summary-strip">
   <div class="sum-cell"><div class="sum-label">전체</div><div class="sum-val" id="sum-total">—</div></div>
@@ -12,6 +38,9 @@
 
 <!-- TOOLBAR -->
 <div class="toolbar">
+  <a href="/?market=crypto" class="tb-tag {% if market != 'kr' %}on{% endif %}" style="text-decoration:none">₿ 코인</a>
+  <a href="/?market=kr" class="tb-tag {% if market == 'kr' %}on{% endif %}" style="text-decoration:none">⊞ 국장</a>
+  <span class="sep">|</span>
   <select id="filter-market" class="tb-select" onchange="applyFilters()">
     <option value="">전체 마켓</option>
   </select>
@@ -49,8 +78,9 @@
     </thead>
     <tbody id="signal-tbody"></tbody>
   </table>
-  <div id="signal-empty" class="tbl-empty" style="display:none">
-    시그널 없음 — 데몬 실행 후 시그널이 수신되면 여기에 표시됩니다.
+  <div id="signal-empty" class="empty-rich" style="display:none">
+    <h4 id="empty-title">아직 신호가 없습니다</h4>
+    <p id="empty-body">데몬을 시작하면 1시간봉 마감마다 화이트리스트 마켓을 평가합니다.</p>
   </div>
 
   <!-- 국장 테이블 -->
@@ -87,7 +117,7 @@
 const POLL_INTERVAL_MS = 30_000;
 const _MARKET_MODE = "{{ market }}";
 </script>
-<script src="/static/js/dashboard.js"></script>
+<script src="/static/js/dashboard.js?v=m24"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function(){
   var mTag = document.getElementById('topbar-market-status');

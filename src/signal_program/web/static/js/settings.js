@@ -75,6 +75,8 @@ async function saveSettings(event) {
     if (res.ok) {
       showToast('설정이 저장되었습니다. 다음 폴링 사이클부터 반영됩니다.');
       refreshForm(await res.json());
+      // 변경 추적 바 리셋 (settings.html 인라인 리스너가 수신)
+      document.dispatchEvent(new Event('settings-saved'));
       return;
     }
 

@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trading Dashboard</title>
+<style>
+:root {
+  --color-bg:          #232f45;
+  --color-surface:     #1c2840;
+  --color-surface-2:   #243350;
+  --color-border:      #2a3a54;
+  --color-border-2:    #2e4060;
+  --color-text:        #c8d4e2;
+  --color-muted:       #6a8098;
+  --color-primary:     #6ab0ff;
+  --color-buy:         #e05252;
+  --color-sell:        #5090ff;
+  --color-strong:      #e8a020;
+  --color-success:     #2cb56a;
+  --sidebar-w: 220px;
+  --topbar-h:  42px;
+  --right-w:   290px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Topbar ──────────────────────────────────────────────────────── */
+.topbar {
+  height: var(--topbar-h);
+  min-height: var(--topbar-h);
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 18px;
+  z-index: 100;
+}
+.topbar-logo { font-size: 14px; font-weight: 700; color: var(--color-primary); letter-spacing: 0.4px; }
+.topbar-sep { width: 1px; height: 20px; background: var(--color-border); }
+.topbar-indices { display: flex; gap: 18px; }
+.idx { display: flex; gap: 5px; align-items: baseline; font-size: 11px; }
+.idx-name { color: var(--color-muted); }
+.idx-val  { color: var(--color-text); font-weight: 600; }
+.idx-chg  { font-size: 10px; }
+.mkt-status { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--color-muted); }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-success); animation: blink 2s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.35} }
+.topbar-time { margin-left: auto; font-size: 11px; color: var(--color-muted); font-variant-numeric: tabular-nums; letter-spacing: .3px; }
+
+/* ── Layout ──────────────────────────────────────────────────────── */
+.main-layout { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+
+/* ── Sidebar ─────────────────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sb-header { padding: 10px 12px 8px; border-bottom: 1px solid var(--color-border); }
+.sb-title { font-size: 10px; color: var(--color-muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 7px; }
+.search-box {
+  width: 100%; background: var(--color-surface-2); border: 1px solid var(--color-border);
+  border-radius: 3px; padding: 5px 8px; color: var(--color-text); font-size: 11px; font-family: inherit; outline: none;
+}
+.search-box:focus { border-color: var(--color-primary); }
+.watchlist { flex: 1; overflow-y: auto; }
+.watchlist::-webkit-scrollbar { width: 3px; }
+.watchlist::-webkit-scrollbar-thumb { background: var(--color-border-2); border-radius: 2px; }
+
+.watch-item {
+  padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--color-border);
+  display: flex; flex-direction: column; gap: 3px; transition: background .1s;
+}
+.watch-item:hover { background: var(--color-surface-2); }
+.watch-item.active { background: rgba(106,176,255,.08); border-left: 2px solid var(--color-primary); padding-left: 10px; }
+.w-row { display: flex; justify-content: space-between; align-items: center; }
+.w-name { font-size: 12px; font-weight: 600; }
+.w-price { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.w-code { font-size: 10px; color: var(--color-muted); }
+.w-chg  { font-size: 11px; font-variant-numeric: tabular-nums; }
+
+.up { color: var(--color-buy); }
+.dn { color: var(--color-sell); }
+
+/* ── Center ──────────────────────────────────────────────────────── */
+.center { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+.stock-header {
+  padding: 9px 16px; border-bottom: 1px solid var(--color-border);
+  display: flex; align-items: center; gap: 18px;
+  background: var(--color-surface); flex-shrink: 0;
+}
+.sh-name { font-size: 16px; font-weight: 700; }
+.sh-code { font-size: 10px; color: var(--color-muted); margin-top: 2px; }
+.sh-price { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sh-change { font-size: 13px; font-variant-numeric: tabular-nums; }
+.sh-meta { display: flex; gap: 16px; margin-left: auto; font-size: 11px; }
+.meta-item { display: flex; gap: 4px; color: var(--color-muted); }
+.meta-val { color: var(--color-text); }
+
+.chart-toolbar {
+  padding: 6px 12px; border-bottom: 1px solid var(--color-border);
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0; background: var(--color-bg);
+}
+.period-btn, .ind-btn {
+  padding: 3px 8px; border-radius: 3px; border: 1px solid var(--color-border);
+  background: transparent; color: var(--color-muted); font-size: 11px; cursor: pointer;
+  font-family: inherit; transition: all .1s;
+}
+.period-btn:hover, .ind-btn:hover { background: var(--color-surface-2); color: var(--color-text); }
+.period-btn.active { background: var(--color-primary); color: #0d1a2b; border-color: var(--color-primary); font-weight: 700; }
+.ind-btn.active    { color: var(--color-primary); border-color: var(--color-primary); background: rgba(106,176,255,.12); }
+.ind-btn.ma5.active  { color: #ffd060; border-color: #ffd060; background: rgba(255,208,96,.1); }
+.ind-btn.ma20.active { color: #60e8ff; border-color: #60e8ff; background: rgba(96,232,255,.1); }
+.ind-btn.ma60.active { color: #ff90e0; border-color: #ff90e0; background: rgba(255,144,224,.1); }
+.tb-sep { width: 1px; height: 16px; background: var(--color-border); margin: 0 2px; }
+
+.chart-wrap { flex: 1; position: relative; min-height: 0; overflow: hidden; }
+#mainChart { display: block; }
+
+.ind-panel { border-top: 1px solid var(--color-border); position: relative; flex-shrink: 0; }
+.ind-panel canvas { display: block; }
+.panel-lbl { position: absolute; top: 4px; left: 8px; font-size: 9px; color: var(--color-muted); z-index: 1; pointer-events: none; }
+
+.fundamentals {
+  border-top: 1px solid var(--color-border); padding: 9px 16px;
+  flex-shrink: 0; background: var(--color-surface);
+}
+.fund-title { font-size: 10px; color: var(--color-muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 7px; }
+.fund-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.fund-item { text-align: center; }
+.fund-lbl { font-size: 10px; color: var(--color-muted); margin-bottom: 3px; }
+.fund-val { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ── Right panel ─────────────────────────────────────────────────── */
+.right-panel {
+  width: var(--right-w); min-width: var(--right-w);
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  display: flex; flex-direction: column; overflow-y: auto;
+}
+.right-panel::-webkit-scrollbar { width: 3px; }
+.right-panel::-webkit-scrollbar-thumb { background: var(--color-border-2); border-radius: 2px; }
+
+.rp-section { padding: 12px; border-bottom: 1px solid var(--color-border); }
+.rp-title { font-size: 10px; color: var(--color-muted); text-transform: uppercase; letter-spacing: .8px; margin-bottom: 10px; }
+
+.order-tabs { display: flex; margin-bottom: 10px; border-radius: 4px; overflow: hidden; border: 1px solid var(--color-border); }
+.order-tab {
+  flex: 1; padding: 6px; text-align: center; cursor: pointer;
+  font-size: 12px; font-weight: 700; border: none; font-family: inherit;
+  transition: all .15s; background: var(--color-surface-2); color: var(--color-muted);
+}
+.order-tab.buy.active  { background: var(--color-buy);  color: #fff; }
+.order-tab.sell.active { background: var(--color-sell); color: #fff; }
+
+.order-form { display: flex; flex-direction: column; gap: 7px; }
+.form-row { display: flex; align-items: center; gap: 7px; }
+.form-lbl { font-size: 11px; color: var(--color-muted); width: 46px; flex-shrink: 0; }
+.form-input {
+  flex: 1; background: var(--color-surface-2); border: 1px solid var(--color-border);
+  border-radius: 3px; padding: 5px 7px; color: var(--color-text); font-size: 12px;
+  font-family: inherit; outline: none; text-align: right; font-variant-numeric: tabular-nums;
+}
+.form-input:focus { border-color: var(--color-primary); }
+.form-unit { font-size: 11px; color: var(--color-muted); width: 16px; flex-shrink: 0; }
+.total-row {
+  background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 3px;
+  padding: 6px 10px; display: flex; justify-content: space-between; align-items: center;
+}
+.total-lbl { font-size: 11px; color: var(--color-muted); }
+.total-amt { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.order-btn {
+  width: 100%; padding: 10px; border-radius: 4px; border: none;
+  font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit;
+  margin-top: 4px; transition: filter .1s;
+}
+.order-btn:hover { filter: brightness(1.1); }
+.order-btn:active { filter: brightness(.9); }
+.order-btn.buy  { background: var(--color-buy);  color: #fff; }
+.order-btn.sell { background: var(--color-sell); color: #fff; }
+
+.account-rows { display: flex; flex-direction: column; gap: 6px; }
+.ac-row { display: flex; justify-content: space-between; align-items: center; }
+.ac-lbl { font-size: 11px; color: var(--color-muted); }
+.ac-val { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ac-val.pos { color: var(--color-buy); }
+.ac-val.neg { color: var(--color-sell); }
+
+.holding-item { padding: 7px 0; border-bottom: 1px solid var(--color-border); }
+.holding-row { display: flex; justify-content: space-between; align-items: center; }
+.holding-name { font-size: 12px; font-weight: 600; }
+.holding-pnl  { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.holding-sub  { font-size: 10px; color: var(--color-muted); }
+
+/* ── Crosshair tooltip ───────────────────────────────────────────── */
+.chart-tooltip {
+  position: absolute; background: var(--color-surface); border: 1px solid var(--color-border);
+  border-radius: 4px; padding: 6px 9px; font-size: 11px; pointer-events: none;
+  z-index: 10; white-space: nowrap; display: none;
+}
+.tt-row { display: flex; gap: 8px; margin-bottom: 2px; }
+.tt-lbl { color: var(--color-muted); min-width: 26px; }
+.tt-val { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+/* ── Toast ───────────────────────────────────────────────────────── */
+.toast {
+  position: fixed; bottom: 28px; left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  background: var(--color-surface); border: 1px solid var(--color-success);
+  border-radius: 6px; padding: 10px 22px; font-size: 13px; font-weight: 600;
+  color: var(--color-success); z-index: 9999; opacity: 0;
+  transition: opacity .3s, transform .3s; pointer-events: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,.5);
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border-2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <div class="topbar-logo">▣ Trading Dashboard</div>
+  <div class="topbar-sep"></div>
+  <div class="topbar-indices">
+    <div class="idx">
+      <span class="idx-name">KOSPI</span>
+      <span class="idx-val">2,748.15</span>
+      <span class="idx-chg up">▲ 12.30 (+0.45%)</span>
+    </div>
+    <div class="idx">
+      <span class="idx-name">KOSDAQ</span>
+      <span class="idx-val">852.44</span>
+      <span class="idx-chg dn">▼ 4.12 (−0.48%)</span>
+    </div>
+    <div class="idx">
+      <span class="idx-name">USD/KRW</span>
+      <span class="idx-val">1,378.5</span>
+      <span class="idx-chg up">▲ 3.2</span>
+    </div>
+  </div>
+  <div class="topbar-sep"></div>
+  <div class="mkt-status">
+    <div class="status-dot"></div>
+    <span>장 중</span>
+  </div>
+  <div class="topbar-time" id="topTime">--:--:--</div>
+</div>
+
+<div class="main-layout">
+
+  <!-- Sidebar watchlist -->
+  <div class="sidebar">
+    <div class="sb-header">
+      <div class="sb-title">관심종목</div>
+      <input type="text" class="search-box" id="searchBox" placeholder="종목 검색...">
+    </div>
+    <div class="watchlist" id="watchlist"></div>
+  </div>
+
+  <!-- Center -->
+  <div class="center">
+    <!-- Stock header -->
+    <div class="stock-header">
+      <div>
+        <div class="sh-name" id="hName">삼성전자</div>
+        <div class="sh-code" id="hCode">005930 · KOSPI · 전기전자</div>
+      </div>
+      <div>
+        <div class="sh-price up" id="hPrice">73,800</div>
+        <div class="sh-change up" id="hChange">▲ 880 (+1.20%)</div>
+      </div>
+      <div class="sh-meta">
+        <div class="meta-item">고가 <span class="meta-val up" id="mHigh">74,200</span></div>
+        <div class="meta-item">저가 <span class="meta-val dn" id="mLow">73,100</span></div>
+        <div class="meta-item">거래량 <span class="meta-val" id="mVol">12.4M</span></div>
+        <div class="meta-item">시총 <span class="meta-val" id="mMcap">440.5조</span></div>
+      </div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="chart-toolbar">
+      <button class="period-btn" data-p="1D" onclick="setPeriod('1D')">일</button>
+      <button class="period-btn" data-p="1W" onclick="setPeriod('1W')">주</button>
+      <button class="period-btn active" data-p="1M" onclick="setPeriod('1M')">월</button>
+      <button class="period-btn" data-p="3M" onclick="setPeriod('3M')">3M</button>
+      <button class="period-btn" data-p="1Y" onclick="setPeriod('1Y')">1Y</button>
+      <div class="tb-sep"></div>
+      <button class="ind-btn ma5 active"  id="btnMA5"  onclick="toggleMA(5)">MA5</button>
+      <button class="ind-btn ma20 active" id="btnMA20" onclick="toggleMA(20)">MA20</button>
+      <button class="ind-btn ma60"        id="btnMA60" onclick="toggleMA(60)">MA60</button>
+      <div class="tb-sep"></div>
+      <button class="ind-btn" id="btnRSI"  onclick="togglePanel('rsi')">RSI</button>
+      <button class="ind-btn" id="btnMACD" onclick="togglePanel('macd')">MACD</button>
+    </div>
+
+    <!-- Main chart -->
+    <div class="chart-wrap" id="chartWrap">
+      <canvas id="mainChart"></canvas>
+      <div class="chart-tooltip" id="tooltip">
+        <div class="tt-row"><span class="tt-lbl">날짜</span><span class="tt-val" id="ttDate">-</span></div>
+        <div class="tt-row"><span class="tt-lbl">시가</span><span class="tt-val" id="ttO">-</span></div>
+        <div class="tt-row"><span class="tt-lbl">고가</span><span class="tt-val up" id="ttH">-</span></div>
+        <div class="tt-row"><span class="tt-lbl">저가</span><span class="tt-val dn" id="ttL">-</span></div>
+        <div class="tt-row"><span class="tt-lbl">종가</span><span class="tt-val" id="ttC">-</span></div>
+        <div class="tt-row"><span class="tt-lbl">거래량</span><span class="tt-val" id="ttV">-</span></div>
+      </div>
+    </div>
+
+    <!-- RSI panel -->
+    <div class="ind-panel" id="rsiPanel" style="display:none; height:75px;">
+      <div class="panel-lbl">RSI(14)</div>
+      <canvas id="rsiChart"></canvas>
+    </div>
+
+    <!-- MACD panel -->
+    <div class="ind-panel" id="macdPanel" style="display:none; height:85px;">
+      <div class="panel-lbl">MACD(12,26,9)</div>
+      <canvas id="macdChart"></canvas>
+    </div>
+
+    <!-- Fundamentals -->
+    <div class="fundamentals">
+      <div class="fund-title">기본 지표</div>
+      <div class="fund-grid">
+        <div class="fund-item"><div class="fund-lbl">PER</div><div class="fund-val" id="fPER">14.2x</div></div>
+        <div class="fund-item"><div class="fund-lbl">PBR</div><div class="fund-val" id="fPBR">1.8x</div></div>
+        <div class="fund-item"><div class="fund-lbl">ROE</div><div class="fund-val" id="fROE">13.1%</div></div>
+        <div class="fund-item"><div class="fund-lbl">배당수익률</div><div class="fund-val" id="fDiv">2.3%</div></div>
+        <div class="fund-item"><div class="fund-lbl">52주 고가</div><div class="fund-val up" id="f52H">89,200</div></div>
+        <div class="fund-item"><div class="fund-lbl">52주 저가</div><div class="fund-val dn" id="f52L">60,700</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <div class="right-panel">
+
+    <!-- Order -->
+    <div class="rp-section">
+      <div class="rp-title">주문</div>
+      <div class="order-tabs">
+        <button class="order-tab buy active" id="tabBuy"  onclick="setTab('buy')">매수</button>
+        <button class="order-tab sell"       id="tabSell" onclick="setTab('sell')">매도</button>
+      </div>
+      <div class="order-form">
+        <div class="form-row">
+          <span class="form-lbl">종목</span>
+          <input type="text" class="form-input" id="oStock" value="삼성전자" readonly>
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">주문가</span>
+          <input type="text" class="form-input" id="oPrice" value="73,800" oninput="calcTotal()">
+          <span class="form-unit">원</span>
+        </div>
+        <div class="form-row">
+          <span class="form-lbl">수량</span>
+          <input type="number" class="form-input" id="oQty" value="10" min="1" oninput="calcTotal()">
+          <span class="form-unit">주</span>
+        </div>
+        <div class="total-row">
+          <span class="total-lbl">주문 금액</span>
+          <span class="total-amt" id="oTotal">738,000원</span>
+        </div>
+        <button class="order-btn buy" id="oBtn" onclick="submitOrder()">매수 주문</button>
+      </div>
+    </div>
+
+    <!-- Account -->
+    <div class="rp-section">
+      <div class="rp-title">계좌 현황</div>
+      <div class="account-rows">
+        <div class="ac-row"><span class="ac-lbl">총 자산</span><span class="ac-val">52,840,000원</span></div>
+        <div class="ac-row"><span class="ac-lbl">보유 현금</span><span class="ac-val">18,430,000원</span></div>
+        <div class="ac-row"><span class="ac-lbl">주식 평가액</span><span class="ac-val">34,410,000원</span></div>
+        <div class="ac-row"><span class="ac-lbl">총 평가손익</span><span class="ac-val pos">+2,340,000원</span></div>
+        <div class="ac-row"><span class="ac-lbl">수익률</span><span class="ac-val pos">+7.31%</span></div>
+      </div>
+    </div>
+
+    <!-- Holdings -->
+    <div class="rp-section" style="border-bottom:none; flex:1;">
+      <div class="rp-title">보유 종목</div>
+      <div id="holdingsList"></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Stock data ─────────────────────────────────────────────────────────────
+const STOCKS = {
+  '005930': { name:'삼성전자',      market:'KOSPI',  sector:'전기전자', price:73800,  chg:1.20,  high:74200,  low:73100,  vol:12380000, mcap:'440.5조', per:14.2, pbr:1.8, roe:13.1, div:2.3, h52:89200,  l52:60700  },
+  '000660': { name:'SK하이닉스',    market:'KOSPI',  sector:'반도체',   price:182000, chg:-0.80, high:185000, low:180500, vol:4820000,  mcap:'132.4조', per:22.1, pbr:3.2, roe:15.6, div:0.8, h52:238500, l52:141000 },
+  '373220': { name:'LG에너지솔루션',market:'KOSPI',  sector:'2차전지',  price:412000, chg:2.10,  high:418000, low:408000, vol:980000,   mcap:'96.6조',  per:45.3, pbr:4.1, roe:8.2,  div:0.0, h52:520000, l52:340000 },
+  '005380': { name:'현대차',        market:'KOSPI',  sector:'자동차',   price:198000, chg:0.51,  high:199500, low:196500, vol:2340000,  mcap:'42.2조',  per:8.9,  pbr:0.9, roe:10.8, div:3.1, h52:243000, l52:172000 },
+  '035420': { name:'NAVER',        market:'KOSPI',  sector:'인터넷',   price:198500, chg:-1.34, high:201000, low:197000, vol:1680000,  mcap:'32.5조',  per:28.7, pbr:2.4, roe:8.7,  div:0.3, h52:255000, l52:165000 },
+  '035720': { name:'카카오',        market:'KOSPI',  sector:'인터넷',   price:48100,  chg:-2.14, high:49200,  low:47800,  vol:5210000,  mcap:'21.4조',  per:null, pbr:1.6, roe:-3.2, div:0.0, h52:68000,  l52:38500  },
+  '000270': { name:'기아',          market:'KOSPI',  sector:'자동차',   price:102500, chg:1.79,  high:103500, low:101000, vol:3120000,  mcap:'41.7조',  per:7.1,  pbr:0.8, roe:12.3, div:3.8, h52:133000, l52:82000  },
+  '068270': { name:'셀트리온',      market:'KOSDAQ', sector:'바이오',   price:148500, chg:0.34,  high:150000, low:147000, vol:1450000,  mcap:'19.5조',  per:35.2, pbr:3.9, roe:11.2, div:0.0, h52:210000, l52:120000 },
+  '207940': { name:'삼성바이오로직스',market:'KOSPI',sector:'바이오',   price:860000, chg:0.82,  high:868000, low:854000, vol:210000,   mcap:'56.8조',  per:62.1, pbr:6.3, roe:10.1, div:0.0, h52:1050000,l52:690000 },
+  '051910': { name:'LG화학',        market:'KOSPI',  sector:'화학',     price:312000, chg:-0.96, high:316000, low:310000, vol:580000,   mcap:'22.0조',  per:18.4, pbr:1.4, roe:7.8,  div:1.9, h52:420000, l52:280000 },
+};
+
+const HOLDINGS = [
+  { code:'005930', name:'삼성전자',  qty:50, avg:68200,  cur:73800  },
+  { code:'000660', name:'SK하이닉스',qty:10, avg:165000, cur:182000 },
+  { code:'005380', name:'현대차',    qty:15, avg:205000, cur:198000 },
+];
+
+// ── State ──────────────────────────────────────────────────────────────────
+let curCode   = '005930';
+let curPeriod = '1M';
+let curTab    = 'buy';
+let showMA    = { 5:true, 20:true, 60:false };
+let showRSI   = false;
+let showMACD  = false;
+let hoverIdx  = -1;
+let candleDB  = {};
+
+// ── Mock candle generation ─────────────────────────────────────────────────
+function genCandles(basePrice, n, vol = 0.018) {
+  const out = [];
+  let price = basePrice * (0.82 + Math.random() * 0.12);
+  const now = new Date();
+
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    if (d.getDay() === 0 || d.getDay() === 6) continue;
+
+    const drift = (Math.random() - 0.47) * vol;
+    const open  = price;
+    price = Math.max(price * (1 + drift), basePrice * 0.3);
+    const close = price;
+    const hi    = Math.max(open, close) * (1 + Math.random() * 0.009);
+    const lo    = Math.min(open, close) * (1 - Math.random() * 0.009);
+    const v     = Math.floor((200000 + Math.random() * 800000) * (1 + Math.abs(drift) * 12));
+
+    out.push({
+      date: d.toLocaleDateString('ko-KR', { month:'2-digit', day:'2-digit' }),
+      open: Math.round(open), high: Math.round(hi),
+      low:  Math.round(lo),   close: Math.round(close), vol: v
+    });
+  }
+  // Pin last candle close to current price
+  if (out.length) {
+    const last = out[out.length - 1];
+    last.close = basePrice;
+    last.high  = Math.max(last.high, basePrice);
+    last.low   = Math.min(last.low,  basePrice);
+  }
+  return out;
+}
+
+function buildDB() {
+  const counts = { '1D':1, '1W':5, '1M':22, '3M':66, '1Y':252 };
+  Object.keys(STOCKS).forEach(code => {
+    candleDB[code] = {};
+    Object.entries(counts).forEach(([p, n]) => {
+      candleDB[code][p] = genCandles(STOCKS[code].price, n + 65);
+    });
+  });
+}
+
+function getCandles() {
+  return (candleDB[curCode] || {})[curPeriod] || [];
+}
+
+// ── Indicators ─────────────────────────────────────────────────────────────
+function calcMA(closes, p) {
+  return closes.map((_, i) => {
+    if (i < p - 1) return null;
+    return closes.slice(i - p + 1, i + 1).reduce((a, b) => a + b, 0) / p;
+  });
+}
+
+function calcRSI(closes, p = 14) {
+  const out = new Array(closes.length).fill(null);
+  if (closes.length < p + 1) return out;
+  let ag = 0, al = 0;
+  for (let i = 1; i <= p; i++) {
+    const d = closes[i] - closes[i - 1];
+    d > 0 ? ag += d : al -= d;
+  }
+  ag /= p; al /= p;
+  for (let i = p; i < closes.length; i++) {
+    if (i > p) {
+      const d = closes[i] - closes[i - 1];
+      ag = (ag * (p - 1) + (d > 0 ? d : 0)) / p;
+      al = (al * (p - 1) + (d < 0 ? -d : 0)) / p;
+    }
+    out[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+  }
+  return out;
+}
+
+function calcEMA(vals, p) {
+  const out = new Array(vals.length).fill(null);
+  const k = 2 / (p + 1);
+  let prev = null;
+  for (let i = 0; i < vals.length; i++) {
+    if (vals[i] === null) continue;
+    if (prev === null) { out[i] = vals[i]; prev = vals[i]; continue; }
+    out[i] = vals[i] * k + prev * (1 - k);
+    prev = out[i];
+  }
+  return out;
+}
+
+function calcMACD(closes) {
+  const e12  = calcEMA(closes, 12);
+  const e26  = calcEMA(closes, 26);
+  const macd = closes.map((_, i) => e12[i] !== null && e26[i] !== null ? e12[i] - e26[i] : null);
+  const sig  = calcEMA(macd, 9);
+  const hist = macd.map((m, i) => m !== null && sig[i] !== null ? m - sig[i] : null);
+  return { macd, sig, hist };
+}
+
+// ── Chart drawing ──────────────────────────────────────────────────────────
+const PAD = { t:20, r:62, b:22, l:6 };
+const DPR = window.devicePixelRatio || 1;
+
+function sizeCanvas(canvas, w, h) {
+  canvas.width  = Math.round(w * DPR);
+  canvas.height = Math.round(h * DPR);
+  canvas.style.width  = w + 'px';
+  canvas.style.height = h + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(DPR, DPR);
+  return ctx;
+}
+
+function drawMain() {
+  const wrap = document.getElementById('chartWrap');
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  if (W < 10 || H < 10) return;
+
+  const canvas = document.getElementById('mainChart');
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = sizeCanvas(canvas, W, H);
+
+  const candles = getCandles();
+  if (!candles.length) return;
+
+  const closes = candles.map(c => c.close);
+
+  // Chart zones
+  const cH   = H * 0.70;  // candle area total height
+  const volH = H * 0.16;  // volume area height
+  const volY = cH + 8;    // volume top
+
+  const aX = PAD.l;
+  const aY = PAD.t;
+  const aW = W - PAD.l - PAD.r;
+  const aH = cH - PAD.t - 6;
+
+  // Price range
+  const prices = candles.flatMap(c => [c.high, c.low]);
+  let pMin = Math.min(...prices), pMax = Math.max(...prices);
+  const pad = (pMax - pMin) * 0.06;
+  pMin -= pad; pMax += pad;
+
+  const px = i  => aX + (i + 0.5) * (aW / candles.length);
+  const py = v  => aY + aH - (v - pMin) / (pMax - pMin) * aH;
+  const bw = Math.max(1.5, (aW / candles.length) * 0.68);
+
+  // Grid + price labels
+  ctx.font = `10px Malgun Gothic`;
+  ctx.textAlign = 'left';
+  for (let g = 1; g <= 4; g++) {
+    const y = aY + (aH / 4) * g;
+    ctx.strokeStyle = 'rgba(42,58,84,.7)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 6]);
+    ctx.beginPath(); ctx.moveTo(aX, y); ctx.lineTo(aX + aW, y); ctx.stroke();
+    ctx.setLineDash([]);
+    const p = pMax - (pMax - pMin) * (g / 4);
+    ctx.fillStyle = '#6a8098';
+    ctx.fillText(Math.round(p).toLocaleString(), aX + aW + 4, y + 3);
+  }
+
+  // Volume bars
+  const maxVol = Math.max(...candles.map(c => c.vol));
+  candles.forEach((c, i) => {
+    const isUp = c.close >= c.open;
+    const vH = (c.vol / maxVol) * (volH - 3);
+    ctx.globalAlpha = 0.45;
+    ctx.fillStyle = isUp ? '#e05252' : '#5090ff';
+    ctx.fillRect(px(i) - bw / 2, volY + (volH - vH), bw, vH);
+  });
+  ctx.globalAlpha = 1;
+
+  // MA lines
+  [
+    { p:5,  color:'#ffd060', show:showMA[5]  },
+    { p:20, color:'#60e8ff', show:showMA[20] },
+    { p:60, color:'#ff90e0', show:showMA[60] },
+  ].forEach(({ p, color, show }) => {
+    if (!show) return;
+    const ma = calcMA(closes, p);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    let first = true;
+    ma.forEach((v, i) => {
+      if (v === null) return;
+      first ? ctx.moveTo(px(i), py(v)) : ctx.lineTo(px(i), py(v));
+      first = false;
+    });
+    ctx.stroke();
+  });
+
+  // Candlesticks
+  candles.forEach((c, i) => {
+    const isUp = c.close >= c.open;
+    const col  = isUp ? '#e05252' : '#5090ff';
+    ctx.strokeStyle = col;
+    ctx.fillStyle   = col;
+    ctx.lineWidth   = 1;
+
+    // Wick
+    ctx.beginPath();
+    ctx.moveTo(px(i), py(c.high));
+    ctx.lineTo(px(i), py(c.low));
+    ctx.stroke();
+
+    // Body
+    const topY = py(Math.max(c.open, c.close));
+    const bodH = Math.max(1, Math.abs(py(c.open) - py(c.close)));
+    if (isUp) {
+      ctx.fillRect(px(i) - bw / 2, topY, bw, bodH);
+    } else {
+      ctx.strokeRect(px(i) - bw / 2 + .5, topY + .5, bw - 1, bodH - 1);
+    }
+  });
+
+  // Last price line
+  const lastP = candles[candles.length - 1].close;
+  const lastY = py(lastP);
+  ctx.strokeStyle = 'rgba(200,212,226,.25)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 5]);
+  ctx.beginPath(); ctx.moveTo(aX, lastY); ctx.lineTo(aX + aW, lastY); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#c8d4e2';
+  ctx.fillText(lastP.toLocaleString(), aX + aW + 4, lastY + 3);
+
+  // Crosshair
+  if (hoverIdx >= 0 && hoverIdx < candles.length) {
+    ctx.strokeStyle = 'rgba(200,212,226,.2)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 4]);
+    ctx.beginPath();
+    ctx.moveTo(px(hoverIdx), aY);
+    ctx.lineTo(px(hoverIdx), aY + aH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Date labels
+  const step = Math.max(1, Math.floor(candles.length / 6));
+  ctx.fillStyle = '#6a8098';
+  ctx.font = '9px Malgun Gothic';
+  ctx.textAlign = 'center';
+  candles.forEach((c, i) => {
+    if (i % step === 0) ctx.fillText(c.date, px(i), H - 5);
+  });
+}
+
+function drawRSI() {
+  if (!showRSI) return;
+  const panel = document.getElementById('rsiPanel');
+  const W = panel.clientWidth, H = panel.clientHeight;
+  if (!W || !H) return;
+  const canvas = document.getElementById('rsiChart');
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = sizeCanvas(canvas, W, H);
+
+  const closes = getCandles().map(c => c.close);
+  const rsi = calcRSI(closes);
+  const n = closes.length;
+
+  const aW = W - PAD.l - PAD.r;
+  const aH = H - 16;
+  const aY = 13;
+
+  const px = i => PAD.l + (i + 0.5) * (aW / n);
+  const py = v => aY + (1 - v / 100) * aH;
+
+  [70, 50, 30].forEach(v => {
+    ctx.strokeStyle = v === 50 ? 'rgba(42,58,84,.7)' : 'rgba(224,82,82,.25)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 5]);
+    ctx.beginPath(); ctx.moveTo(PAD.l, py(v)); ctx.lineTo(PAD.l + aW, py(v)); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#6a8098';
+    ctx.font = '9px Malgun Gothic';
+    ctx.textAlign = 'left';
+    ctx.fillText(v, PAD.l + aW + 4, py(v) + 3);
+  });
+
+  ctx.strokeStyle = '#e8a020';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  let first = true;
+  rsi.forEach((v, i) => {
+    if (v === null) return;
+    first ? ctx.moveTo(px(i), py(v)) : ctx.lineTo(px(i), py(v));
+    first = false;
+  });
+  ctx.stroke();
+
+  const last = [...rsi].reverse().find(v => v !== null);
+  if (last !== undefined) {
+    const lIdx = rsi.lastIndexOf(last);
+    ctx.fillStyle = '#e8a020';
+    ctx.font = 'bold 9px Malgun Gothic';
+    ctx.textAlign = 'left';
+    ctx.fillText(last.toFixed(1), PAD.l + aW + 4, py(last) + 3);
+  }
+}
+
+function drawMACD() {
+  if (!showMACD) return;
+  const panel = document.getElementById('macdPanel');
+  const W = panel.clientWidth, H = panel.clientHeight;
+  if (!W || !H) return;
+  const canvas = document.getElementById('macdChart');
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  const ctx = sizeCanvas(canvas, W, H);
+
+  const closes = getCandles().map(c => c.close);
+  const { macd, sig, hist } = calcMACD(closes);
+  const n = closes.length;
+
+  const valid = hist.filter(v => v !== null);
+  if (!valid.length) return;
+  const maxAbs = Math.max(...valid.map(Math.abs)) * 1.25 || 1;
+
+  const aW = W - PAD.l - PAD.r;
+  const aH = H - 18;
+  const aY = 14;
+
+  const px   = i => PAD.l + (i + 0.5) * (aW / n);
+  const py   = v => aY + (0.5 - v / (2 * maxAbs)) * aH;
+  const bw   = Math.max(1, (aW / n) * 0.65);
+
+  // Zero line
+  ctx.strokeStyle = 'rgba(42,58,84,.8)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 5]);
+  ctx.beginPath(); ctx.moveTo(PAD.l, py(0)); ctx.lineTo(PAD.l + aW, py(0)); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Histogram
+  hist.forEach((v, i) => {
+    if (v === null) return;
+    ctx.fillStyle = v >= 0 ? 'rgba(224,82,82,.55)' : 'rgba(80,144,255,.55)';
+    const y0 = py(0), y1 = py(v);
+    ctx.fillRect(px(i) - bw / 2, Math.min(y0, y1), bw, Math.abs(y0 - y1) || 1);
+  });
+
+  // MACD line
+  ctx.strokeStyle = '#6ab0ff';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath();
+  let f1 = true;
+  macd.forEach((v, i) => {
+    if (v === null) return;
+    f1 ? ctx.moveTo(px(i), py(v)) : ctx.lineTo(px(i), py(v));
+    f1 = false;
+  });
+  ctx.stroke();
+
+  // Signal line
+  ctx.strokeStyle = '#e8a020';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  let f2 = true;
+  sig.forEach((v, i) => {
+    if (v === null) return;
+    f2 ? ctx.moveTo(px(i), py(v)) : ctx.lineTo(px(i), py(v));
+    f2 = false;
+  });
+  ctx.stroke();
+
+  ctx.fillStyle = '#6a8098';
+  ctx.font = '9px Malgun Gothic';
+  ctx.textAlign = 'left';
+  ctx.fillText('0', PAD.l + aW + 4, py(0) + 3);
+}
+
+function drawAll() {
+  drawMain();
+  drawRSI();
+  drawMACD();
+}
+
+// ── Interactions ───────────────────────────────────────────────────────────
+function selectStock(code) {
+  curCode = code;
+  const s = STOCKS[code];
+
+  document.querySelectorAll('.watch-item').forEach(el =>
+    el.classList.toggle('active', el.dataset.code === code)
+  );
+
+  document.getElementById('hName').textContent   = s.name;
+  document.getElementById('hCode').textContent   = `${code} · ${s.market} · ${s.sector}`;
+
+  const priceEl = document.getElementById('hPrice');
+  priceEl.textContent = s.price.toLocaleString();
+  priceEl.className   = 'sh-price ' + (s.chg >= 0 ? 'up' : 'dn');
+
+  const absChg   = Math.round(s.price * Math.abs(s.chg) / 100);
+  const arrow    = s.chg >= 0 ? '▲' : '▼';
+  const changeEl = document.getElementById('hChange');
+  changeEl.textContent = `${arrow} ${absChg.toLocaleString()} (${s.chg >= 0 ? '+' : ''}${s.chg.toFixed(2)}%)`;
+  changeEl.className   = 'sh-change ' + (s.chg >= 0 ? 'up' : 'dn');
+
+  document.getElementById('mHigh').textContent = s.high.toLocaleString();
+  document.getElementById('mLow').textContent  = s.low.toLocaleString();
+  document.getElementById('mVol').textContent  = (s.vol / 1e6).toFixed(1) + 'M';
+  document.getElementById('mMcap').textContent = s.mcap;
+
+  document.getElementById('fPER').textContent = s.per !== null ? s.per + 'x' : 'N/A';
+  document.getElementById('fPBR').textContent = s.pbr + 'x';
+  document.getElementById('fROE').textContent = (s.roe > 0 ? '+' : '') + s.roe + '%';
+  document.getElementById('fDiv').textContent = s.div + '%';
+  document.getElementById('f52H').textContent = s.h52.toLocaleString();
+  document.getElementById('f52L').textContent = s.l52.toLocaleString();
+
+  document.getElementById('oStock').value = s.name;
+  document.getElementById('oPrice').value = s.price.toLocaleString();
+  calcTotal();
+
+  hoverIdx = -1;
+  drawAll();
+}
+
+function setPeriod(p) {
+  curPeriod = p;
+  const labels = { '1D':'일', '1W':'주', '1M':'월', '3M':'3M', '1Y':'1Y' };
+  document.querySelectorAll('.period-btn').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.p === p)
+  );
+  drawAll();
+}
+
+function toggleMA(n) {
+  showMA[n] = !showMA[n];
+  document.getElementById({ 5:'btnMA5', 20:'btnMA20', 60:'btnMA60' }[n])
+    .classList.toggle('active', showMA[n]);
+  drawMain();
+}
+
+function togglePanel(type) {
+  if (type === 'rsi') {
+    showRSI = !showRSI;
+    document.getElementById('rsiPanel').style.display = showRSI ? '' : 'none';
+    document.getElementById('btnRSI').classList.toggle('active', showRSI);
+  } else {
+    showMACD = !showMACD;
+    document.getElementById('macdPanel').style.display = showMACD ? '' : 'none';
+    document.getElementById('btnMACD').classList.toggle('active', showMACD);
+  }
+  setTimeout(drawAll, 20);
+}
+
+function setTab(tab) {
+  curTab = tab;
+  document.getElementById('tabBuy').classList.toggle('active',  tab === 'buy');
+  document.getElementById('tabSell').classList.toggle('active', tab === 'sell');
+  const btn = document.getElementById('oBtn');
+  btn.className   = 'order-btn ' + tab;
+  btn.textContent = tab === 'buy' ? '매수 주문' : '매도 주문';
+}
+
+function calcTotal() {
+  const price = parseInt(document.getElementById('oPrice').value.replace(/,/g, '')) || 0;
+  const qty   = parseInt(document.getElementById('oQty').value) || 0;
+  document.getElementById('oTotal').textContent = (price * qty).toLocaleString() + '원';
+}
+
+function submitOrder() {
+  const stock = document.getElementById('oStock').value;
+  const qty   = document.getElementById('oQty').value;
+  const label = curTab === 'buy' ? '매수' : '매도';
+  showToast(`✅  ${stock} ${parseInt(qty).toLocaleString()}주 ${label} 체결`);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── Watchlist render ───────────────────────────────────────────────────────
+function renderWatchlist(filter = '') {
+  const ul = document.getElementById('watchlist');
+  ul.innerHTML = '';
+  const f = filter.trim().toLowerCase();
+
+  Object.entries(STOCKS).forEach(([code, s]) => {
+    if (f && !s.name.toLowerCase().includes(f) && !code.includes(f)) return;
+    const isUp  = s.chg >= 0;
+    const cls   = isUp ? 'up' : 'dn';
+    const arrow = isUp ? '▲' : '▼';
+    const div   = document.createElement('div');
+    div.className   = 'watch-item' + (code === curCode ? ' active' : '');
+    div.dataset.code = code;
+    div.onclick = () => selectStock(code);
+    div.innerHTML = `
+      <div class="w-row">
+        <span class="w-name">${s.name}</span>
+        <span class="w-price ${cls}">${s.price.toLocaleString()}</span>
+      </div>
+      <div class="w-row">
+        <span class="w-code">${code}</span>
+        <span class="w-chg ${cls}">${arrow} ${Math.abs(s.chg).toFixed(2)}%</span>
+      </div>`;
+    ul.appendChild(div);
+  });
+}
+
+// ── Holdings render ────────────────────────────────────────────────────────
+function renderHoldings() {
+  const el = document.getElementById('holdingsList');
+  el.innerHTML = '';
+  HOLDINGS.forEach(h => {
+    const pnl    = (h.cur - h.avg) * h.qty;
+    const pnlPct = ((h.cur - h.avg) / h.avg * 100).toFixed(2);
+    const cls    = pnl >= 0 ? 'up' : 'dn';
+    const arr    = pnl >= 0 ? '▲' : '▼';
+    const div    = document.createElement('div');
+    div.className = 'holding-item';
+    div.innerHTML = `
+      <div class="holding-row" style="margin-bottom:3px">
+        <span class="holding-name">${h.name}</span>
+        <span class="holding-pnl ${cls}">${pnl >= 0 ? '+' : ''}${pnl.toLocaleString()}원</span>
+      </div>
+      <div class="holding-row">
+        <span class="holding-sub">${h.qty}주 · 평균 ${h.avg.toLocaleString()}</span>
+        <span class="holding-sub ${cls}">${arr} ${pnlPct}%</span>
+      </div>`;
+    el.appendChild(div);
+  });
+}
+
+// ── Mouse hover on chart ───────────────────────────────────────────────────
+function setupMouse() {
+  const canvas  = document.getElementById('mainChart');
+  const tooltip = document.getElementById('tooltip');
+  const wrap    = document.getElementById('chartWrap');
+
+  canvas.addEventListener('mousemove', e => {
+    const rect = wrap.getBoundingClientRect();
+    const xRel = e.clientX - rect.left;
+    const candles = getCandles();
+    if (!candles.length) return;
+
+    const aW  = rect.width - PAD.l - PAD.r;
+    const idx = Math.round((xRel - PAD.l) / (aW / candles.length) - 0.5);
+
+    if (idx >= 0 && idx < candles.length) {
+      hoverIdx = idx;
+      const c = candles[idx];
+      document.getElementById('ttDate').textContent = c.date;
+      document.getElementById('ttO').textContent    = c.open.toLocaleString();
+      document.getElementById('ttH').textContent    = c.high.toLocaleString();
+      document.getElementById('ttL').textContent    = c.low.toLocaleString();
+      document.getElementById('ttC').textContent    = c.close.toLocaleString();
+      document.getElementById('ttV').textContent    = Math.round(c.vol / 10000).toLocaleString() + '만';
+
+      const ttL  = Math.min(xRel + 14, rect.width - 150);
+      tooltip.style.left    = ttL + 'px';
+      tooltip.style.top     = '18px';
+      tooltip.style.display = 'block';
+      drawMain();
+    }
+  });
+
+  canvas.addEventListener('mouseleave', () => {
+    hoverIdx = -1;
+    tooltip.style.display = 'none';
+    drawMain();
+  });
+}
+
+// ── Clock ──────────────────────────────────────────────────────────────────
+function tick() {
+  document.getElementById('topTime').textContent =
+    new Date().toLocaleTimeString('ko-KR', { hour12:false });
+}
+
+// ── Resize ─────────────────────────────────────────────────────────────────
+let resizeTmr;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTmr);
+  resizeTmr = setTimeout(drawAll, 80);
+});
+
+// ── Init ───────────────────────────────────────────────────────────────────
+buildDB();
+renderWatchlist();
+renderHoldings();
+selectStock('005930');
+setupMouse();
+tick();
+setInterval(tick, 1000);
+
+document.getElementById('searchBox').addEventListener('input', e => {
+  renderWatchlist(e.target.value);
+});
+
+// Wait for layout, then draw
+setTimeout(drawAll, 60);
+</script>
+</body>
+</html>
