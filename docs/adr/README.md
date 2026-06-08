@@ -24,6 +24,7 @@
 | [0016](0016-kis-api-korean-stock-datasource.md) | KIS Open API (한국투자증권) 국내 주식 데이터 소스 채택 | accepted | 2026-05-21 |
 | [0017](0017-v2-strategy-no-go-redesign.md) | V2 전략 D+7 NO-GO 판정 — v1 운용 유지 + V2 재설계 | accepted | 2026-05-27 |
 | [0018](0018-kr-fractal-strategy.md) | 국내 주식 시그널 전략 — Williams Fractal 기반 (`KrFractalStrategy`) | accepted | 2026-05-28 |
+| [0019](0019-planner-generator-evaluator-loop.md) | 개발 진행 구조 — Planner / Generator / Evaluator 루프 | accepted | 2026-06-08 |
 
 ## 작성 규칙
 
