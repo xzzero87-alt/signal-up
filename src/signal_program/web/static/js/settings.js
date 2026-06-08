@@ -14,7 +14,7 @@ const INT_FIELDS = new Set([
   'bb_period', 'cci_period', 'cci_threshold_normal', 'cci_threshold_strong',
   'squeeze_lookback', 'cooldown_hours',
   'sto_oversold', 'sto_overbought',          // V2 (ADR-0010)
-  'fractal_max_age', 'donchian_entry_period', 'donchian_exit_period', // 전략 확장 v2.3
+  'fractal_lookback', 'fractal_max_age', 'donchian_entry_period', 'donchian_exit_period', // 전략 확장 v2.3
   'rsi2_period', 'rsi2_trend_period',
   'kr_cooldown_hours_60m', 'kr_cooldown_hours_120m', // KIS (ADR-0016)
 ]);

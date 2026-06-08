@@ -42,6 +42,7 @@ def _to_view(settings: object) -> SettingsView:
         sto_oversold=s.sto_oversold,
         sto_overbought=s.sto_overbought,
         # 전략 확장 v2.3 (V3/V4/V5)
+        fractal_lookback=s.fractal_lookback,
         fractal_volume_threshold=s.fractal_volume_threshold,
         fractal_volume_strong=s.fractal_volume_strong,
         fractal_max_age=s.fractal_max_age,
