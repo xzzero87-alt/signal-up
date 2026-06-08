@@ -72,6 +72,15 @@ class UpbitClient:
         resp = await self._get("/v1/market/all", isDetails="false")
         return [item["market"] for item in resp.json() if item["market"].startswith("KRW-")]
 
+    async def list_krw_markets_detailed(self) -> list[dict[str, str]]:
+        """KRW 마켓을 ``{market, korean_name}`` 형태로 반환 (설정 종목선택 UI용)."""
+        resp = await self._get("/v1/market/all", isDetails="false")
+        return [
+            {"market": item["market"], "korean_name": item["korean_name"]}
+            for item in resp.json()
+            if item["market"].startswith("KRW-")
+        ]
+
     async def fetch_candles(
         self,
         market: str,

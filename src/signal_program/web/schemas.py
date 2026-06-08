@@ -125,6 +125,14 @@ class HealthResponse(BaseModel):
     version: str
 
 
+class CoinMarket(BaseModel):
+    """업비트 KRW 마켓 항목 (설정 종목선택 UI용). GET /api/markets/coins."""
+
+    model_config = ConfigDict(extra="forbid")
+    market: str
+    korean_name: str
+
+
 class BacktestJobSubmit(BaseModel):
     """POST /api/backtest/jobs 요청 바디."""
 

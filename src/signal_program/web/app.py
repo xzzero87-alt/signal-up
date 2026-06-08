@@ -26,6 +26,7 @@ from signal_program.web.api import (
     health,
     kr_dashboard,
     logs,
+    markets,
     pages,
     settings,
     signals,
@@ -123,6 +124,7 @@ def create_app(
     app.include_router(feedback.router)
     app.include_router(failures.router)
     app.include_router(logs.router)
+    app.include_router(markets.router)
 
     # 정적 파일
     if _STATIC_DIR.exists():
