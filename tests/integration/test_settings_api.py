@@ -52,15 +52,33 @@ def test_put_settings_whitelist_saved_as_list(tmp_path: Path) -> None:
     assert saved["whitelist_markets"] == ["KRW-BTC", "KRW-SOL", "KRW-XRP"]
 
 
-def test_put_settings_empty_whitelist_returns_422(client: TestClient) -> None:
-    """빈 whitelist_markets → 422."""
-    resp = client.put("/api/settings", json={"whitelist_markets": []})
+def test_put_settings_empty_coin_with_kr_returns_200(client: TestClient) -> None:
+    """코인 화이트리스트가 비어도 국장 종목이 있으면 200 (v2.2 M2)."""
+    resp = client.put(
+        "/api/settings",
+        json={"whitelist_markets": [], "kr_whitelist_symbols": ["005930"]},
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["whitelist_markets"] == []
+    assert "005930" in data["kr_whitelist_symbols"]
+
+
+def test_put_settings_both_empty_returns_422(client: TestClient) -> None:
+    """코인·국장 둘 다 비면 422 (v2.2 M2)."""
+    resp = client.put(
+        "/api/settings",
+        json={"whitelist_markets": [], "kr_whitelist_symbols": []},
+    )
     assert resp.status_code == 422, resp.text
 
 
-def test_put_settings_empty_whitelist_korean_message(client: TestClient) -> None:
-    """빈 whitelist_markets 422 응답에 한국어 메시지, 영어 prefix 없어야 한다."""
-    resp = client.put("/api/settings", json={"whitelist_markets": []})
+def test_put_settings_both_empty_korean_message(client: TestClient) -> None:
+    """둘 다 빈 422 응답에 한국어 메시지, 영어 prefix 없어야 한다."""
+    resp = client.put(
+        "/api/settings",
+        json={"whitelist_markets": [], "kr_whitelist_symbols": []},
+    )
     assert resp.status_code == 422
     data = resp.json()
     detail = data.get("detail", [])

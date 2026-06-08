@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import (
     BaseSettings,
     DotEnvSettingsSource,
@@ -179,11 +179,16 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return [m.strip() for m in v.split(",") if m.strip()]
         if isinstance(v, (list, tuple)):
-            result = [str(item) for item in v]
-            if not result:
-                raise ValueError("화이트리스트는 마켓이 하나 이상 필요합니다")
-            return result
+            return [str(item) for item in v]
         raise ValueError(f"whitelist_markets parse error: {type(v).__name__}")  # noqa: EM102
+
+    @model_validator(mode="after")
+    def _require_at_least_one_market(self) -> Settings:
+        if not self.whitelist_markets and not self.kr_whitelist_symbols:
+            raise ValueError(
+                "화이트리스트가 비어 있습니다. 코인 또는 국장 종목을 최소 하나 선택하세요"
+            )
+        return self
 
     def model_post_init(self, __context: Any) -> None:
         if self.web_bind != "127.0.0.1" and not self.web_auth_password:

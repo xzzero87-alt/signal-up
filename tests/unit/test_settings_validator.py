@@ -3,7 +3,7 @@
 결함 (v2.0.1): SettingsUpdate가 JSON list를 tuple로 coerce하면
 Settings._parse_whitelist가 tuple을 거부하여 422 에러 발생.
 
-커버: list/tuple/str 허용, 빈 목록 거부, 한국어 에러 메시지 검증.
+커버: list/tuple/str 허용, 코인·국장 둘 다 비면 거부(v2.2 M2), 한국어 에러 메시지 검증.
 """
 
 from __future__ import annotations
@@ -32,23 +32,23 @@ def test_accepts_comma_string_input() -> None:
     assert s.whitelist_markets == ["KRW-BTC", "KRW-ETH", "KRW-SOL"]
 
 
-def test_rejects_empty_list() -> None:
-    """빈 목록은 ValidationError를 발생시켜야 한다."""
+def test_rejects_both_empty() -> None:
+    """v2.2 M2: 코인·국장 둘 다 비면 ValidationError를 발생시켜야 한다."""
     with pytest.raises(ValidationError):
-        Settings(whitelist_markets=[])
+        Settings(_env_file=None, whitelist_markets=[], kr_whitelist_symbols=[])  # type: ignore[call-arg]
 
 
-def test_empty_list_error_message_is_korean() -> None:
-    """빈 목록 에러 메시지에 한국어가 포함되어야 한다."""
+def test_both_empty_error_message_is_korean() -> None:
+    """v2.2 M2: 둘 다 빈 에러 메시지에 한국어가 포함되어야 한다."""
     with pytest.raises(ValidationError) as exc_info:
-        Settings(whitelist_markets=[])
+        Settings(_env_file=None, whitelist_markets=[], kr_whitelist_symbols=[])  # type: ignore[call-arg]
     errors = exc_info.value.errors()
     assert errors, "ValidationError에 에러 항목이 없음"
     msgs = " ".join(str(e.get("msg", "")) for e in errors)
     assert "화이트리스트" in msgs, f"한국어 메시지 없음: {msgs}"
 
 
-def test_empty_tuple_rejected() -> None:
-    """빈 tuple도 거부해야 한다."""
-    with pytest.raises(ValidationError):
-        Settings(whitelist_markets=())
+def test_empty_coin_tuple_allowed_with_kr() -> None:
+    """v2.2 M2: 코인이 빈 tuple이어도 국장 종목이 있으면 허용한다."""
+    s = Settings(_env_file=None, whitelist_markets=(), kr_whitelist_symbols=["005930"])  # type: ignore[call-arg]
+    assert s.whitelist_markets == []
