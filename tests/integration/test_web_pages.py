@@ -45,11 +45,12 @@ def test_dashboard_html_contains_polling_script(client: TestClient) -> None:
 
 
 def test_settings_html_contains_help_tooltips_for_all_settings(client: TestClient) -> None:
+    """도움말 키는 설정·시스템 페이지에 분산 렌더된다 (v2.2 M4 IA 분리)."""
     from signal_program.web.help_text import SETTING_HELP
 
-    resp = client.get("/settings")
+    combined = client.get("/settings").text + client.get("/system").text
     for key in SETTING_HELP:
-        assert key in resp.text, f"도움말 키 없음: {key}"
+        assert key in combined, f"도움말 키 없음(설정·시스템 어디에도): {key}"
 
 
 def test_static_css_served(client: TestClient) -> None:
@@ -110,6 +111,8 @@ def test_settings_page_has_err_span_for_every_input(client: TestClient) -> None:
     # input id 추출 (checkbox dry_run 제외 — 필드 에러 span 불필요)
     input_ids = set(_re.findall(r'<input[^>]+id="([^"]+)"', html))
     input_ids.discard("dry_run")  # checkbox
+    input_ids.discard("coin-search")  # 종목 검색 필터 (제출 필드 아님, v2.2 M3)
+    input_ids.discard("kr-search")  # 종목 검색 필터 (제출 필드 아님, v2.2 M3)
 
     # err- span id 추출
     err_ids = set(_re.findall(r'id="err-([^"]+)"', html))

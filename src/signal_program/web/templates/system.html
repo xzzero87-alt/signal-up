@@ -21,6 +21,115 @@
   </div>
 </section>
 
+<!-- ── 시스템 설정 (운영·국장연결·알림) — PUT /api/settings 부분 업데이트 ── -->
+<div id="save-toast" class="toast" style="display:none"></div>
+<div id="form-errors" class="error-box" style="display:none"></div>
+
+<form id="system-settings-form" onsubmit="saveSettings(event)">
+
+  <!-- 운영 -->
+  <section class="settings-section">
+    <h2>운영 <span class="sec-desc">얼마나 자주 알릴지 · 테스트 모드</span></h2>
+
+    <div class="field-row">
+      <label for="cooldown_hours">재알림 쿨다운 (시간)
+        <span class="help" title="{{ help.cooldown_hours }}">?</span>
+      </label>
+      <input id="cooldown_hours" name="cooldown_hours" type="number"
+             value="{{ settings.cooldown_hours }}" data-field="cooldown_hours">
+      <span style="font-size:0.78rem;color:var(--color-muted)">같은 마켓·같은 방향 신호 재발송 제한</span>
+      <span class="field-error" id="err-cooldown_hours"></span>
+    </div>
+
+    <div class="toggle-row">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+        <input id="dry_run" name="dry_run" type="checkbox"
+               {% if settings.dry_run %}checked{% endif %}>
+        <span class="toggle-info">
+          <b>dry-run (테스트 모드)</b>
+          <span>켜면 신호는 기록되지만 텔레그램 발송 안 함 <span class="help" title="{{ help.dry_run }}">?</span></span>
+        </span>
+      </label>
+    </div>
+  </section>
+
+  <!-- 국장 연결 (KIS) -->
+  <section class="settings-section">
+    <h2>국장 연결 — 한국주식 (KIS) <span class="sec-desc">감시 종목은 [설정] 페이지에서 선택</span></h2>
+
+    <div class="field-row field-row-check">
+      <label>
+        <input id="kr_enabled" name="kr_enabled" type="checkbox"
+               {% if settings.kr_enabled %}checked{% endif %}>
+        국장 기능 활성화
+        <span class="help" title="kr_enabled — KIS App Key/Secret 입력 필수">?</span>
+      </label>
+      <span class="field-error" id="err-kr_enabled"></span>
+    </div>
+    <div class="field-row">
+      <label for="kis_app_key">KIS App Key</label>
+      <input id="kis_app_key" name="kis_app_key" type="password"
+             placeholder="{{ settings.kis_app_key_masked or '비워두면 기존 값 유지' }}" value="">
+      <span class="field-error" id="err-kis_app_key"></span>
+    </div>
+    <div class="field-row">
+      <label for="kis_app_secret">KIS App Secret</label>
+      <input id="kis_app_secret" name="kis_app_secret" type="password"
+             placeholder="{{ settings.kis_app_secret_masked or '비워두면 기존 값 유지' }}" value="">
+      <span class="field-error" id="err-kis_app_secret"></span>
+    </div>
+    <div class="field-row field-row-check">
+      <label>
+        <input id="kis_is_paper" name="kis_is_paper" type="checkbox"
+               {% if settings.kis_is_paper %}checked{% endif %}>
+        모의투자 서버 사용 (kis_is_paper)
+        <span class="help" title="체크=모의투자 / 미체크=실전투자 서버 (캔들 조회 전용)">?</span>
+      </label>
+      <span class="field-error" id="err-kis_is_paper"></span>
+    </div>
+    <div class="field-row">
+      <label for="kr_cooldown_hours_60m">쿨다운 60분봉 (시간)</label>
+      <input id="kr_cooldown_hours_60m" name="kr_cooldown_hours_60m" type="number"
+             value="{{ settings.kr_cooldown_hours_60m }}" data-field="kr_cooldown_hours_60m">
+      <span class="field-error" id="err-kr_cooldown_hours_60m"></span>
+    </div>
+    <div class="field-row">
+      <label for="kr_cooldown_hours_120m">쿨다운 120분봉 (시간)</label>
+      <input id="kr_cooldown_hours_120m" name="kr_cooldown_hours_120m" type="number"
+             value="{{ settings.kr_cooldown_hours_120m }}" data-field="kr_cooldown_hours_120m">
+      <span class="field-error" id="err-kr_cooldown_hours_120m"></span>
+    </div>
+  </section>
+
+  <!-- 알림 채널 -->
+  <section class="settings-section">
+    <h2>알림 채널 <span class="sec-desc">신호를 어디로 보낼지</span></h2>
+
+    <div class="field-row">
+      <label for="telegram_bot_token">텔레그램 봇 토큰
+        <span class="help" title="{{ help.telegram_bot_token }}">?</span>
+      </label>
+      <input id="telegram_bot_token" name="telegram_bot_token" type="password"
+             placeholder="{{ settings.telegram_bot_token_masked or '비워두면 기존 값 유지' }}" value="">
+      <span class="field-error" id="err-telegram_bot_token"></span>
+    </div>
+
+    <div class="field-row">
+      <label for="telegram_chat_id">Chat ID
+        <span class="help" title="{{ help.telegram_chat_id }}">?</span>
+      </label>
+      <input id="telegram_chat_id" name="telegram_chat_id" type="text"
+             value="{{ settings.telegram_chat_id or '' }}">
+      <span class="field-error" id="err-telegram_chat_id"></span>
+    </div>
+    <div class="field-note">저장 후 dry-run을 끈 상태에서 신호가 발생하면 발송됩니다. 발송 실패는 대시보드 알림 카드와 [알림 실패] 메뉴에서 확인하세요.</div>
+  </section>
+
+  <div style="display:flex;justify-content:flex-end;margin:0.5rem 0 1.5rem;">
+    <button type="submit" class="btn-primary">저장 후 적용</button>
+  </div>
+</form>
+
 <!-- 상태 그리드 -->
 <section class="settings-section">
   <h2>상태 정보</h2>
@@ -57,6 +166,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="/static/js/settings.js?v=m4"></script>
 <script>
 'use strict';
 
@@ -130,9 +240,9 @@ async function sysStart() {
   document.getElementById('sys-btn-start').disabled = true;
   try {
     const r = await fetch('/api/daemon/start', {method:'POST'});
-    if (r.status === 409) { const d = await r.json(); showToast((d.detail?.message) || '이미 실행 중', true); }
-    else showToast('데몬을 시작했습니다');
-  } catch (e) { showToast('오류: ' + e.message, true); }
+    if (r.status === 409) { const d = await r.json(); sysToast((d.detail?.message) || '이미 실행 중', true); }
+    else sysToast('데몬을 시작했습니다');
+  } catch (e) { sysToast('오류: ' + e.message, true); }
   await loadStatus();
 }
 
@@ -140,13 +250,14 @@ async function sysStop() {
   document.getElementById('sys-btn-stop').disabled = true;
   try {
     const r = await fetch('/api/daemon/stop', {method:'POST'});
-    if (r.status === 409) { const d = await r.json(); showToast((d.detail?.message) || '이미 정지됨', true); }
-    else showToast('데몬을 정지했습니다');
-  } catch (e) { showToast('오류: ' + e.message, true); }
+    if (r.status === 409) { const d = await r.json(); sysToast((d.detail?.message) || '이미 정지됨', true); }
+    else sysToast('데몬을 정지했습니다');
+  } catch (e) { sysToast('오류: ' + e.message, true); }
   await loadStatus();
 }
 
-function showToast(msg, isErr) {
+// settings.js도 showToast를 정의하므로 데몬 토스트는 sysToast로 분리 (전역 충돌 회피).
+function sysToast(msg, isErr) {
   const el = document.getElementById('sys-toast');
   if (!el) return;
   el.textContent = msg;

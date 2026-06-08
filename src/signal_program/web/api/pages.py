@@ -88,8 +88,18 @@ def backtest_page(
 @router.get("/system", response_class=HTMLResponse)
 def system_page(
     request: Request,  # noqa: ARG001
+    store: SettingsStore = Depends(get_settings_store),
 ) -> HTMLResponse:
-    html = _env().get_template("system.html").render(active="system")
+    view = _to_view(store.load())
+    html = (
+        _env()
+        .get_template("system.html")
+        .render(
+            active="system",
+            settings=view.model_dump(),
+            help=SETTING_HELP,
+        )
+    )
     return HTMLResponse(content=html)
 
 

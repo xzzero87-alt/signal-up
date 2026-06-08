@@ -35,14 +35,19 @@ async function saveSettings(event) {
   event.preventDefault();
   clearErrors();
 
-  const form = document.getElementById('settings-form');
+  // 폼 스코프: 이벤트가 발생한 폼만 대상. 설정/시스템 페이지가 settings.js를 공유하며
+  // 각자 가진 필드만 전송한다. PUT은 부분 업데이트(omit=변경 안 함)이므로 안전.
+  const form = event.currentTarget || document.getElementById('settings-form');
   const fd = new FormData(form);
   const body = {};
 
-  // 리스트 필드(종목설정): hidden input 다중값을 getAll로 수집 → 빈 배열도 명시 전달.
+  // 리스트 필드(종목설정): 해당 폼에 hidden input이 있을 때만 수집 → 빈 배열도 명시 전달.
   // settings_markets.js가 Set→hidden input을 mirror하므로 이것이 제출 진실.
+  // 시스템 페이지처럼 종목 입력이 없는 폼은 omit → 워치리스트 보존(삭제 방지).
   for (const listField of ['whitelist_markets', 'kr_whitelist_symbols']) {
-    body[listField] = fd.getAll(listField).map(v => String(v).trim()).filter(Boolean);
+    if (form.querySelector(`[name="${listField}"]`)) {
+      body[listField] = fd.getAll(listField).map(v => String(v).trim()).filter(Boolean);
+    }
   }
 
   for (const [key, val] of fd.entries()) {
@@ -62,10 +67,13 @@ async function saveSettings(event) {
       body[key] = val;
     }
   }
-  // 미체크 체크박스는 FormData에 포함되지 않으므로 명시적으로 false 설정
-  for (const cbField of CHECKBOX_FIELDS) {
-    if (!(cbField in body)) body[cbField] = false;
-  }
+  // 체크박스: 이 폼에 실제로 존재하는 것만 명시적 boolean 전달.
+  // (FormData는 미체크 체크박스를 누락하므로 직접 순회. 폼에 없는 필드는 omit → 변경 안 함.)
+  // 폼 스코프이므로 다른 페이지의 체크박스를 false로 덮어쓰지 않는다.
+  form.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+    const key = cb.name || cb.id;
+    if (key) body[key] = cb.checked;
+  });
 
   try {
     const res = await fetch('/api/settings', {
