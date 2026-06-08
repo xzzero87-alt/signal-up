@@ -70,3 +70,33 @@ def test_coins_cached_within_ttl(client: TestClient, fake_upbit: FakeUpbit) -> N
     client.get("/api/markets/coins")
     client.get("/api/markets/coins")
     assert fake_upbit.calls == 1  # 두 번째 요청은 캐시 히트
+
+
+# ── 국장 큐레이션 (/api/markets/kr) ──────────────────────────────────────────
+
+
+def test_kr_returns_curated_universe(client: TestClient) -> None:
+    resp = client.get("/api/markets/kr")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 43  # §4 시작목록
+    sample = data[0]
+    assert set(sample) == {"code", "name", "market", "sector"}
+    assert all(item["market"] in {"KOSPI", "KOSDAQ"} for item in data)
+    assert all(len(item["code"]) == 6 and item["code"].isdigit() for item in data)
+    codes = [item["code"] for item in data]
+    assert len(codes) == len(set(codes))  # 코드 중복 없음
+
+
+def test_kr_altteogen_is_kospi(client: TestClient) -> None:
+    """알테오젠(196170) KOSDAQ→KOSPI 이전 반영 확인."""
+    data = client.get("/api/markets/kr").json()
+    altteogen = next(item for item in data if item["code"] == "196170")
+    assert altteogen["market"] == "KOSPI"
+
+
+def test_kr_kosdaq_subset(client: TestClient) -> None:
+    data = client.get("/api/markets/kr").json()
+    kosdaq = {item["code"] for item in data if item["market"] == "KOSDAQ"}
+    # 에코프로비엠·에코프로·HLB·펄어비스·카카오게임즈·에스엠·JYP
+    assert kosdaq == {"247540", "086520", "028300", "263750", "293490", "041510", "035900"}

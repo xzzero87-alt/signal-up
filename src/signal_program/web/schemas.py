@@ -133,6 +133,16 @@ class CoinMarket(BaseModel):
     korean_name: str
 
 
+class KrUniverseStock(BaseModel):
+    """국장 큐레이션 유니버스 항목 (설정 종목선택 UI용). GET /api/markets/kr."""
+
+    model_config = ConfigDict(extra="forbid")
+    code: str
+    name: str
+    market: KrMarket
+    sector: str
+
+
 class BacktestJobSubmit(BaseModel):
     """POST /api/backtest/jobs 요청 바디."""
 

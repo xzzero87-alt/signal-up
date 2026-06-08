@@ -11,8 +11,9 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends
 
+from signal_program.data.kr_universe import KR_UNIVERSE
 from signal_program.exchanges.upbit import UpbitClient
-from signal_program.web.schemas import CoinMarket
+from signal_program.web.schemas import CoinMarket, KrUniverseStock
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -55,3 +56,12 @@ async def list_coin_markets(
     coins = [CoinMarket(market=item["market"], korean_name=item["korean_name"]) for item in raw]
     _coins_cache = (now + _COINS_CACHE_TTL, coins)
     return coins
+
+
+@router.get("/api/markets/kr", response_model=list[KrUniverseStock])
+async def list_kr_universe() -> list[KrUniverseStock]:
+    """국장 큐레이션 유니버스 (정적 43종, 섹터 포함)."""
+    return [
+        KrUniverseStock(code=s.code, name=s.name, market=s.market, sector=s.sector)
+        for s in KR_UNIVERSE
+    ]
