@@ -39,12 +39,14 @@ async function saveSettings(event) {
   const fd = new FormData(form);
   const body = {};
 
+  // 리스트 필드(종목설정): hidden input 다중값을 getAll로 수집 → 빈 배열도 명시 전달.
+  // settings_markets.js가 Set→hidden input을 mirror하므로 이것이 제출 진실.
+  for (const listField of ['whitelist_markets', 'kr_whitelist_symbols']) {
+    body[listField] = fd.getAll(listField).map(v => String(v).trim()).filter(Boolean);
+  }
+
   for (const [key, val] of fd.entries()) {
-    // 리스트 필드: 빈 입력도 backend에 명시적으로 전달
-    if (key === 'whitelist_markets' || key === 'kr_whitelist_symbols') {
-      body[key] = (val ?? '').split(',').map(v => v.trim()).filter(Boolean);
-      continue;
-    }
+    if (key === 'whitelist_markets' || key === 'kr_whitelist_symbols') continue;
     if (val === '' || val == null) continue;
     if (CHECKBOX_FIELDS.has(key)) {
       body[key] = true;

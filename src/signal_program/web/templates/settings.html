@@ -2,19 +2,108 @@
 {% block title %}설정{% endblock %}
 
 {% block content %}
+<style>
+/* ── 종목설정 멀티셀렉트 (v2.2 M3) ── */
+.ms-tabs { display:flex; gap:4px; margin-bottom:0.75rem; }
+.ms-tab {
+  font-size:0.85rem; padding:6px 16px; cursor:pointer;
+  background:var(--color-surface-2); color:var(--color-muted);
+  border:1px solid var(--color-border-2); border-radius:var(--radius, 4px);
+}
+.ms-tab.on { background:var(--color-surface); color:var(--color-primary); border-color:var(--color-primary); }
+.ms-search {
+  width:100%; box-sizing:border-box; margin-bottom:0.5rem; padding:7px 10px;
+  font-size:0.85rem; background:var(--color-surface-2); color:var(--color-text);
+  border:1px solid var(--color-border-2); border-radius:var(--radius, 4px); outline:none;
+}
+.ms-list {
+  max-height:280px; overflow-y:auto;
+  border:1px solid var(--color-border); border-radius:var(--radius-md, 6px);
+  background:var(--color-surface);
+}
+.ms-item {
+  display:flex; align-items:center; gap:8px;
+  padding:6px 12px; font-size:0.85rem; cursor:pointer;
+  border-bottom:1px solid var(--color-border);
+}
+.ms-item:last-child { border-bottom:none; }
+.ms-item:hover { background:var(--color-surface-2); }
+.ms-cb { flex-shrink:0; }
+.ms-code { font-variant-numeric:tabular-nums; color:var(--color-text); min-width:84px; }
+.ms-name { color:var(--color-muted); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ms-badge {
+  font-size:0.68rem; padding:1px 6px; border-radius:3px; flex-shrink:0;
+  background:var(--color-surface-2); color:var(--color-muted-2); border:1px solid var(--color-border-2);
+}
+.ms-list-msg { padding:18px 12px; text-align:center; color:var(--color-muted-2); font-size:0.82rem; }
+.ms-list-err { color:var(--color-strong); }
+.ms-chips { display:flex; flex-wrap:wrap; gap:6px; margin:0.6rem 0 0.3rem; min-height:1.5rem; }
+.ms-chip {
+  display:inline-flex; align-items:center; gap:4px;
+  font-size:0.78rem; padding:2px 4px 2px 9px; border-radius:12px;
+  background:var(--color-surface-2); color:var(--color-text); border:1px solid var(--color-border-2);
+}
+.ms-chip-x {
+  border:none; background:none; cursor:pointer; color:var(--color-muted);
+  font-size:1rem; line-height:1; padding:0 4px;
+}
+.ms-chip-x:hover { color:var(--color-danger, #e05252); }
+.ms-chips-empty { font-size:0.8rem; color:var(--color-muted-2); }
+</style>
+
 <div class="page-content">
 <div class="page-header">
   <h1>설정</h1>
-  <p class="header-subtitle">위에서 아래로: ① 어떤 전략으로 → ② 어떤 마켓을, 얼마나 자주 → ③ 어디로 알릴지. 선택한 전략의 파라미터만 표시됩니다.</p>
+  <p class="header-subtitle">① 어떤 종목을 감시할지 → ② 어떤 전략으로 평가할지. 선택한 전략의 파라미터만 표시됩니다.</p>
 </div>
 <div id="save-toast" class="toast" style="display:none"></div>
 <div id="form-errors" class="error-box" style="display:none"></div>
 
+{# 종목설정 초기 선택 시드 (JS 멀티셀렉트의 단일 진실 Set 초기화용) #}
+<script id="markets-seed" type="application/json">{"coin": {{ settings.whitelist_markets | tojson }}, "kr": {{ settings.kr_whitelist_symbols | tojson }}}</script>
+
 <form id="settings-form" onsubmit="saveSettings(event)">
 
-  <!-- ① 전략 -->
+  <!-- ① 종목 설정 -->
   <section class="settings-section">
-    <h2><span class="sec-num">1</span>전략 <span class="sec-desc">하나만 운용됩니다 — 선택 즉시 아래 파라미터가 바뀝니다</span></h2>
+    <h2><span class="sec-num">1</span>종목 설정 <span class="sec-desc">감시할 코인·국장 종목을 선택하세요 (검색·체크)</span></h2>
+
+    <div class="ms-tabs">
+      <button type="button" class="ms-tab on" data-tab="coin" onclick="msSwitchTab('coin')">코인</button>
+      <button type="button" class="ms-tab" data-tab="kr" onclick="msSwitchTab('kr')">국장</button>
+    </div>
+
+    {# hidden input = 제출 진실. 서버가 초기값 렌더 → JS가 선택 변경 시 mirror. #}
+    {# BUG-1 가드(폼 input name ⊆ SettingsUpdate)를 비공허하게 유지. #}
+    <div id="hidden-whitelist_markets">
+      {% for m in settings.whitelist_markets %}<input type="hidden" name="whitelist_markets" value="{{ m }}">{% endfor %}
+    </div>
+    <div id="hidden-kr_whitelist_symbols">
+      {% for s in settings.kr_whitelist_symbols %}<input type="hidden" name="kr_whitelist_symbols" value="{{ s }}">{% endfor %}
+    </div>
+
+    <!-- 코인 패널 -->
+    <div class="ms-panel" id="ms-panel-coin">
+      <input type="text" id="coin-search" class="ms-search" placeholder="코인 검색 (예: BTC, 비트코인)" autocomplete="off">
+      <div class="ms-list" id="coin-list" data-loading="1"><div class="ms-list-msg">불러오는 중…</div></div>
+      <div class="ms-chips" id="coin-chips"></div>
+      <div class="field-note">선택 <strong id="coin-count">0</strong>종 감시 중</div>
+      <span class="field-error" id="err-whitelist_markets"></span>
+    </div>
+
+    <!-- 국장 패널 -->
+    <div class="ms-panel" id="ms-panel-kr" style="display:none">
+      <input type="text" id="kr-search" class="ms-search" placeholder="국장 검색 (예: 005930, 삼성전자)" autocomplete="off">
+      <div class="ms-list" id="kr-list" data-loading="1"><div class="ms-list-msg">불러오는 중…</div></div>
+      <div class="ms-chips" id="kr-chips"></div>
+      <div class="field-note">선택 <strong id="kr-count">0</strong>종 · 국장 평가는 ⑤ 국장(KIS) 활성화 필요</div>
+      <span class="field-error" id="err-kr_whitelist_symbols"></span>
+    </div>
+  </section>
+
+  <!-- ② 전략 -->
+  <section class="settings-section">
+    <h2><span class="sec-num">2</span>전략 <span class="sec-desc">하나만 운용됩니다 — 선택 즉시 아래 파라미터가 바뀝니다</span></h2>
 
     <div class="strat-grid">
       <label class="strat-card {% if settings.strategy_version == 'v1' %}on{% endif %}" id="card-v1">
@@ -195,23 +284,9 @@
     {% endfor %}
   </section>
 
-  <!-- ② 운영 -->
+  <!-- ③ 운영 -->
   <section class="settings-section">
-    <h2><span class="sec-num">2</span>운영 <span class="sec-desc">어떤 마켓을, 얼마나 자주</span></h2>
-
-    <div class="field-row">
-      <label for="whitelist_markets">감시 마켓 (화이트리스트)
-        <span class="help" title="{{ help.whitelist_markets }}">?</span>
-      </label>
-      <input id="whitelist_markets" name="whitelist_markets" type="text"
-             value="{{ settings.whitelist_markets | join(',') }}"
-             data-field="whitelist_markets" class="input-wide"
-             placeholder="쉼표 구분 (예: KRW-BTC,KRW-ETH)">
-      <span class="field-error" id="err-whitelist_markets"></span>
-    </div>
-    <div class="field-note" style="margin:-0.4rem 0 0.9rem">
-      현재 <strong id="wl-count">{{ settings.whitelist_markets | length }}</strong>개 마켓 감시 중
-    </div>
+    <h2><span class="sec-num">3</span>운영 <span class="sec-desc">얼마나 자주 알릴지</span></h2>
 
     <div class="field-row">
       <label for="cooldown_hours">재알림 쿨다운 (시간)
@@ -239,9 +314,9 @@
     </div>
   </section>
 
-  <!-- ③ 알림 채널 -->
+  <!-- ④ 알림 채널 -->
   <section class="settings-section">
-    <h2><span class="sec-num">3</span>알림 채널 <span class="sec-desc">신호를 어디로 보낼지</span></h2>
+    <h2><span class="sec-num">4</span>알림 채널 <span class="sec-desc">신호를 어디로 보낼지</span></h2>
 
     <div class="field-row">
       <label for="telegram_bot_token">텔레그램 봇 토큰
@@ -263,13 +338,14 @@
     <div class="field-note">저장 후 dry-run을 끈 상태에서 신호가 발생하면 발송됩니다. 발송 실패는 대시보드 알림 카드와 [알림 실패] 메뉴에서 확인하세요.</div>
   </section>
 
-  <!-- ④ 국장 (접힘) -->
+  <!-- ⑤ 국장 (접힘) -->
   <section class="settings-section {% if not settings.kr_enabled %}collapsed{% endif %}" id="kr-section">
     <h2 class="sec-fold-toggle" onclick="document.getElementById('kr-section').classList.toggle('collapsed')">
-      <span class="sec-num">4</span>국장 — 한국주식 (KIS)
+      <span class="sec-num">5</span>국장 — 한국주식 (KIS)
       <span class="sec-desc">{% if settings.kr_enabled %}활성{% else %}비활성 — 클릭해서 설정{% endif %}</span>
     </h2>
     <div class="sec-fold-body">
+      <div class="field-note" style="margin-bottom:0.6rem">감시 종목은 ① 종목 설정의 [국장] 탭에서 선택합니다.</div>
       <div class="field-row field-row-check">
         <label>
           <input id="kr_enabled" name="kr_enabled" type="checkbox"
@@ -299,15 +375,6 @@
           <span class="help" title="체크=모의투자 / 미체크=실전투자 서버 (캔들 조회 전용)">?</span>
         </label>
         <span class="field-error" id="err-kis_is_paper"></span>
-      </div>
-      <div class="field-row">
-        <label for="kr_whitelist_symbols">종목 화이트리스트
-          <span class="help" title="쉼표 구분 종목코드. 예: 005930,035720,000660">?</span>
-        </label>
-        <input id="kr_whitelist_symbols" name="kr_whitelist_symbols" type="text"
-               value="{{ settings.kr_whitelist_symbols | join(',') }}"
-               data-field="kr_whitelist_symbols" class="input-wide">
-        <span class="field-error" id="err-kr_whitelist_symbols"></span>
       </div>
       <div class="field-row">
         <label for="kr_cooldown_hours_60m">쿨다운 60분봉 (시간)</label>
@@ -392,13 +459,17 @@ updateWeightSum();
 updateV2Dim();
 
 // ── 변경 추적 + sticky 저장바 ──
+// 종목설정은 settings_markets.js의 Set 기반 변경(getMarketsChanges)으로 합산.
+// hidden input(name=whitelist_markets 등)과 list 필드는 여기서 제외.
 const _initial = {};
 const _labels = {};
+const _LIST_FIELDS = { whitelist_markets: 1, kr_whitelist_symbols: 1 };
 (function initChangeTracking() {
   const form = document.getElementById('settings-form');
   form.querySelectorAll('input').forEach(function(el) {
+    if (el.type === 'hidden') return;
     const key = el.name || el.id;
-    if (!key) return;
+    if (!key || key in _LIST_FIELDS) return;
     _initial[key] = (el.type === 'checkbox') ? el.checked : el.value;
     const row = el.closest('.ind-param, .field-row, .toggle-row');
     const lbl = row ? row.querySelector('.pl, label') : null;
@@ -411,8 +482,9 @@ const _labels = {};
 function getChanges() {
   const changes = [];
   document.querySelectorAll('#settings-form input').forEach(function(el) {
+    if (el.type === 'hidden') return;
     const key = el.name || el.id;
-    if (!key || !(key in _initial)) return;
+    if (!key || key in _LIST_FIELDS || !(key in _initial)) return;
     const now = (el.type === 'checkbox') ? el.checked : el.value;
     const stepperBox = el.closest('.stepper');
     if (String(now) !== String(_initial[key])) {
@@ -422,6 +494,10 @@ function getChanges() {
       stepperBox.classList.remove('param-changed');
     }
   });
+  // 종목설정(코인/국장) Set 변경 합산
+  if (typeof window.getMarketsChanges === 'function') {
+    window.getMarketsChanges().forEach(function(c) { changes.push(c); });
+  }
   return changes;
 }
 
@@ -447,20 +523,22 @@ function renderChangebar() {
 // 저장 성공 시 settings.js가 'settings-saved' 이벤트 발행 → 기준값 리셋 + 반영 확인
 document.addEventListener('settings-saved', function() {
   document.querySelectorAll('#settings-form input').forEach(function(el) {
+    if (el.type === 'hidden') return;
     const key = el.name || el.id;
-    if (key in _initial) _initial[key] = (el.type === 'checkbox') ? el.checked : el.value;
+    if (key && !(key in _LIST_FIELDS) && key in _initial) {
+      _initial[key] = (el.type === 'checkbox') ? el.checked : el.value;
+    }
   });
+  if (typeof window.marketsCommit === 'function') window.marketsCommit();
   document.querySelectorAll('.param-changed').forEach(function(el) { el.classList.remove('param-changed'); });
   document.getElementById('sb-pending').style.display = 'none';
   document.getElementById('sb-applied').style.display = 'flex';
-  const wl = document.getElementById('whitelist_markets');
-  const wc = document.getElementById('wl-count');
-  if (wl && wc) wc.textContent = wl.value.split(',').map(function(s){return s.trim();}).filter(Boolean).length;
 });
 </script>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/settings.js?v=m23"></script>
+<script src="/static/js/settings_markets.js?v=m3"></script>
+<script src="/static/js/settings.js?v=m3"></script>
 {% endblock %}
