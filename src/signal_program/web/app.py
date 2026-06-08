@@ -25,6 +25,7 @@ from signal_program.web.api import (
     feedback,
     health,
     kr_dashboard,
+    logs,
     pages,
     settings,
     signals,
@@ -55,6 +56,7 @@ def create_app(
     *,
     reports_dir: Path | None = None,
     candles_cache_root: Path | None = None,
+    logs_path: Path | None = None,
     _job_executor: Callable[..., None] | None = None,
     runner_handle: RunnerHandle | None = None,
     bind: str = "127.0.0.1",
@@ -65,6 +67,7 @@ def create_app(
     _env = env_settings or Settings()
     _reports_dir = reports_dir or Path("reports")
     _candles_root = candles_cache_root or Path("data/candles")
+    _logs_path = logs_path or Path("logs/daemon.log")
 
     init_settings_store(_settings_path, _env)
 
@@ -83,6 +86,7 @@ def create_app(
         await manager.start()
         app.state.job_manager = manager
         app.state.charts_dir = (_env.charts_dir).resolve()
+        app.state.logs_path = _logs_path.resolve()
 
         # RunnerHandle: 외부 주입 또는 기본 stub
         _handle: _RH = runner_handle or _RH(runner_factory=_noop_runner)
@@ -118,6 +122,7 @@ def create_app(
     app.include_router(kr_dashboard.router)
     app.include_router(feedback.router)
     app.include_router(failures.router)
+    app.include_router(logs.router)
 
     # 정적 파일
     if _STATIC_DIR.exists():
