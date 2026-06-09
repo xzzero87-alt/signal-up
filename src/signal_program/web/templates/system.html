@@ -125,7 +125,12 @@
     <div class="field-note">저장 후 dry-run을 끈 상태에서 신호가 발생하면 발송됩니다. 발송 실패는 대시보드 알림 카드와 [알림 실패] 메뉴에서 확인하세요.</div>
   </section>
 
-  <div style="display:flex;justify-content:flex-end;margin:0.5rem 0 1.5rem;">
+  <!-- sticky 저장 바 (settings.html savebar와 통일) -->
+  <div class="savebar">
+    <div id="sys-sb-pending">
+      <div class="sb-changes" id="sys-sb-count">변경사항 없음</div>
+    </div>
+    <div class="savebar-applied" id="sys-sb-applied">✓ 저장됨</div>
     <button type="submit" class="btn-primary">저장 후 적용</button>
   </div>
 </form>
@@ -266,10 +271,49 @@ function sysToast(msg, isErr) {
   setTimeout(() => { el.style.display = 'none'; }, 3000);
 }
 
+// ── savebar 변경 추적 ──────────────────────────────────────────────────────
+const _sysInitial = {};
+
+function sysCaptureInitial() {
+  document.querySelectorAll('#system-settings-form input').forEach(function(el) {
+    if (el.type === 'password') return;
+    _sysInitial[el.name || el.id] = (el.type === 'checkbox') ? el.checked : el.value;
+  });
+}
+
+function sysRenderSavebar() {
+  let n = 0;
+  document.querySelectorAll('#system-settings-form input').forEach(function(el) {
+    const key = el.name || el.id;
+    if (el.type === 'password') {
+      if (el.value !== '') n++;
+    } else if (key in _sysInitial) {
+      const curr = (el.type === 'checkbox') ? el.checked : el.value;
+      if (curr !== _sysInitial[key]) n++;
+    }
+  });
+  const cnt = document.getElementById('sys-sb-count');
+  document.getElementById('sys-sb-applied').style.display = 'none';
+  document.getElementById('sys-sb-pending').style.display = '';
+  if (cnt) cnt.innerHTML = n ? '변경사항 <b>' + n + '건</b> 저장 안 됨' : '변경사항 없음';
+}
+
+document.addEventListener('settings-saved', function() {
+  sysCaptureInitial();
+  document.querySelectorAll('#system-settings-form input[type="password"]').forEach(function(el) { el.value = ''; });
+  document.getElementById('sys-sb-pending').style.display = 'none';
+  document.getElementById('sys-sb-applied').style.display = 'flex';
+});
+
 document.addEventListener('DOMContentLoaded', function() {
   loadStatus();
   loadLogs();
   setInterval(loadStatus, 10000);
+  sysCaptureInitial();
+  document.querySelectorAll('#system-settings-form input').forEach(function(el) {
+    el.addEventListener('input', sysRenderSavebar);
+    el.addEventListener('change', sysRenderSavebar);
+  });
 });
 </script>
 {% endblock %}
