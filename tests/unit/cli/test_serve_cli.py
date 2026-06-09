@@ -1,4 +1,5 @@
 """serve CLI start_daemon 플래그 단위 테스트 — M16 Follow-up."""
+
 from __future__ import annotations
 
 import pathlib
@@ -20,12 +21,8 @@ def test_serve_start_daemon_branch_checks_flag() -> None:
     src = pathlib.Path(__file__).parents[3] / "src" / "signal_program" / "cli.py"
     text = src.read_text(encoding="utf-8")
     # if start_daemon: 조건 분기 + handle.start() 호출이 함께 있어야 함
-    assert re.search(r"if start_daemon", text), (
-        "cli.py serve: start_daemon 조건 분기 없음"
-    )
-    assert re.search(r"await handle\.start\(\)", text), (
-        "cli.py serve: handle.start() 호출 없음"
-    )
+    assert re.search(r"if start_daemon", text), "cli.py serve: start_daemon 조건 분기 없음"
+    assert re.search(r"await handle\.start\(\)", text), "cli.py serve: handle.start() 호출 없음"
 
 
 def test_serve_async_accepts_web_auth_password_parameter() -> None:

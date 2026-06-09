@@ -103,10 +103,14 @@ class TestScoreFunctions:
 
     # BB 매수
     def test_score_bb_buy_at_lower_band(self) -> None:
-        assert self.strat._score_bb_buy(100.0, bb_lower=100.0, bb_middle=105.0) == pytest.approx(1.0)
+        assert self.strat._score_bb_buy(100.0, bb_lower=100.0, bb_middle=105.0) == pytest.approx(
+            1.0
+        )
 
     def test_score_bb_buy_at_middle(self) -> None:
-        assert self.strat._score_bb_buy(105.0, bb_lower=100.0, bb_middle=105.0) == pytest.approx(0.0)
+        assert self.strat._score_bb_buy(105.0, bb_lower=100.0, bb_middle=105.0) == pytest.approx(
+            0.0
+        )
 
     def test_score_bb_buy_below_lower(self) -> None:
         assert self.strat._score_bb_buy(95.0, bb_lower=100.0, bb_middle=105.0) == pytest.approx(1.0)
@@ -118,10 +122,14 @@ class TestScoreFunctions:
 
     # BB 매도
     def test_score_bb_sell_at_upper_band(self) -> None:
-        assert self.strat._score_bb_sell(110.0, bb_upper=110.0, bb_middle=105.0) == pytest.approx(1.0)
+        assert self.strat._score_bb_sell(110.0, bb_upper=110.0, bb_middle=105.0) == pytest.approx(
+            1.0
+        )
 
     def test_score_bb_sell_at_middle(self) -> None:
-        assert self.strat._score_bb_sell(105.0, bb_upper=110.0, bb_middle=105.0) == pytest.approx(0.0)
+        assert self.strat._score_bb_sell(105.0, bb_upper=110.0, bb_middle=105.0) == pytest.approx(
+            0.0
+        )
 
     def test_score_bb_sell_range(self) -> None:
         for close in [100.0, 105.0, 107.0, 110.0, 115.0]:

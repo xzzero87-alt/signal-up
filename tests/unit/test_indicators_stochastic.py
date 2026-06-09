@@ -118,7 +118,7 @@ class TestStochasticNaNRows:
         candles = make_uniform_candles(n=n, close=100.0, high=120.0, low=80.0)
         result = compute_stochastic_slow(candles, k=k, d=d)
 
-        expected_k_nan = k + d - 2    # 15
+        expected_k_nan = k + d - 2  # 15
         expected_d_nan = k + 2 * d - 3  # 17
         assert result["stoch_k"].isna().sum() == expected_k_nan, (
             f"stoch_k NaN={result['stoch_k'].isna().sum()} (기대: {expected_k_nan})"

@@ -36,8 +36,8 @@ def test_no_dead_signal_history_reference_in_src() -> None:
         for f in src_root.rglob("*.py")
         if "signal_history.jsonl" in f.read_text(encoding="utf-8")
     ]
-    assert not dead_refs, (
-        "src/ 내 signal_history.jsonl dead reference 발견:\n" + "\n".join(dead_refs)
+    assert not dead_refs, "src/ 내 signal_history.jsonl dead reference 발견:\n" + "\n".join(
+        dead_refs
     )
 
 

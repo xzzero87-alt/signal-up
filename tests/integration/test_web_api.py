@@ -7,12 +7,15 @@ from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 from signal_program.web.app import create_app
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture
@@ -38,6 +41,7 @@ def client(tmp_settings_path: Path, tmp_path: Path):  # type: ignore[no-untyped-
 
 # ── Health ─────────────────────────────────────────────────────────────────
 
+
 def test_health_returns_200_with_version(client: TestClient) -> None:
     resp = client.get("/api/health")
     assert resp.status_code == 200
@@ -47,6 +51,7 @@ def test_health_returns_200_with_version(client: TestClient) -> None:
 
 
 # ── Settings GET ───────────────────────────────────────────────────────────
+
 
 def test_get_settings_returns_200(client: TestClient) -> None:
     resp = client.get("/api/settings")
@@ -67,6 +72,7 @@ def test_get_settings_response_never_contains_raw_token(client: TestClient) -> N
 
 
 # ── Settings PUT ───────────────────────────────────────────────────────────
+
 
 def test_put_settings_validates_field_constraints(client: TestClient) -> None:
     resp = client.put("/api/settings", json={"bb_period": 0})
@@ -123,6 +129,7 @@ def test_put_settings_persists_to_state_settings_json(
 
 # ── Signals ────────────────────────────────────────────────────────────────
 
+
 def test_signals_recent_returns_list(client: TestClient) -> None:
     resp = client.get("/api/signals/recent")
     assert resp.status_code == 200
@@ -130,6 +137,7 @@ def test_signals_recent_returns_list(client: TestClient) -> None:
 
 
 # ── Backtest ───────────────────────────────────────────────────────────────
+
 
 def test_backtest_get_jobs_returns_array(client: TestClient) -> None:
     resp = client.get("/api/backtest/jobs")
@@ -156,6 +164,7 @@ def test_backtest_get_job_by_id_returns_view_or_404(client: TestClient) -> None:
 
 # ── Daemon ─────────────────────────────────────────────────────────────────
 
+
 def test_daemon_status_initially_false(client: TestClient) -> None:
     resp = client.get("/api/daemon/status")
     assert resp.status_code == 200
@@ -176,6 +185,7 @@ def test_daemon_stop_returns_202(client: TestClient) -> None:
 
 # ── Dashboard ──────────────────────────────────────────────────────────────
 
+
 def test_dashboard_aggregates_health_settings_and_daemon(client: TestClient) -> None:
     resp = client.get("/api/dashboard")
     assert resp.status_code == 200
@@ -184,6 +194,7 @@ def test_dashboard_aggregates_health_settings_and_daemon(client: TestClient) -> 
 
 
 # ── KR Dashboard ──────────────────────────────────────────────────────────
+
 
 def test_kr_dashboard_returns_200(client: TestClient) -> None:
     resp = client.get("/api/kr/dashboard")
@@ -224,6 +235,7 @@ def test_kr_signals_limit_param(client: TestClient) -> None:
 
 
 # ── Security (unit-level) ──────────────────────────────────────────────────
+
 
 def test_mask_secrets_replaces_known_secret_keys() -> None:
     from signal_program.web.security import mask_secret_value

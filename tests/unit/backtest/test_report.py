@@ -62,18 +62,20 @@ def result() -> BacktestResult:
 
 # ── 7개 메트릭 모두 포함 ─────────────────────────────────────────────────────
 
+
 def test_render_html_contains_all_summary_metrics(
     renderer: BacktestReportRenderer, result: BacktestResult
 ) -> None:
     html = renderer.render_html(result, market="KRW-BTC", mode_label="A+B", generated_at=_BASE)
     assert "KRW-BTC" in html
     assert "50.0%" in html or "50%" in html  # win_rate
-    assert "52.49%" in html                  # cumulative
-    assert "2.03" in html                    # sharpe
-    assert "12.0" in html                    # avg_bars_held
+    assert "52.49%" in html  # cumulative
+    assert "2.03" in html  # sharpe
+    assert "12.0" in html  # avg_bars_held
 
 
 # ── MDD: 양수(abs)로 표시 ─────────────────────────────────────────────────────
+
 
 def test_render_html_displays_mdd_as_absolute_value(
     renderer: BacktestReportRenderer,
@@ -86,6 +88,7 @@ def test_render_html_displays_mdd_as_absolute_value(
 
 # ── Sharpe: 부호 유지 ────────────────────────────────────────────────────────
 
+
 def test_render_html_displays_sharpe_with_sign(
     renderer: BacktestReportRenderer,
 ) -> None:
@@ -96,6 +99,7 @@ def test_render_html_displays_sharpe_with_sign(
 
 # ── Equity curve base64 PNG 내장 ────────────────────────────────────────────
 
+
 def test_render_html_embeds_equity_curve_as_base64_png(
     renderer: BacktestReportRenderer, result: BacktestResult
 ) -> None:
@@ -105,6 +109,7 @@ def test_render_html_embeds_equity_curve_as_base64_png(
 
 # ── Drawdown base64 PNG 내장 (이미지 2개 이상) ─────────────────────────────
 
+
 def test_render_html_embeds_drawdown_as_base64_png(
     renderer: BacktestReportRenderer, result: BacktestResult
 ) -> None:
@@ -113,6 +118,7 @@ def test_render_html_embeds_drawdown_as_base64_png(
 
 
 # ── XSS 방어 (autoescape=True) ──────────────────────────────────────────────
+
 
 def test_render_html_escapes_market_name(renderer: BacktestReportRenderer) -> None:
     result = _make_result()
@@ -128,6 +134,7 @@ def test_render_html_escapes_market_name(renderer: BacktestReportRenderer) -> No
 
 # ── KST 시각 헤더 표기 ───────────────────────────────────────────────────────
 
+
 def test_render_html_uses_kst_timezone_in_header(
     renderer: BacktestReportRenderer, result: BacktestResult
 ) -> None:
@@ -138,6 +145,7 @@ def test_render_html_uses_kst_timezone_in_header(
 
 
 # ── 빈 trades에서도 유효한 HTML (분모 0 안전) ─────────────────────────────────
+
 
 def test_render_html_with_zero_trades_produces_valid_html(
     renderer: BacktestReportRenderer,
@@ -153,14 +161,13 @@ def test_render_html_with_zero_trades_produces_valid_html(
         sharpe_annualized=0.0,
         avg_bars_held=0.0,
     )
-    html = renderer.render_html(
-        empty_result, market="KRW-BTC", mode_label="A", generated_at=_BASE
-    )
+    html = renderer.render_html(empty_result, market="KRW-BTC", mode_label="A", generated_at=_BASE)
     assert "<html" in html.lower()
     assert 'src="data:image/png;base64,' in html
 
 
 # ── 자기완결 (외부 URL 없음) ─────────────────────────────────────────────────
+
 
 def test_render_html_is_self_contained(
     renderer: BacktestReportRenderer, result: BacktestResult

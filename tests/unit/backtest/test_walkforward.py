@@ -32,11 +32,12 @@ from signal_program.enums import SignalDirection, StrategyMode
 
 _KST = ZoneInfo("Asia/Seoul")
 _FROM = datetime(2025, 1, 1, tzinfo=_KST)
-_TO = datetime(2026, 5, 1, tzinfo=_KST)   # exclusive end (represents 2026-04-30)
+_TO = datetime(2026, 5, 1, tzinfo=_KST)  # exclusive end (represents 2026-04-30)
 _TEMPLATE_DIR = Path(__file__).parents[3] / "templates"
 
 
 # ── 픽스처 헬퍼 ───────────────────────────────────────────────────────────────
+
 
 def _fake_result(*, sharpe: float = 0.0, mdd: float = -0.05) -> BacktestResult:
     return BacktestResult(
@@ -94,6 +95,7 @@ def _make_fold(
 # 슬라이딩 윈도우
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def test_generate_folds_16months_8_2_yields_4_folds() -> None:
     folds = _generate_folds(_FROM, _TO, 8, 2)
     assert len(folds) == 4
@@ -104,7 +106,7 @@ def test_generate_folds_non_overlapping_validate_windows() -> None:
     for i in range(len(folds) - 1):
         _, _, _, val_to_i = folds[i]
         _, _, val_from_j, _ = folds[i + 1]
-        assert val_to_i == val_from_j, f"Gap/overlap between fold {i} and {i+1}"
+        assert val_to_i == val_from_j, f"Gap/overlap between fold {i} and {i + 1}"
 
 
 def test_generate_folds_continuous_validate_coverage() -> None:
@@ -124,6 +126,7 @@ def test_generate_folds_too_short_period_raises() -> None:
 # 그리드 서치
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def test_grid_picks_param_maximizing_sharpe() -> None:
     sharpe_map = {1.5: 0.5, 2.0: 1.2, 2.5: -0.8}
 
@@ -137,7 +140,9 @@ def test_grid_picks_param_maximizing_sharpe() -> None:
         StrategyParams(bb_std_mult=2.0),
         StrategyParams(bb_std_mult=2.5),
     )
-    best, _ = _grid_search("KRW-BTC", pd.DataFrame(), grid, mock_factory, lambda r: r.sharpe_annualized)
+    best, _ = _grid_search(
+        "KRW-BTC", pd.DataFrame(), grid, mock_factory, lambda r: r.sharpe_annualized
+    )
     assert best.bb_std_mult == pytest.approx(2.0)
 
 
@@ -152,7 +157,9 @@ def test_grid_tiebreak_is_deterministic() -> None:
         StrategyParams(bb_std_mult=1.5),
         StrategyParams(bb_std_mult=2.0),
     )
-    best, _ = _grid_search("KRW-BTC", pd.DataFrame(), grid, mock_factory, lambda r: r.sharpe_annualized)
+    best, _ = _grid_search(
+        "KRW-BTC", pd.DataFrame(), grid, mock_factory, lambda r: r.sharpe_annualized
+    )
     assert best.bb_std_mult == pytest.approx(2.5)  # 그리드 첫 번째
 
 
@@ -160,26 +167,33 @@ def test_grid_tiebreak_is_deterministic() -> None:
 # Out-of-sample 합본
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def test_out_of_sample_combined_excludes_train_trades() -> None:
     train_from = datetime(2025, 1, 1, tzinfo=_KST)
     train_to = datetime(2025, 9, 1, tzinfo=_KST)
     val_from = datetime(2025, 9, 1, tzinfo=_KST)
     val_to = datetime(2025, 11, 1, tzinfo=_KST)
 
-    train_trade = _make_trade(datetime(2025, 5, 1, tzinfo=_KST))   # train 기간
-    val_trade = _make_trade(datetime(2025, 10, 1, tzinfo=_KST))    # validate 기간
+    train_trade = _make_trade(datetime(2025, 5, 1, tzinfo=_KST))  # train 기간
+    val_trade = _make_trade(datetime(2025, 10, 1, tzinfo=_KST))  # validate 기간
 
     fold = _make_fold(
         fold_index=0,
-        train_from=train_from, train_to=train_to,
-        val_from=val_from, val_to=val_to,
-        train_trade=train_trade, val_trade=val_trade,
+        train_from=train_from,
+        train_to=train_to,
+        val_from=val_from,
+        val_to=val_to,
+        train_trade=train_trade,
+        val_trade=val_trade,
     )
     oos = _build_result((val_trade,), val_from, val_to)
     wf = WalkforwardResult(
-        period_from=train_from, period_to=val_to,
-        train_window_days=242, validate_window_days=61,
-        folds=(fold,), out_of_sample_combined=oos,
+        period_from=train_from,
+        period_to=val_to,
+        train_window_days=242,
+        validate_window_days=61,
+        folds=(fold,),
+        out_of_sample_combined=oos,
     )
 
     oos_entry_times = {t.entry_at for t in wf.out_of_sample_combined.trades}
@@ -194,18 +208,29 @@ def test_out_of_sample_combined_period_matches_validate_union() -> None:
     fold2_val_from = datetime(2025, 11, 1, tzinfo=_KST)
     fold2_val_to = datetime(2026, 1, 1, tzinfo=_KST)
 
-    fold1 = _make_fold(fold_index=0,
-        train_from=datetime(2025, 1, 1, tzinfo=_KST), train_to=fold1_val_from,
-        val_from=fold1_val_from, val_to=fold1_val_to)
-    fold2 = _make_fold(fold_index=1,
-        train_from=datetime(2025, 3, 1, tzinfo=_KST), train_to=fold2_val_from,
-        val_from=fold2_val_from, val_to=fold2_val_to)
+    fold1 = _make_fold(
+        fold_index=0,
+        train_from=datetime(2025, 1, 1, tzinfo=_KST),
+        train_to=fold1_val_from,
+        val_from=fold1_val_from,
+        val_to=fold1_val_to,
+    )
+    fold2 = _make_fold(
+        fold_index=1,
+        train_from=datetime(2025, 3, 1, tzinfo=_KST),
+        train_to=fold2_val_from,
+        val_from=fold2_val_from,
+        val_to=fold2_val_to,
+    )
 
     oos = _build_result((), fold1_val_from, fold2_val_to)
     wf = WalkforwardResult(
-        period_from=fold1.train_period_from, period_to=fold2_val_to,
-        train_window_days=242, validate_window_days=61,
-        folds=(fold1, fold2), out_of_sample_combined=oos,
+        period_from=fold1.train_period_from,
+        period_to=fold2_val_to,
+        train_window_days=242,
+        validate_window_days=61,
+        folds=(fold1, fold2),
+        out_of_sample_combined=oos,
     )
 
     assert wf.out_of_sample_combined.period_from == fold1_val_from
@@ -224,6 +249,7 @@ def test_out_of_sample_combined_sharpe_uses_validate_window() -> None:
 # ══════════════════════════════════════════════════════════════════════════════
 # 파라미터 적용
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def test_strategy_params_propagate_to_indicators() -> None:
     params = StrategyParams(bb_std_mult=2.5, cci_threshold_normal=80, volume_ratio_min_a=1.2)
@@ -246,6 +272,7 @@ def test_default_params_match_settings() -> None:
 # ══════════════════════════════════════════════════════════════════════════════
 # CLI 그리드 파서
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def test_walkforward_cli_parses_grid_option() -> None:
     params = parse_grid("bb_std_mult:1.5,2.0,2.5")
@@ -270,6 +297,7 @@ def test_walkforward_cli_multi_param_grid() -> None:
 # HTML 렌더링
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _make_wf_result(n_folds: int = 4) -> WalkforwardResult:
     folds = []
     for i in range(n_folds):
@@ -280,13 +308,18 @@ def _make_wf_result(n_folds: int = 4) -> WalkforwardResult:
         trade = _make_trade(v_from + timedelta(days=5))
         tr = _build_result((), t_from, t_to)
         vr = _build_result((trade,), v_from, v_to)
-        folds.append(WalkforwardFold(
-            fold_index=i,
-            train_period_from=t_from, train_period_to=t_to,
-            validate_period_from=v_from, validate_period_to=v_to,
-            best_params=StrategyParams(bb_std_mult=2.0),
-            train_result=tr, validate_result=vr,
-        ))
+        folds.append(
+            WalkforwardFold(
+                fold_index=i,
+                train_period_from=t_from,
+                train_period_to=t_to,
+                validate_period_from=v_from,
+                validate_period_to=v_to,
+                best_params=StrategyParams(bb_std_mult=2.0),
+                train_result=tr,
+                validate_result=vr,
+            )
+        )
 
     all_val_trades = tuple(f.validate_result.trades[0] for f in folds)
     oos = _build_result(
@@ -297,8 +330,10 @@ def _make_wf_result(n_folds: int = 4) -> WalkforwardResult:
     return WalkforwardResult(
         period_from=folds[0].train_period_from,
         period_to=folds[-1].validate_period_to,
-        train_window_days=240, validate_window_days=61,
-        folds=tuple(folds), out_of_sample_combined=oos,
+        train_window_days=240,
+        validate_window_days=61,
+        folds=tuple(folds),
+        out_of_sample_combined=oos,
     )
 
 
@@ -307,8 +342,11 @@ def test_walkforward_html_shows_all_folds_in_table() -> None:
 
     wf = _make_wf_result(4)
     html = walkforward_render_html(
-        wf, market="KRW-BTC", mode_label="A,B",
-        generated_at=_FROM, template_dir=_TEMPLATE_DIR,
+        wf,
+        market="KRW-BTC",
+        mode_label="A,B",
+        generated_at=_FROM,
+        template_dir=_TEMPLATE_DIR,
     )
     for i in range(4):
         assert str(i) in html
@@ -319,8 +357,11 @@ def test_walkforward_html_shows_out_of_sample_combined_metrics() -> None:
 
     wf = _make_wf_result(2)
     html = walkforward_render_html(
-        wf, market="KRW-BTC", mode_label="A,B",
-        generated_at=_FROM, template_dir=_TEMPLATE_DIR,
+        wf,
+        market="KRW-BTC",
+        mode_label="A,B",
+        generated_at=_FROM,
+        template_dir=_TEMPLATE_DIR,
     )
     assert "KST" in html
     assert "KRW-BTC" in html
@@ -331,8 +372,11 @@ def test_walkforward_html_mdd_displayed_as_abs() -> None:
 
     wf = _make_wf_result(1)
     html = walkforward_render_html(
-        wf, market="KRW-BTC", mode_label="A",
-        generated_at=_FROM, template_dir=_TEMPLATE_DIR,
+        wf,
+        market="KRW-BTC",
+        mode_label="A",
+        generated_at=_FROM,
+        template_dir=_TEMPLATE_DIR,
     )
     mdd = wf.out_of_sample_combined.mdd_pct
     if mdd < 0:
@@ -344,8 +388,11 @@ def test_walkforward_html_is_self_contained() -> None:
 
     wf = _make_wf_result(2)
     html = walkforward_render_html(
-        wf, market="KRW-BTC", mode_label="A",
-        generated_at=_FROM, template_dir=_TEMPLATE_DIR,
+        wf,
+        market="KRW-BTC",
+        mode_label="A",
+        generated_at=_FROM,
+        template_dir=_TEMPLATE_DIR,
     )
     for banned in ("https://", "http://", "cdn.", "googleapis", "gstatic"):
         assert banned not in html, f"외부 URL 발견: {banned}"
@@ -398,6 +445,7 @@ def test_hypothesis_generate_folds_train_to_equals_validate_from(
 # 추가 커버리지 — validator / exception / load / engine end-to-end
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def test_strategy_params_invalid_bb_std_mult() -> None:
     with pytest.raises(Exception):
         StrategyParams(bb_std_mult=-1.0)
@@ -415,13 +463,16 @@ def test_strategy_params_invalid_volume_ratio() -> None:
 
 def test_grid_search_all_exceptions_returns_first_param() -> None:
     """모든 파라미터가 예외를 던지면 첫 번째 파라미터를 반환한다."""
+
     def failing_factory(params: StrategyParams) -> MagicMock:
         eng = MagicMock()
         eng.run.side_effect = ValueError("no data")
         return eng
 
     grid = (StrategyParams(bb_std_mult=1.5), StrategyParams(bb_std_mult=2.0))
-    best, result = _grid_search("KRW-BTC", pd.DataFrame(), grid, failing_factory, lambda r: r.sharpe_annualized)
+    best, result = _grid_search(
+        "KRW-BTC", pd.DataFrame(), grid, failing_factory, lambda r: r.sharpe_annualized
+    )
     assert best == grid[0]
 
 
@@ -585,8 +636,12 @@ def test_determinism_same_input_same_result() -> None:
         StrategyParams(bb_std_mult=2.5),
     )
 
-    best1, _ = _grid_search("KRW-BTC", pd.DataFrame(), grid, mock_factory, lambda r: r.sharpe_annualized)
-    best2, _ = _grid_search("KRW-BTC", pd.DataFrame(), grid, mock_factory, lambda r: r.sharpe_annualized)
+    best1, _ = _grid_search(
+        "KRW-BTC", pd.DataFrame(), grid, mock_factory, lambda r: r.sharpe_annualized
+    )
+    best2, _ = _grid_search(
+        "KRW-BTC", pd.DataFrame(), grid, mock_factory, lambda r: r.sharpe_annualized
+    )
     assert best1 == best2  # 결정성
 
 

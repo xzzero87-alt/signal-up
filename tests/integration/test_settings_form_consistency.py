@@ -8,13 +8,16 @@
 from __future__ import annotations
 
 import re
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 from signal_program.web.app import create_app
 from signal_program.web.schemas import SettingsUpdate
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture
@@ -75,7 +78,13 @@ def _card_on(html: str, card_id: str) -> bool:
     return " on" in m.group(1) or m.group(1).strip() == "on"
 
 
-_PANEL = {"v1": "v1-params", "v2": "v2-section", "v3": "v3-params", "v4": "v4-params", "v5": "v5-params"}
+_PANEL = {
+    "v1": "v1-params",
+    "v2": "v2-section",
+    "v3": "v3-params",
+    "v4": "v4-params",
+    "v5": "v5-params",
+}
 
 
 @pytest.mark.parametrize("ver", ["v1", "v2", "v3", "v4", "v5"])

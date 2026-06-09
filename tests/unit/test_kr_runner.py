@@ -56,9 +56,7 @@ def _make_candle(symbol: str, dt: datetime) -> Candle:
     )
 
 
-def _make_signal(
-    symbol: str, timeframe: Timeframe = Timeframe.HOUR_1
-) -> Signal:
+def _make_signal(symbol: str, timeframe: Timeframe = Timeframe.HOUR_1) -> Signal:
     return Signal(
         market=symbol,
         timeframe=timeframe,

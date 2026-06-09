@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
@@ -14,6 +13,10 @@ from fastapi.testclient import TestClient
 
 import signal_program.state.signal_feedback as fb_module
 from signal_program.web.api.feedback import router
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture()
@@ -60,10 +63,7 @@ def test_submit_feedback_persists_to_jsonl(client: TestClient, feedback_file: Pa
     client.post(f"/api/signals/{_SIGNAL_ID}/feedback", json={"feedback": "confusing"})
     assert feedback_file.exists()
     lines = [json.loads(line) for line in feedback_file.read_text(encoding="utf-8").splitlines()]
-    assert any(
-        r.get("signal_id") == _SIGNAL_ID and r.get("feedback") == "confusing"
-        for r in lines
-    )
+    assert any(r.get("signal_id") == _SIGNAL_ID and r.get("feedback") == "confusing" for r in lines)
 
 
 # ── 오류 검증 ─────────────────────────────────────────────────────────────────

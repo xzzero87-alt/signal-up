@@ -1,11 +1,15 @@
 """백테스트 페이지 통합 테스트 — M15 Phase 1 RED."""
+
 from __future__ import annotations
 
 import time
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ── 픽스처 ───────────────────────────────────────────────────────────────────
 
@@ -120,7 +124,11 @@ def test_post_job_returns_429_when_queue_full(tmp_path: Path) -> None:
             for _ in range(BacktestJobManager.MAX_QUEUE_LEN):
                 r = c.post(
                     "/api/backtest/jobs",
-                    json={"market": "KRW-BTC", "period_from": "2025-01-01", "period_to": "2025-02-01"},
+                    json={
+                        "market": "KRW-BTC",
+                        "period_from": "2025-01-01",
+                        "period_to": "2025-02-01",
+                    },
                 )
                 assert r.status_code == 202
             r = c.post(

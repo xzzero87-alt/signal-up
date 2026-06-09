@@ -31,6 +31,7 @@ _MARKET = "KRW-BTC"
 
 # ── 픽스처 헬퍼 ───────────────────────────────────────────────────────────────
 
+
 def _make_candles_df(
     n: int = 200,
     *,
@@ -127,6 +128,7 @@ def _engine(
 
 # ── a) 시그널 없음 → trades 빈 튜플, 지표 모두 0 ─────────────────────────────
 
+
 def test_a_no_signal_empty_result() -> None:
     df = _make_candles_df(200)
     result = _engine(_MockStrategy({})).run(_MARKET, df)
@@ -139,6 +141,7 @@ def test_a_no_signal_empty_result() -> None:
 
 
 # ── b) BUY 1회 + 24봉 후 자동 청산 → pnl 계산 정확 ──────────────────────────
+
 
 def test_b_buy_auto_close_24bars() -> None:
     df = _make_candles_df(200)
@@ -158,6 +161,7 @@ def test_b_buy_auto_close_24bars() -> None:
 
 # ── c) BUY 1회 + BB 중심선 도달로 조기 청산 → bars_held < 24 ─────────────────
 
+
 def test_c_buy_early_exit_at_bb_middle() -> None:
     # close[60] = 50_000_000 + 60*10_000 = 50_600_000
     # bb_middle = 50_600_000 → 처음 close >= bb_middle 는 bar 60
@@ -175,6 +179,7 @@ def test_c_buy_early_exit_at_bb_middle() -> None:
 
 # ── d) SELL 시그널이 BUY 포지션 보유 중 → 무시 ──────────────────────────────
 
+
 def test_d_sell_ignored_during_buy_position() -> None:
     df = _make_candles_df(200)
     buy_sig = _buy_signal()
@@ -187,6 +192,7 @@ def test_d_sell_ignored_during_buy_position() -> None:
 
 # ── e) 보유 중 새 BUY 시그널 무시 (단일 포지션) ─────────────────────────────
 
+
 def test_e_new_buy_ignored_during_position() -> None:
     df = _make_candles_df(200)
     sig = _buy_signal()
@@ -195,6 +201,7 @@ def test_e_new_buy_ignored_during_position() -> None:
 
 
 # ── f) 수수료 적용 → pnl 감소 ────────────────────────────────────────────────
+
 
 def test_f_fee_reduces_pnl() -> None:
     df = _make_candles_df(200)
@@ -206,6 +213,7 @@ def test_f_fee_reduces_pnl() -> None:
 
 # ── g) 슬리피지 적용 → pnl 감소 ──────────────────────────────────────────────
 
+
 def test_g_slippage_reduces_pnl() -> None:
     df = _make_candles_df(200)
     sig = _buy_signal()
@@ -215,6 +223,7 @@ def test_g_slippage_reduces_pnl() -> None:
 
 
 # ── h) 진입가 = 다음봉 시가 (signal 봉 close ≠ 다음봉 open) ──────────────────
+
 
 def test_h_entry_price_is_next_bar_open() -> None:
     df = _make_candles_df(200)
@@ -228,6 +237,7 @@ def test_h_entry_price_is_next_bar_open() -> None:
 
 # ── i) 24봉 동안 BB 중심선 미도달 → 정확히 24봉 후 청산 ─────────────────────
 
+
 def test_i_24bar_max_hold_without_bb_exit() -> None:
     df = _make_candles_df(200)
     sig = _buy_signal(bb_middle=99_000_000.0)
@@ -236,6 +246,7 @@ def test_i_24bar_max_hold_without_bb_exit() -> None:
 
 
 # ── j) MDD 계산 — 음의 누적 수익 시퀀스 ─────────────────────────────────────
+
 
 def test_j_mdd_with_losing_trades() -> None:
     # 하락 추세 캔들 → 모든 BUY 거래가 손실
@@ -251,6 +262,7 @@ def test_j_mdd_with_losing_trades() -> None:
 
 # ── k) 샤프 비율 — 단일 거래 (std=0) → division-by-zero 안전 ─────────────────
 
+
 def test_k_sharpe_safe_when_single_trade() -> None:
     df = _make_candles_df(200)
     sig = _buy_signal()
@@ -262,6 +274,7 @@ def test_k_sharpe_safe_when_single_trade() -> None:
 
 
 # ── l) 빈 캔들 → ValueError ────────────────────────────────────────────────────
+
 
 def test_l_empty_candles_raises_value_error() -> None:
     df = _make_candles_df(0)
@@ -276,9 +289,14 @@ def test_l_empty_candles_raises_value_error() -> None:
 
 # ── Hypothesis: 임의 가격·임계값에서 run()이 예외 없이 BacktestResult 반환 ──────
 
+
 @given(
-    close_start=st.floats(min_value=100.0, max_value=1_000_000.0, allow_nan=False, allow_infinity=False),
-    close_step=st.floats(min_value=-5_000.0, max_value=5_000.0, allow_nan=False, allow_infinity=False),
+    close_start=st.floats(
+        min_value=100.0, max_value=1_000_000.0, allow_nan=False, allow_infinity=False
+    ),
+    close_step=st.floats(
+        min_value=-5_000.0, max_value=5_000.0, allow_nan=False, allow_infinity=False
+    ),
     signal_bar=st.integers(min_value=0, max_value=150),
     max_hold=st.integers(min_value=1, max_value=48),
 )
@@ -298,6 +316,7 @@ def test_hypothesis_run_no_exception(
 
 
 # ── Hypothesis: BacktestResult 필드 invariant 검증 ────────────────────────────
+
 
 @given(n_signals=st.integers(min_value=0, max_value=5))
 @h_settings(max_examples=20, deadline=5000)
@@ -319,6 +338,7 @@ def test_hypothesis_result_invariants(n_signals: int) -> None:
 
 
 # ── 경계 parametrize: fee_rate 변화 ───────────────────────────────────────────
+
 
 @pytest.mark.parametrize("fee_rate", [0.0, 0.001, 0.005, 0.01])
 def test_parametrize_fee_rates(fee_rate: float) -> None:
@@ -342,6 +362,7 @@ def test_parametrize_fee_monotonic(fee_pair: tuple[float, float]) -> None:
 
 # ── 경계 parametrize: max_holding_bars 변화 ──────────────────────────────────
 
+
 @pytest.mark.parametrize("max_hold", [12, 24, 48, 96])
 def test_parametrize_max_holding_bars(max_hold: int) -> None:
     df = _make_candles_df(200)
@@ -352,6 +373,7 @@ def test_parametrize_max_holding_bars(max_hold: int) -> None:
 
 
 # ── 경계 parametrize: BUY/SELL 시그널 조합 ───────────────────────────────────
+
 
 @pytest.mark.parametrize(
     "signal_dict,expected_trades",

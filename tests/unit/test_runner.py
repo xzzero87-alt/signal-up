@@ -1,4 +1,5 @@
 """RunnerService — mock 기반 1사이클 테스트 8종."""
+
 from __future__ import annotations
 
 import asyncio
@@ -97,12 +98,17 @@ def _default_exchange() -> AsyncMock:
 
 # ── 8 시나리오 ────────────────────────────────────────────────────────────────
 
+
 @patch("signal_program.runner.generate_snapshot")
 async def test_a_no_signal_no_notify(mock_snap: MagicMock, tmp_path: Path) -> None:
     notifier = AsyncMock()
     slog = AsyncMock()
-    runner = make_runner(tmp_path, notifier=notifier, signal_log=slog,
-                         strategy=MagicMock(evaluate=MagicMock(return_value=[])))
+    runner = make_runner(
+        tmp_path,
+        notifier=notifier,
+        signal_log=slog,
+        strategy=MagicMock(evaluate=MagicMock(return_value=[])),
+    )
     report = await runner.run_one_cycle(NOW, "t001")
     notifier.send_signal.assert_not_called()
     slog.append.assert_not_called()
@@ -116,8 +122,13 @@ async def test_b_signal_sends_and_marks(mock_snap: MagicMock, tmp_path: Path) ->
     notifier = AsyncMock()
     slog = AsyncMock()
     cooldown = MagicMock(is_cooled_down=MagicMock(return_value=False))
-    runner = make_runner(tmp_path, notifier=notifier, signal_log=slog, cooldown=cooldown,
-                         strategy=MagicMock(evaluate=MagicMock(return_value=[sig])))
+    runner = make_runner(
+        tmp_path,
+        notifier=notifier,
+        signal_log=slog,
+        cooldown=cooldown,
+        strategy=MagicMock(evaluate=MagicMock(return_value=[sig])),
+    )
     report = await runner.run_one_cycle(NOW, "t002")
     notifier.send_signal.assert_called_once()
     cooldown.mark_sent.assert_called_once()
@@ -131,8 +142,13 @@ async def test_c_cooled_down_no_send(mock_snap: MagicMock, tmp_path: Path) -> No
     notifier = AsyncMock()
     slog = AsyncMock()
     cooldown = MagicMock(is_cooled_down=MagicMock(return_value=True))
-    runner = make_runner(tmp_path, notifier=notifier, signal_log=slog, cooldown=cooldown,
-                         strategy=MagicMock(evaluate=MagicMock(return_value=[sig])))
+    runner = make_runner(
+        tmp_path,
+        notifier=notifier,
+        signal_log=slog,
+        cooldown=cooldown,
+        strategy=MagicMock(evaluate=MagicMock(return_value=[sig])),
+    )
     await runner.run_one_cycle(NOW, "t003")
     notifier.send_signal.assert_not_called()
     assert slog.append.call_args[0][1] == "cooled_down"
@@ -140,14 +156,21 @@ async def test_c_cooled_down_no_send(mock_snap: MagicMock, tmp_path: Path) -> No
 
 @patch("signal_program.runner.generate_snapshot")
 async def test_d_two_signals_both_processed(mock_snap: MagicMock, tmp_path: Path) -> None:
-    sigs = [make_signal(mode=StrategyMode.MEAN_REVERSION),
-            make_signal(mode=StrategyMode.SQUEEZE_BREAKOUT)]
+    sigs = [
+        make_signal(mode=StrategyMode.MEAN_REVERSION),
+        make_signal(mode=StrategyMode.SQUEEZE_BREAKOUT),
+    ]
     mock_snap.return_value = tmp_path / "chart.png"
     notifier = AsyncMock()
     slog = AsyncMock()
     cooldown = MagicMock(is_cooled_down=MagicMock(return_value=False))
-    runner = make_runner(tmp_path, notifier=notifier, signal_log=slog, cooldown=cooldown,
-                         strategy=MagicMock(evaluate=MagicMock(return_value=sigs)))
+    runner = make_runner(
+        tmp_path,
+        notifier=notifier,
+        signal_log=slog,
+        cooldown=cooldown,
+        strategy=MagicMock(evaluate=MagicMock(return_value=sigs)),
+    )
     report = await runner.run_one_cycle(NOW, "t004")
     assert notifier.send_signal.call_count == 2
     assert cooldown.mark_sent.call_count == 2
@@ -162,8 +185,12 @@ async def test_e_fetch_exception_skips_market(mock_snap: MagicMock, tmp_path: Pa
         RuntimeError("API down"),
         [make_candle("KRW-ETH")] * 200,
     ]
-    runner = make_runner(tmp_path, settings=settings, exchange=exchange,
-                         strategy=MagicMock(evaluate=MagicMock(return_value=[])))
+    runner = make_runner(
+        tmp_path,
+        settings=settings,
+        exchange=exchange,
+        strategy=MagicMock(evaluate=MagicMock(return_value=[])),
+    )
     report = await runner.run_one_cycle(NOW, "t005")
     assert len(report.failures) == 1
     assert "KRW-BTC" in report.failures[0]
@@ -175,8 +202,12 @@ async def test_f_chart_exception_notifier_gets_none(mock_snap: MagicMock, tmp_pa
     mock_snap.side_effect = RuntimeError("matplotlib error")
     notifier = AsyncMock()
     cooldown = MagicMock(is_cooled_down=MagicMock(return_value=False))
-    runner = make_runner(tmp_path, notifier=notifier, cooldown=cooldown,
-                         strategy=MagicMock(evaluate=MagicMock(return_value=[sig])))
+    runner = make_runner(
+        tmp_path,
+        notifier=notifier,
+        cooldown=cooldown,
+        strategy=MagicMock(evaluate=MagicMock(return_value=[sig])),
+    )
     await runner.run_one_cycle(NOW, "t006")
     notifier.send_signal.assert_called_once()
     assert notifier.send_signal.call_args[0][1] is None
@@ -189,8 +220,13 @@ async def test_g_dry_run_no_mark_sent(mock_snap: MagicMock, tmp_path: Path) -> N
     settings = make_settings(dry_run=True)
     cooldown = MagicMock(is_cooled_down=MagicMock(return_value=False))
     slog = AsyncMock()
-    runner = make_runner(tmp_path, settings=settings, cooldown=cooldown, signal_log=slog,
-                         strategy=MagicMock(evaluate=MagicMock(return_value=[sig])))
+    runner = make_runner(
+        tmp_path,
+        settings=settings,
+        cooldown=cooldown,
+        signal_log=slog,
+        strategy=MagicMock(evaluate=MagicMock(return_value=[sig])),
+    )
     await runner.run_one_cycle(NOW, "t007")
     cooldown.mark_sent.assert_not_called()
     assert slog.append.call_args[0][1] == "dry_run"
@@ -212,7 +248,11 @@ async def test_h_semaphore_limits_concurrency(mock_snap: MagicMock, tmp_path: Pa
         return []
 
     exchange.fetch_candles.side_effect = slow_fetch
-    runner = make_runner(tmp_path, settings=settings, exchange=exchange,
-                         strategy=MagicMock(evaluate=MagicMock(return_value=[])))
+    runner = make_runner(
+        tmp_path,
+        settings=settings,
+        exchange=exchange,
+        strategy=MagicMock(evaluate=MagicMock(return_value=[])),
+    )
     await runner.run_one_cycle(NOW, "t008")
     assert peak[0] <= 5

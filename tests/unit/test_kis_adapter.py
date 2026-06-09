@@ -82,25 +82,52 @@ class TestResampleTo120m:
         assert result == []
 
     def test_two_candles_makes_one_120m(self) -> None:
-        c1 = _make_candle("005930", self._base_dt(9), open_=100, high=120, low=90, close=110, volume=500, quote_volume=50_000)
-        c2 = _make_candle("005930", self._base_dt(10), open_=110, high=130, low=95, close=125, volume=600, quote_volume=60_000)
+        c1 = _make_candle(
+            "005930",
+            self._base_dt(9),
+            open_=100,
+            high=120,
+            low=90,
+            close=110,
+            volume=500,
+            quote_volume=50_000,
+        )
+        c2 = _make_candle(
+            "005930",
+            self._base_dt(10),
+            open_=110,
+            high=130,
+            low=95,
+            close=125,
+            volume=600,
+            quote_volume=60_000,
+        )
 
         result = KisApiAdapter._resample_to_120m([c1, c2], target_count=5)
 
         assert len(result) == 1
         r = result[0]
         assert r.market == "005930"
-        assert r.opened_at == self._base_dt(9)   # c1.opened_at
-        assert r.open == 100.0                     # c1.open
-        assert r.high == 130.0                     # max(120, 130)
-        assert r.low == 90.0                       # min(90, 95)
-        assert r.close == 125.0                    # c2.close
-        assert r.volume == 1100.0                  # 500 + 600
-        assert r.quote_volume == 110_000.0         # 50_000 + 60_000
+        assert r.opened_at == self._base_dt(9)  # c1.opened_at
+        assert r.open == 100.0  # c1.open
+        assert r.high == 130.0  # max(120, 130)
+        assert r.low == 90.0  # min(90, 95)
+        assert r.close == 125.0  # c2.close
+        assert r.volume == 1100.0  # 500 + 600
+        assert r.quote_volume == 110_000.0  # 50_000 + 60_000
 
     def test_four_candles_makes_two_120m(self) -> None:
         candles = [
-            _make_candle("005930", self._base_dt(h), open_=h * 10, high=h * 11, low=h * 9, close=h * 10 + 5, volume=100.0, quote_volume=1000.0)
+            _make_candle(
+                "005930",
+                self._base_dt(h),
+                open_=h * 10,
+                high=h * 11,
+                low=h * 9,
+                close=h * 10 + 5,
+                volume=100.0,
+                quote_volume=1000.0,
+            )
             for h in [9, 10, 11, 12]
         ]
 
@@ -109,26 +136,20 @@ class TestResampleTo120m:
         assert len(result) == 2
         # 첫 번째 120m 캔들: 09~10봉 집계
         assert result[0].opened_at == self._base_dt(9)
-        assert result[0].open == 90.0   # candles[0].open = 9 * 10
+        assert result[0].open == 90.0  # candles[0].open = 9 * 10
         assert result[0].close == 105.0  # candles[1].close = 10 * 10 + 5
         # 두 번째 120m 캔들: 11~12봉 집계
         assert result[1].opened_at == self._base_dt(11)
 
     def test_odd_candles_ignores_last(self) -> None:
         """홀수 개 캔들 → 마지막 캔들은 쌍을 이루지 못해 무시된다."""
-        candles = [
-            _make_candle("005930", self._base_dt(h))
-            for h in [9, 10, 11]
-        ]
+        candles = [_make_candle("005930", self._base_dt(h)) for h in [9, 10, 11]]
         result = KisApiAdapter._resample_to_120m(candles, target_count=5)
         assert len(result) == 1  # (9,10) 쌍만 집계; 11은 버려짐
 
     def test_target_count_limits_output(self) -> None:
         """target_count보다 많이 생성되면 최신 N개만 반환한다."""
-        candles = [
-            _make_candle("005930", self._base_dt(h))
-            for h in [9, 10, 11, 12, 13, 14]
-        ]
+        candles = [_make_candle("005930", self._base_dt(h)) for h in [9, 10, 11, 12, 13, 14]]
         result = KisApiAdapter._resample_to_120m(candles, target_count=2)
         assert len(result) == 2
         # 가장 최신 2개: (11,12) 쌍과 (13,14) 쌍
@@ -300,14 +321,9 @@ class TestFetchCandles120m:
 
         # 60분봉 4개(2쌍) mock
         base = datetime(2026, 5, 26, 9, 0, tzinfo=KST)
-        mock_60m = [
-            _make_candle("005930", base + timedelta(hours=h))
-            for h in range(4)
-        ]
+        mock_60m = [_make_candle("005930", base + timedelta(hours=h)) for h in range(4)]
 
-        with patch.object(
-            adapter, "_fetch_60m_candles", new=AsyncMock(return_value=mock_60m)
-        ):
+        with patch.object(adapter, "_fetch_60m_candles", new=AsyncMock(return_value=mock_60m)):
             result = await adapter.fetch_candles("005930", Timeframe.HOUR_2, count=2)
 
         # 4개 60m → 2개 120m

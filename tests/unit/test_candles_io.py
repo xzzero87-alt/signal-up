@@ -31,6 +31,7 @@ def _make_candle_kst(i: int, *, market: str = "KRW-BTC") -> Candle:
 
 # ── 200봉 라운드트립 ──────────────────────────────────────────────────────────
 
+
 def test_round_trip_200_candles(tmp_path: pytest.TempPathFactory) -> None:
     candles = [_make_candle_kst(i) for i in range(200)]
     path = tmp_path / "test.parquet"  # type: ignore[operator]
@@ -52,6 +53,7 @@ def test_round_trip_200_candles(tmp_path: pytest.TempPathFactory) -> None:
 
 # ── KST timezone 보존 ────────────────────────────────────────────────────────
 
+
 def test_kst_timezone_preserved(tmp_path: pytest.TempPathFactory) -> None:
     candle = _make_candle_kst(0)
     path = tmp_path / "kst.parquet"  # type: ignore[operator]
@@ -69,6 +71,7 @@ def test_kst_timezone_preserved(tmp_path: pytest.TempPathFactory) -> None:
 
 # ── 빈 리스트 라운드트립 ──────────────────────────────────────────────────────
 
+
 def test_round_trip_empty(tmp_path: pytest.TempPathFactory) -> None:
     path = tmp_path / "empty.parquet"  # type: ignore[operator]
     save_candles([], path)
@@ -77,6 +80,7 @@ def test_round_trip_empty(tmp_path: pytest.TempPathFactory) -> None:
 
 
 # ── 잘못된 경로 → FileNotFoundError ──────────────────────────────────────────
+
 
 def test_load_nonexistent_raises(tmp_path: pytest.TempPathFactory) -> None:
     with pytest.raises(FileNotFoundError):

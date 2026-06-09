@@ -81,45 +81,61 @@ class _MockExc:
 
 def test_strips_body_prefix_from_field_path() -> None:
     """FastAPI body 검증 loc ('body', 'bb_period') → field='bb_period'."""
-    exc = _MockExc([{
-        "loc": ("body", "bb_period"),
-        "type": "greater_than_equal",
-        "ctx": {"ge": 2},
-        "msg": "Input should be greater than or equal to 2",
-    }])
+    exc = _MockExc(
+        [
+            {
+                "loc": ("body", "bb_period"),
+                "type": "greater_than_equal",
+                "ctx": {"ge": 2},
+                "msg": "Input should be greater than or equal to 2",
+            }
+        ]
+    )
     errors = friendly_validation_errors(exc)
     assert errors[0]["field"] == "bb_period"
 
 
 def test_strips_query_prefix_from_field_path() -> None:
     """FastAPI query 파라미터 검증 loc ('query', 'market') → field='market'."""
-    exc = _MockExc([{
-        "loc": ("query", "market"),
-        "type": "missing",
-        "msg": "Field required",
-    }])
+    exc = _MockExc(
+        [
+            {
+                "loc": ("query", "market"),
+                "type": "missing",
+                "msg": "Field required",
+            }
+        ]
+    )
     errors = friendly_validation_errors(exc)
     assert errors[0]["field"] == "market"
 
 
 def test_preserves_nested_field_paths() -> None:
     """중첩 경로 ('body', 'nested', 'key') → field='nested.key' — 첫 요소만 제거."""
-    exc = _MockExc([{
-        "loc": ("body", "nested", "key"),
-        "type": "missing",
-        "msg": "Field required",
-    }])
+    exc = _MockExc(
+        [
+            {
+                "loc": ("body", "nested", "key"),
+                "type": "missing",
+                "msg": "Field required",
+            }
+        ]
+    )
     errors = friendly_validation_errors(exc)
     assert errors[0]["field"] == "nested.key"
 
 
 def test_handles_unknown_prefix_gracefully() -> None:
     """알 수 없는 prefix ('foo', 'bar') → field='foo.bar' — 변환 없음."""
-    exc = _MockExc([{
-        "loc": ("foo", "bar"),
-        "type": "missing",
-        "msg": "Field required",
-    }])
+    exc = _MockExc(
+        [
+            {
+                "loc": ("foo", "bar"),
+                "type": "missing",
+                "msg": "Field required",
+            }
+        ]
+    )
     errors = friendly_validation_errors(exc)
     assert errors[0]["field"] == "foo.bar"
 
@@ -129,43 +145,59 @@ def test_handles_unknown_prefix_gracefully() -> None:
 
 def test_string_type_returns_korean_message() -> None:
     """string_type 에러 → '문자열로 입력해야 합니다'."""
-    exc = _MockExc([{
-        "loc": ("telegram_chat_id",),
-        "type": "string_type",
-        "msg": "Input should be a valid string",
-    }])
+    exc = _MockExc(
+        [
+            {
+                "loc": ("telegram_chat_id",),
+                "type": "string_type",
+                "msg": "Input should be a valid string",
+            }
+        ]
+    )
     errors = friendly_validation_errors(exc)
     assert errors[0]["message"] == "문자열로 입력해야 합니다"
 
 
 def test_int_type_returns_korean_message() -> None:
     """int_type 에러 → '정수로 입력해야 합니다'."""
-    exc = _MockExc([{
-        "loc": ("bb_period",),
-        "type": "int_type",
-        "msg": "Input should be a valid integer",
-    }])
+    exc = _MockExc(
+        [
+            {
+                "loc": ("bb_period",),
+                "type": "int_type",
+                "msg": "Input should be a valid integer",
+            }
+        ]
+    )
     errors = friendly_validation_errors(exc)
     assert errors[0]["message"] == "정수로 입력해야 합니다"
 
 
 def test_float_type_returns_korean_message() -> None:
     """float_type 에러 → '숫자로 입력해야 합니다'."""
-    exc = _MockExc([{
-        "loc": ("bb_std_mult",),
-        "type": "float_type",
-        "msg": "Input should be a valid number",
-    }])
+    exc = _MockExc(
+        [
+            {
+                "loc": ("bb_std_mult",),
+                "type": "float_type",
+                "msg": "Input should be a valid number",
+            }
+        ]
+    )
     errors = friendly_validation_errors(exc)
     assert errors[0]["message"] == "숫자로 입력해야 합니다"
 
 
 def test_bool_type_returns_korean_message() -> None:
     """bool_type 에러 → '참/거짓 값으로 입력해야 합니다'."""
-    exc = _MockExc([{
-        "loc": ("dry_run",),
-        "type": "bool_type",
-        "msg": "Input should be a valid boolean",
-    }])
+    exc = _MockExc(
+        [
+            {
+                "loc": ("dry_run",),
+                "type": "bool_type",
+                "msg": "Input should be a valid boolean",
+            }
+        ]
+    )
     errors = friendly_validation_errors(exc)
     assert errors[0]["message"] == "참/거짓 값으로 입력해야 합니다"

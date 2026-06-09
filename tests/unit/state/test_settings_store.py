@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
 from signal_program.config import Settings
 from signal_program.state.settings_store import SettingsStore
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture

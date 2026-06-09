@@ -491,12 +491,12 @@ def test_coin_signal_keeps_1h_label() -> None:
 @pytest.mark.parametrize(
     "market,timeframe,expected_label",
     [
-        ("005930", Timeframe.HOUR_1, "(60분봉)"),   # 삼성전자 60분봉
+        ("005930", Timeframe.HOUR_1, "(60분봉)"),  # 삼성전자 60분봉
         ("005930", Timeframe.HOUR_2, "(120분봉)"),  # 삼성전자 120분봉
-        ("035720", Timeframe.HOUR_1, "(60분봉)"),   # 카카오 60분봉
+        ("035720", Timeframe.HOUR_1, "(60분봉)"),  # 카카오 60분봉
         ("035720", Timeframe.HOUR_2, "(120분봉)"),  # 카카오 120분봉
-        ("KRW-BTC", Timeframe.HOUR_1, "(1h)"),      # 비트코인 코인 (코인)
-        ("KRW-ETH", Timeframe.HOUR_1, "(1h)"),      # 이더리움 (코인)
+        ("KRW-BTC", Timeframe.HOUR_1, "(1h)"),  # 비트코인 코인 (코인)
+        ("KRW-ETH", Timeframe.HOUR_1, "(1h)"),  # 이더리움 (코인)
     ],
 )
 def test_timeframe_label_parametrize(
@@ -504,9 +504,7 @@ def test_timeframe_label_parametrize(
 ) -> None:
     """마켓 종류 × 타임프레임 → 올바른 레이블 출력."""
     if market.startswith("KRW-"):
-        sig = _make_signal(
-            SignalDirection.BUY, SignalStrength.NORMAL, StrategyMode.MEAN_REVERSION
-        )
+        sig = _make_signal(SignalDirection.BUY, SignalStrength.NORMAL, StrategyMode.MEAN_REVERSION)
         sig = Signal(**{**sig.model_dump(), "market": market, "timeframe": timeframe})
     else:
         sig = _make_kr_signal(market=market, timeframe=timeframe)

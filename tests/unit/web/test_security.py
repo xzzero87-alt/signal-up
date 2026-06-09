@@ -5,7 +5,9 @@ from __future__ import annotations
 import pytest
 
 
-def test_assert_safe_bind_accepts_password_from_arg_when_env_unset(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_assert_safe_bind_accepts_password_from_arg_when_env_unset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """ENV 미설정 상태에서 password 인자만으로 통과되어야 한다."""
     monkeypatch.delenv("WEB_AUTH_PASSWORD", raising=False)
     from signal_program.web.security import assert_safe_bind
@@ -13,7 +15,9 @@ def test_assert_safe_bind_accepts_password_from_arg_when_env_unset(monkeypatch: 
     assert_safe_bind("0.0.0.0", "secret123")  # SystemExit 없어야 함
 
 
-def test_assert_safe_bind_rejects_when_password_arg_is_none(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_assert_safe_bind_rejects_when_password_arg_is_none(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """password 인자 None → SystemExit."""
     monkeypatch.delenv("WEB_AUTH_PASSWORD", raising=False)
     from signal_program.web.security import assert_safe_bind
@@ -22,7 +26,9 @@ def test_assert_safe_bind_rejects_when_password_arg_is_none(monkeypatch: pytest.
         assert_safe_bind("0.0.0.0", None)
 
 
-def test_assert_safe_bind_rejects_when_password_arg_is_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_assert_safe_bind_rejects_when_password_arg_is_empty(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """password 인자 '' → SystemExit."""
     monkeypatch.delenv("WEB_AUTH_PASSWORD", raising=False)
     from signal_program.web.security import assert_safe_bind
@@ -48,7 +54,9 @@ def test_assert_safe_bind_passes_localhost_without_password() -> None:
     assert_safe_bind("127.0.0.1", None)
 
 
-def test_assert_safe_bind_passes_external_bind_with_password(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_assert_safe_bind_passes_external_bind_with_password(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """비-localhost bind + password 있음 → 통과."""
     monkeypatch.delenv("WEB_AUTH_PASSWORD", raising=False)
     from signal_program.web.security import assert_safe_bind

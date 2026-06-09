@@ -1,11 +1,15 @@
 """보안 회귀 테스트 — M13 회귀 + M16 신규 (M16 Phase 1 RED)."""
+
 from __future__ import annotations
 
 import base64
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _basic_header(user: str, pw: str) -> str:

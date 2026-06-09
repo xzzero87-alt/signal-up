@@ -40,6 +40,7 @@ def _trade(pnl: float, bars: int = 12) -> TradeRecord:
 # Sharpe annualization — trade-level 수익률 + 실측 거래 빈도
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def test_sharpe_uses_trade_frequency_annualization() -> None:
     period_from = _BASE
     period_to = datetime(2026, 1, 1, tzinfo=_KST)  # 365 days
@@ -94,6 +95,7 @@ def test_sharpe_zero_when_observation_window_invalid() -> None:
 # ══════════════════════════════════════════════════════════════════════════════
 # MDD 부호 컨벤션 — 음수 또는 0 (peak-to-trough drawdown)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def test_mdd_negative_for_losing_equity_curve() -> None:
     # 1.0 → 0.95 → 0.90 → 0.92 → 0.88 → 0.93

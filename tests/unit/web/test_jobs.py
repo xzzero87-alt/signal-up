@@ -1,12 +1,16 @@
 """BacktestJobManager 단위 테스트 — M15 Phase 1 RED."""
+
 from __future__ import annotations
 
 import asyncio
 import time
 from datetime import UTC, datetime
-from pathlib import Path
 
 import pytest
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ── 헬퍼 ────────────────────────────────────────────────────────────────────
 

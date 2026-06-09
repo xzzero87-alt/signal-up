@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 
@@ -17,6 +16,10 @@ from signal_program.state.signal_feedback import (
     load_feedback_map,
     save_feedback,
 )
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture(autouse=True)

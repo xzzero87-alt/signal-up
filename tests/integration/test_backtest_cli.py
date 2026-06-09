@@ -25,6 +25,7 @@ _NEEDS_DATA = pytest.mark.skipif(
 
 # ── --report-html 지정 시 HTML 파일 생성 ────────────────────────────────────
 
+
 @_NEEDS_DATA
 def test_backtest_cli_writes_html_when_report_option_given(
     tmp_path: pytest.TempPathFactory,
@@ -34,10 +35,14 @@ def test_backtest_cli_writes_html_when_report_option_given(
         app,
         [
             "backtest",
-            "--market", "KRW-BTC",
-            "--from", "2025-01-01",
-            "--to", "2025-01-31",
-            "--report-html", str(html_path),
+            "--market",
+            "KRW-BTC",
+            "--from",
+            "2025-01-01",
+            "--to",
+            "2025-01-31",
+            "--report-html",
+            str(html_path),
         ],
     )
     assert result.exit_code == 0, result.output
@@ -48,6 +53,7 @@ def test_backtest_cli_writes_html_when_report_option_given(
 
 # ── --report-html 중간 디렉토리 자동 생성 ──────────────────────────────────
 
+
 @_NEEDS_DATA
 def test_backtest_cli_creates_parent_directories(
     tmp_path: pytest.TempPathFactory,
@@ -57,10 +63,14 @@ def test_backtest_cli_creates_parent_directories(
         app,
         [
             "backtest",
-            "--market", "KRW-BTC",
-            "--from", "2025-01-01",
-            "--to", "2025-01-31",
-            "--report-html", str(nested_path),
+            "--market",
+            "KRW-BTC",
+            "--from",
+            "2025-01-01",
+            "--to",
+            "2025-01-31",
+            "--report-html",
+            str(nested_path),
         ],
     )
     assert result.exit_code == 0, result.output
@@ -76,11 +86,16 @@ def test_backtest_cli_accepts_grid_option() -> None:
         app,
         [
             "backtest",
-            "--market", "KRW-BTC",
-            "--from", "2020-01-01",
-            "--to", "2020-01-31",
-            "--strategy", "v2",
-            "--grid", "obv_weight:0.3,0.4,0.5;buy_threshold:0.60,0.65,0.70",
+            "--market",
+            "KRW-BTC",
+            "--from",
+            "2020-01-01",
+            "--to",
+            "2020-01-31",
+            "--strategy",
+            "v2",
+            "--grid",
+            "obv_weight:0.3,0.4,0.5;buy_threshold:0.60,0.65,0.70",
         ],
     )
     assert "No such option: --grid" not in (result.output or ""), result.output
@@ -94,11 +109,16 @@ def test_backtest_cli_grid_saves_json() -> None:
         app,
         [
             "backtest",
-            "--market", "KRW-BTC",
-            "--from", "2025-01-01",
-            "--to", "2025-01-31",
-            "--strategy", "v2",
-            "--grid", "obv_weight:0.3,0.4;buy_threshold:0.60,0.65",
+            "--market",
+            "KRW-BTC",
+            "--from",
+            "2025-01-01",
+            "--to",
+            "2025-01-31",
+            "--strategy",
+            "v2",
+            "--grid",
+            "obv_weight:0.3,0.4;buy_threshold:0.60,0.65",
         ],
     )
     assert result.exit_code == 0, result.output
@@ -124,13 +144,20 @@ def test_walkforward_v2_fold_table_shows_grid_param_column() -> None:
         app,
         [
             "walkforward",
-            "--market", "KRW-BTC",
-            "--from", "2025-01-01",
-            "--to", "2025-10-31",
-            "--train-months", "6",
-            "--validate-months", "2",
-            "--strategy", "v2",
-            "--grid", "buy_threshold:0.30,0.40",
+            "--market",
+            "KRW-BTC",
+            "--from",
+            "2025-01-01",
+            "--to",
+            "2025-10-31",
+            "--train-months",
+            "6",
+            "--validate-months",
+            "2",
+            "--strategy",
+            "v2",
+            "--grid",
+            "buy_threshold:0.30,0.40",
         ],
     )
     assert result.exit_code == 0, result.output
@@ -147,12 +174,18 @@ def test_walkforward_v1_fold_table_shows_bb_std_mult_column() -> None:
         app,
         [
             "walkforward",
-            "--market", "KRW-BTC",
-            "--from", "2025-01-01",
-            "--to", "2025-10-31",
-            "--train-months", "6",
-            "--validate-months", "2",
-            "--grid", "bb_std_mult:1.5,2.0",
+            "--market",
+            "KRW-BTC",
+            "--from",
+            "2025-01-01",
+            "--to",
+            "2025-10-31",
+            "--train-months",
+            "6",
+            "--validate-months",
+            "2",
+            "--grid",
+            "bb_std_mult:1.5,2.0",
         ],
     )
     assert result.exit_code == 0, result.output
@@ -160,6 +193,7 @@ def test_walkforward_v1_fold_table_shows_bb_std_mult_column() -> None:
 
 
 # ── --report-html 없으면 HTML 파일 미생성 (기존 동작 불변) ──────────────────
+
 
 @_NEEDS_DATA
 def test_backtest_cli_default_behavior_unchanged(
@@ -169,9 +203,12 @@ def test_backtest_cli_default_behavior_unchanged(
         app,
         [
             "backtest",
-            "--market", "KRW-BTC",
-            "--from", "2025-01-01",
-            "--to", "2025-01-31",
+            "--market",
+            "KRW-BTC",
+            "--from",
+            "2025-01-01",
+            "--to",
+            "2025-01-31",
         ],
     )
     assert result.exit_code == 0, result.output

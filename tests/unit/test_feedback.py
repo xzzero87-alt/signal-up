@@ -10,13 +10,16 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from signal_program.web.api.feedback import router
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 # ── 픽스처 ────────────────────────────────────────────────────────────────────
@@ -67,16 +70,12 @@ class TestPostFeedbackSuccess:
 
 
 class TestFeedbackJSONL:
-    def test_file_created_after_post(
-        self, client: TestClient, feedback_file: Path
-    ) -> None:
+    def test_file_created_after_post(self, client: TestClient, feedback_file: Path) -> None:
         assert not feedback_file.exists()
         client.post("/api/feedback", json=_GOOD_PAYLOAD)
         assert feedback_file.exists()
 
-    def test_required_fields_present(
-        self, client: TestClient, feedback_file: Path
-    ) -> None:
+    def test_required_fields_present(self, client: TestClient, feedback_file: Path) -> None:
         client.post("/api/feedback", json=_GOOD_PAYLOAD)
         rec = json.loads(feedback_file.read_text(encoding="utf-8").strip())
         assert "recorded_at" in rec
@@ -89,9 +88,7 @@ class TestFeedbackJSONL:
         rec = json.loads(feedback_file.read_text(encoding="utf-8").strip())
         assert rec["label"] == "👎"
 
-    def test_multiple_posts_append(
-        self, client: TestClient, feedback_file: Path
-    ) -> None:
+    def test_multiple_posts_append(self, client: TestClient, feedback_file: Path) -> None:
         for label in ["👍", "👎", "👍"]:
             client.post("/api/feedback", json={**_GOOD_PAYLOAD, "label": label})
         lines = feedback_file.read_text(encoding="utf-8").strip().splitlines()
@@ -100,9 +97,7 @@ class TestFeedbackJSONL:
         assert json.loads(lines[1])["label"] == "👎"
         assert json.loads(lines[2])["label"] == "👍"
 
-    def test_recorded_at_is_tz_aware_iso(
-        self, client: TestClient, feedback_file: Path
-    ) -> None:
+    def test_recorded_at_is_tz_aware_iso(self, client: TestClient, feedback_file: Path) -> None:
         client.post("/api/feedback", json=_GOOD_PAYLOAD)
         rec = json.loads(feedback_file.read_text(encoding="utf-8").strip())
         dt = datetime.fromisoformat(rec["recorded_at"])
@@ -125,9 +120,7 @@ class TestFeedbackValidation:
         assert res.status_code == 422
 
     def test_missing_triggered_at_422(self, client: TestClient) -> None:
-        res = client.post(
-            "/api/feedback", json={"market": "KRW-BTC", "label": "👍"}
-        )
+        res = client.post("/api/feedback", json={"market": "KRW-BTC", "label": "👍"})
         assert res.status_code == 422
 
     def test_missing_label_422(self, client: TestClient) -> None:

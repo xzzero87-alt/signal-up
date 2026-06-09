@@ -1,4 +1,5 @@
 """RunnerService dry_run 통합 테스트 — 컴포넌트 전체 파이프라인 1사이클 검증."""
+
 from __future__ import annotations
 
 import json

@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 from signal_program.web.app import create_app
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture
@@ -126,7 +129,15 @@ def test_dashboard_js_no_duplicate_const_declaration() -> None:
     import pathlib
     import re
 
-    js = pathlib.Path(__file__).parents[2] / "src" / "signal_program" / "web" / "static" / "js" / "dashboard.js"
+    js = (
+        pathlib.Path(__file__).parents[2]
+        / "src"
+        / "signal_program"
+        / "web"
+        / "static"
+        / "js"
+        / "dashboard.js"
+    )
     text = js.read_text(encoding="utf-8")
     # 'const POLL_INTERVAL_MS' 선언이 있으면 중복 — index.html 인라인에만 있어야 함
     assert not re.search(r"const\s+POLL_INTERVAL_MS", text), (

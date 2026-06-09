@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from datetime import datetime
-from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pytest
 
 from signal_program.state.signal_history import SignalHistory
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _KST = ZoneInfo("Asia/Seoul")
 

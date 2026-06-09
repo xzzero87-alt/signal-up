@@ -1,9 +1,13 @@
 """job_retention 단위 테스트 — M16 Phase 1 RED."""
+
 from __future__ import annotations
 
-from pathlib import Path
 
 from signal_program.state.job_retention import cleanup_old_jobs
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _make_html(jobs_dir: Path, name: str, mtime_offset_days: int = 0) -> Path:

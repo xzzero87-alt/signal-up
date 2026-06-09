@@ -5,10 +5,10 @@ from __future__ import annotations
 import logging
 import logging.handlers
 import sys
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from pathlib import Path
     from collections.abc import MutableMapping
 
 import structlog
@@ -72,9 +72,7 @@ def test_attach_file_handler_creates_rotating_handler(tmp_path: Path) -> None:
         attach_file_handler(log_file)
 
         assert log_file.parent.exists()
-        rotating = [
-            h for h in root.handlers if isinstance(h, logging.handlers.RotatingFileHandler)
-        ]
+        rotating = [h for h in root.handlers if isinstance(h, logging.handlers.RotatingFileHandler)]
         assert len(rotating) >= 1
         rh = rotating[-1]
         assert rh.maxBytes == 5 * 1024 * 1024

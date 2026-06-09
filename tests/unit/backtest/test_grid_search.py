@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from pathlib import Path
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
@@ -17,6 +16,10 @@ import pytest
 
 from signal_program.backtest.metrics import BacktestResult
 from signal_program.backtest.walkforward import parse_grid
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 _KST = ZoneInfo("Asia/Seoul")
 

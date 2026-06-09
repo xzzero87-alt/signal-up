@@ -1,13 +1,17 @@
 """RunnerHandle 단위 테스트 — M16 Phase 1 RED."""
+
 from __future__ import annotations
 
 import asyncio
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 
 from signal_program.web.runner_handle import RunnerHandle, RunnerStateError
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # ── 헬퍼 ────────────────────────────────────────────────────────────────────
 
@@ -132,7 +136,9 @@ async def test_last_signal_at_updates_when_runner_emits(tmp_path: Path) -> None:
     from signal_program.state.signal_history import SignalHistory
 
     history = SignalHistory(tmp_path / "signal_history.jsonl")
-    history.append({"market": "KRW-BTC", "direction": "buy", "sent_at": "2025-01-01T10:00:00+09:00"})
+    history.append(
+        {"market": "KRW-BTC", "direction": "buy", "sent_at": "2025-01-01T10:00:00+09:00"}
+    )
 
     handle = RunnerHandle(runner_factory=_sleeping_runner, history=history)
     await handle.start()

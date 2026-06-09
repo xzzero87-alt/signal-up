@@ -26,7 +26,7 @@ def _extract_func(text: str, name: str) -> str:
     if start == -1:
         start = text.find(f"def {name}")
     assert start != -1, f"{name} 함수를 cli.py에서 찾을 수 없음"
-    rest = text[start + len(name):]
+    rest = text[start + len(name) :]
     # 다음 최상위 함수 정의 위치
     nxt = re.search(r"\n(def |async def )", rest)
     return rest[: nxt.start()] if nxt else rest
@@ -45,8 +45,7 @@ def test_run_async_httpx_client_has_base_url() -> None:
     """결함 회귀: _run_async의 httpx.AsyncClient에 base_url이 있어야 한다."""
     func = _extract_func(_cli_source(), "_run_async")
     assert re.search(r"AsyncClient\s*\([^)]*base_url", func, re.DOTALL), (
-        "_run_async: httpx.AsyncClient에 base_url 없음 → "
-        "signal run 커맨드에서도 동일 URL 결함"
+        "_run_async: httpx.AsyncClient에 base_url 없음 → signal run 커맨드에서도 동일 URL 결함"
     )
 
 
