@@ -258,6 +258,22 @@ async def test_h_semaphore_limits_concurrency(mock_snap: MagicMock, tmp_path: Pa
     assert peak[0] <= 5
 
 
+# ── 미마감 봉 제외 가드 ──────────────────────────────────────────────────────
+
+
+@patch("signal_program.runner.generate_snapshot")
+async def test_open_candle_excluded_from_evaluation(
+    mock_snap: MagicMock, tmp_path: Path
+) -> None:
+    """러너는 미마감(진행중) 봉을 제외하고 전략을 평가해야 한다 (도메인 규칙: 봉 마감 기준)."""
+    strategy = MagicMock(evaluate=MagicMock(return_value=[]))
+    runner = make_runner(tmp_path, strategy=strategy)
+    await runner.run_one_cycle(NOW, "t_open")
+
+    df_passed = strategy.evaluate.call_args[0][1]
+    assert len(df_passed) == 199, "미마감 봉 제외 후 199개 마감봉만 전달해야 함"
+
+
 # ── 캔들 정렬 가드 ───────────────────────────────────────────────────────────
 
 

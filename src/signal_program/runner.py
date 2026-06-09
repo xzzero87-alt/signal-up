@@ -96,7 +96,7 @@ class RunnerService:
                     if not candles:
                         return
 
-                    df = candles_to_df(candles)
+                    df = candles_to_df(candles).iloc[:-1]  # drop open (in-progress) candle
                     signals = self._strategy.evaluate(market, df)
                     signals_evaluated += len(signals)
 
