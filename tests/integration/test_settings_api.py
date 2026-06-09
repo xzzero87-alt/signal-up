@@ -52,6 +52,22 @@ def test_put_settings_whitelist_saved_as_list(tmp_path: Path) -> None:
     assert saved["whitelist_markets"] == ["KRW-BTC", "KRW-SOL", "KRW-XRP"]
 
 
+def test_put_settings_bulk_whitelist_round_trip(client: TestClient) -> None:
+    """대량 선택(멀티셀렉트) 코인 배열이 순서·전량 그대로 라운드트립 (v2.2 M5)."""
+    markets = [f"KRW-T{i:02d}" for i in range(40)]
+    resp = client.put("/api/settings", json={"whitelist_markets": markets})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["whitelist_markets"] == markets
+
+
+def test_put_settings_bulk_kr_symbols_round_trip(client: TestClient) -> None:
+    """대량 선택(멀티셀렉트) 국장 배열이 순서·전량 그대로 라운드트립 (v2.2 M5)."""
+    symbols = [f"{i:06d}" for i in range(1, 41)]
+    resp = client.put("/api/settings", json={"kr_whitelist_symbols": symbols})
+    assert resp.status_code == 200, resp.text
+    assert list(resp.json()["kr_whitelist_symbols"]) == symbols
+
+
 def test_put_settings_empty_coin_with_kr_returns_200(client: TestClient) -> None:
     """코인 화이트리스트가 비어도 국장 종목이 있으면 200 (v2.2 M2)."""
     resp = client.put(

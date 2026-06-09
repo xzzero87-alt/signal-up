@@ -28,8 +28,8 @@ def client(tmp_path: Path):  # type: ignore[no-untyped-def]
         yield c
 
 
-def _settings_form_html(html: str) -> str:
-    start = html.index('<form id="settings-form"')
+def _form_html(html: str, form_id: str) -> str:
+    start = html.index(f'<form id="{form_id}"')
     end = html.index("</form>", start)
     return html[start:end]
 
@@ -42,11 +42,23 @@ def test_all_settings_form_inputs_have_schema_field(client: TestClient) -> None:
     """폼의 모든 input이 SettingsUpdate에 존재 — 누락 시 저장 전체가 422로 깨짐(BUG-1)."""
     resp = client.get("/settings")
     assert resp.status_code == 200
-    names = _input_names(_settings_form_html(resp.text))
+    names = _input_names(_form_html(resp.text, "settings-form"))
     schema_fields = set(SettingsUpdate.model_fields)
     missing = sorted(n for n in names if n not in schema_fields)
     assert not missing, (
         f"settings.html 폼 input이 SettingsUpdate에 없음 → PUT 422로 저장 무력화: {missing}"
+    )
+
+
+def test_all_system_form_inputs_have_schema_field(client: TestClient) -> None:
+    """시스템 페이지 폼 input도 SettingsUpdate에 존재해야 함 (v2.2 M4 두 번째 폼, BUG-1)."""
+    resp = client.get("/system")
+    assert resp.status_code == 200
+    names = _input_names(_form_html(resp.text, "system-settings-form"))
+    schema_fields = set(SettingsUpdate.model_fields)
+    missing = sorted(n for n in names if n not in schema_fields)
+    assert not missing, (
+        f"system.html 폼 input이 SettingsUpdate에 없음 → PUT 422로 저장 무력화: {missing}"
     )
 
 
