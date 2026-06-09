@@ -49,8 +49,12 @@ def _next_hour_top(dt: datetime) -> datetime:
 
 
 def candles_to_df(candles: Sequence[Any]) -> pd.DataFrame:
-    """list[Candle] → DataFrame (columns: market, opened_at, open, high, low, close, volume, quote_volume)."""  # noqa: E501
-    return pd.DataFrame([c.model_dump() for c in candles])
+    """list[Candle] → DataFrame, sorted ascending by opened_at.
+
+    Upbit returns newest-first; strategies assume iloc[-1] is the latest closed candle.
+    """
+    df = pd.DataFrame([c.model_dump() for c in candles])
+    return df.sort_values("opened_at").reset_index(drop=True)
 
 
 class RunnerService:

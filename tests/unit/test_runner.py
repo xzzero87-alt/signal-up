@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path  # noqa: TC003
 from unittest.mock import AsyncMock, MagicMock, patch
 from zoneinfo import ZoneInfo
@@ -13,7 +13,7 @@ import pytest
 from signal_program.config import Settings
 from signal_program.enums import SignalDirection, SignalStrength, StrategyMode, Timeframe
 from signal_program.models import Candle, IndicatorSnapshot, Signal
-from signal_program.runner import RunnerService
+from signal_program.runner import RunnerService, candles_to_df
 from signal_program.state.signal_log import SignalLog  # noqa: F401
 
 KST = ZoneInfo("Asia/Seoul")
@@ -256,3 +256,36 @@ async def test_h_semaphore_limits_concurrency(mock_snap: MagicMock, tmp_path: Pa
     )
     await runner.run_one_cycle(NOW, "t008")
     assert peak[0] <= 5
+
+
+# ── 캔들 정렬 가드 ───────────────────────────────────────────────────────────
+
+
+def test_candles_to_df_sorts_ascending_from_upbit_descending() -> None:
+    """업비트 내림차순(최신→최古) 입력을 candles_to_df가 oepened_at 오름차순으로 반환해야 한다.
+
+    업비트 /v1/candles/minutes/60 은 [0]=최신, [-1]=최古 순으로 반환.
+    전략은 iloc[-1]을 '현재(최신) 봉'으로 평가하므로 정렬이 필수.
+    """
+    base = datetime(2026, 5, 12, 10, 0, tzinfo=KST)
+    # 업비트와 동일한 내림차순: index 0 = 최신(base+4h), index 4 = 최古(base)
+    descending = [
+        Candle(
+            market="KRW-BTC",
+            opened_at=base + timedelta(hours=4 - i),
+            open=50_000_000.0,
+            high=51_000_000.0,
+            low=49_000_000.0,
+            close=50_000_000.0 + i * 100_000.0,
+            volume=1.0,
+            quote_volume=50_500_000.0,
+        )
+        for i in range(5)
+    ]
+
+    df = candles_to_df(descending)
+
+    opened_ats = list(df["opened_at"])
+    assert opened_ats == sorted(opened_ats), "candles_to_df 결과가 오름차순이 아님"
+    assert df.iloc[-1]["opened_at"] == base + timedelta(hours=4), "iloc[-1]이 최신 봉이 아님"
+    assert df.iloc[0]["opened_at"] == base, "iloc[0]이 최古 봉이 아님"
