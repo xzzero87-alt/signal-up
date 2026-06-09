@@ -328,6 +328,7 @@ function buildDetailRow(sig) {
         '<span class="sig-ind-label">발생 시각</span><span class="sig-ind-val">' + (sig.triggered_at ? new Date(sig.triggered_at).toLocaleString('ko-KR') : '—') + '</span>' +
       '</div>' +
       chartHtml +
+      '<div class="sig-explain-panel"><span class="sig-explain-loading">·</span></div>' +
       '<div class="sig-detail-actions">' +
         '<span class="sig-fb-label">이 신호는 어땠나요?</span>' +
         '<div class="sig-fb-group">' +
@@ -344,7 +345,45 @@ function buildDetailRow(sig) {
     });
   });
   tr.appendChild(td);
+
+  if (sig.signal_id) _loadExplanation(sig.signal_id, td);
   return tr;
+}
+
+async function _loadExplanation(signalId, container) {
+  const panel = container.querySelector('.sig-explain-panel');
+  if (!panel) return;
+  try {
+    const res = await fetch('/api/signals/' + encodeURIComponent(signalId) + '/explanation');
+    if (!res.ok) { panel.remove(); return; }
+    panel.innerHTML = _buildExplainHtml(await res.json());
+  } catch (_) { panel.remove(); }
+}
+
+function _buildExplainHtml(data) {
+  if (!data) return '';
+  const conf = data.confidence ?? 0;
+  const confClass = conf >= 70 ? 'conf-high' : conf >= 50 ? 'conf-mid' : 'conf-low';
+
+  const reasonsHtml = (data.reasons ?? []).map(r =>
+    '<div class="exp-row">' +
+      '<span class="exp-label">' + _esc(r.label) + '</span>' +
+      '<span class="exp-val exp-' + r.status + '">' + _esc(r.value) + '</span>' +
+    '</div>'
+  ).join('');
+
+  const warningsHtml = (data.warnings ?? []).map(w =>
+    '<div class="exp-warning-item">' + _esc(w) + '</div>'
+  ).join('');
+
+  return (
+    '<div class="exp-header">' +
+      '<span class="exp-summary">' + _esc(data.summary ?? '') + '</span>' +
+      '<span class="exp-conf ' + confClass + '">' + conf + '/100</span>' +
+    '</div>' +
+    (reasonsHtml ? '<div class="exp-reasons">' + reasonsHtml + '</div>' : '') +
+    (warningsHtml ? '<div class="exp-warnings">' + warningsHtml + '</div>' : '')
+  );
 }
 
 async function submitFeedback(signalId, feedback, container) {

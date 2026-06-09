@@ -239,6 +239,25 @@ tr.sig-detail td { background: var(--color-surface-2); padding: 0; white-space: 
 .sig-fb-btn:hover { border-color: var(--color-primary); color: var(--color-text); }
 .sig-fb-btn.active { border-color: var(--color-primary); color: var(--color-primary); background: var(--color-primary-soft); }
 
+/* ── 시그널 해석 패널 (P2 v2.3) ── */
+.sig-explain-panel { flex: 1 1 220px; min-width: 180px; font-size: 12px; }
+.sig-explain-loading { color: var(--color-muted-2); font-size: 11px; }
+.exp-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+.exp-summary { color: var(--color-text); line-height: 1.4; flex: 1; }
+.exp-conf { font-weight: 700; font-size: 11px; white-space: nowrap; padding: 2px 6px; border-radius: 3px; }
+.exp-conf.conf-high { color: var(--color-success); border: 1px solid rgba(34,197,94,0.35); }
+.exp-conf.conf-mid  { color: var(--color-strong);  border: 1px solid rgba(245,166,35,0.35); }
+.exp-conf.conf-low  { color: var(--color-muted);   border: 1px solid var(--color-border-2); }
+.exp-reasons { display: flex; flex-direction: column; gap: 3px; margin-bottom: 6px; }
+.exp-row { display: flex; gap: 8px; align-items: center; }
+.exp-label { color: var(--color-muted-2); min-width: 130px; }
+.exp-val { font-weight: 600; font-variant-numeric: tabular-nums; }
+.exp-pass    { color: var(--color-success); }
+.exp-warn    { color: var(--color-danger); }
+.exp-neutral { color: var(--color-text); }
+.exp-warnings { display: flex; flex-direction: column; gap: 2px; }
+.exp-warning-item { font-size: 11px; color: var(--color-muted-2); }
+
 /* 새 신호 플래시 */
 @keyframes row-flash { from { background: var(--color-primary-soft); } to { background: transparent; } }
 tr.row-new td { animation: row-flash 2.5s ease-out; }

@@ -9,14 +9,16 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 
 from signal_program.state.signal_feedback import (
     build_signal_id,
     compute_feedback_stats,
     load_feedback_map,
 )
-from signal_program.web.schemas import FeedbackStats, SignalCardEntry
+from signal_program.web.confidence import score_confidence
+from signal_program.web.schemas import FeedbackStats, SignalCardEntry, SignalExplanation
+from signal_program.web.signal_explainer import explain
 
 router = APIRouter(tags=["signals"])
 
@@ -98,6 +100,39 @@ def signal_cards(
             )
         )
     return entries
+
+
+@router.get("/api/signals/{signal_id}/explanation", response_model=SignalExplanation)
+def get_signal_explanation(signal_id: str) -> SignalExplanation:
+    """시그널 해석 및 신뢰도 반환. 행 클릭 시 lazy-load (P2 v2.3)."""
+    if _signal_history is None:
+        raise HTTPException(status_code=404, detail="signal not found")
+
+    records = _signal_history.read_recent(limit=500)  # type: ignore[attr-defined]
+    raw_sig: dict[str, Any] | None = None
+    for record in records:
+        sig: dict[str, Any] = record.get("signal", {})
+        t = str(sig.get("triggered_at", ""))
+        m = str(sig.get("market", ""))
+        reconstructed = build_signal_id(t, m)
+        if reconstructed == signal_id:
+            raw_sig = sig
+            break
+
+    if raw_sig is None:
+        raise HTTPException(status_code=404, detail="signal not found")
+
+    raw_ind: dict[str, Any] = raw_sig.get("indicators", {})
+    stats: dict[str, Any] = compute_feedback_stats(window=30)
+    confidence = score_confidence(
+        strength=str(raw_sig.get("strength", "normal")),
+        mode=str(raw_sig.get("mode", "A")),
+        volume_ratio=raw_ind.get("volume_ratio"),
+        cci=raw_ind.get("cci"),
+        bb_pct_b=raw_ind.get("bb_pct_b"),
+        bad_rate=float(stats.get("bad_rate", 0.0)),
+    )
+    return explain(signal_id, raw_sig, raw_ind, confidence)
 
 
 @router.get("/api/signals/stats", response_model=FeedbackStats)

@@ -245,6 +245,28 @@ class KrDashboardView(BaseModel):
     recent_signals: tuple[dict[str, object], ...] = ()
 
 
+class SignalExplanationReason(BaseModel):
+    """시그널 해석 근거 1건 (P2 v2.3)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    label: str
+    value: str
+    status: Literal["pass", "warn", "neutral"]
+
+
+class SignalExplanation(BaseModel):
+    """시그널 해석 응답 DTO. GET /api/signals/{signal_id}/explanation (P2 v2.3)."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    signal_id: str
+    confidence: int = Field(ge=0, le=100)
+    summary: str
+    reasons: list[SignalExplanationReason]
+    warnings: list[str]
+
+
 class FeedbackStats(BaseModel):
     """거짓신호율 집계 결과. GET /api/signals/stats 응답 (R_P1_14)."""
 
