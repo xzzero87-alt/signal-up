@@ -140,94 +140,6 @@ function renderTable(records, tbodyId, emptyId) {
   _knownIds = newIds;
 }
 
-// ── 행 확장 디테일 ───────────────────────────────────────────────────────────
-
-function toggleDetail(tr, sig) {
-  const sigId = tr.dataset.sigId;
-  const existing = tr.parentElement.querySelector('tr.sig-detail');
-  if (existing) existing.remove();
-  document.querySelectorAll('tr.sig-row.expanded').forEach(r => r.classList.remove('expanded'));
-
-  if (_expandedId === sigId) { _expandedId = null; return; }
-  _expandedId = sigId;
-  tr.classList.add('expanded');
-  tr.after(buildDetailRow(sig));
-}
-
-function buildDetailRow(sig) {
-  const tr = document.createElement('tr');
-  tr.className = 'sig-detail';
-  const td = document.createElement('td');
-  td.colSpan = 7;
-
-  const fmt = (v, d = 2) => (v == null || isNaN(v)) ? '—' : Number(v).toFixed(d);
-  const fb = sig.feedback ?? null;
-  const chartHtml = sig.chart_url
-    ? `<div class="sig-detail-chart"><img src="${sig.chart_url}" alt="BB+CCI 차트"
-         onerror="this.parentElement.style.display='none'"></div>`
-    : '';
-
-  td.innerHTML = `
-    <div class="sig-detail-inner">
-      <div class="sig-ind-grid">
-        <span class="sig-ind-label">BB %B</span><span class="sig-ind-val">${fmt(sig.bb_pct_b)}</span>
-        <span class="sig-ind-label">CCI</span><span class="sig-ind-val">${fmt(sig.cci, 1)}</span>
-        <span class="sig-ind-label">거래량 비율</span><span class="sig-ind-val">${fmt(sig.volume_ratio)}×</span>
-        <span class="sig-ind-label">발생 시각</span><span class="sig-ind-val">${sig.triggered_at ? new Date(sig.triggered_at).toLocaleString('ko-KR') : '—'}</span>
-      </div>
-      ${chartHtml}
-      <div class="sig-detail-actions">
-        <span class="sig-fb-label">이 신호는 어땠나요?</span>
-        <div class="sig-fb-group">
-          <button class="sig-fb-btn${fb === 'helpful' ? ' active' : ''}" data-fb="helpful">👍 유용</button>
-          <button class="sig-fb-btn${fb === 'confusing' ? ' active' : ''}" data-fb="confusing">🤔 애매</button>
-          <button class="sig-fb-btn${fb === 'bad' ? ' active' : ''}" data-fb="bad">👎 거짓</button>
-        </div>
-      </div>
-    </div>
-  `;
-  td.querySelectorAll('.sig-fb-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      submitFeedback(sig.signal_id, btn.dataset.fb, td);
-    });
-  });
-  tr.appendChild(td);
-  return tr;
-}
-
-async function submitFeedback(signalId, feedback, container) {
-  if (!signalId) return;
-  try {
-    const res = await fetch(`/api/signals/${encodeURIComponent(signalId)}/feedback`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ feedback }),
-    });
-    if (res.ok) {
-      container.querySelectorAll('.sig-fb-btn').forEach(b =>
-        b.classList.toggle('active', b.dataset.fb === feedback));
-      fetchFeedbackStats();
-    }
-  } catch (_) { /* ignore */ }
-}
-
-// ── 거짓신호율 배지 ──────────────────────────────────────────────────────────
-
-async function fetchFeedbackStats() {
-  const el = document.getElementById('fb-rate-badge');
-  if (!el) return;
-  try {
-    const res = await fetch('/api/signals/stats?window=30');
-    if (!res.ok) return;
-    const s = await res.json();
-    if (!s.has_data) { el.style.display = 'none'; return; }
-    el.style.display = '';
-    el.textContent = `거짓신호율 ${s.bad_rate.toFixed(0)}% (최근 ${s.total_count}건)`;
-    el.classList.toggle('warn', s.bad_rate >= 30);
-  } catch (_) { /* ignore */ }
-}
-
 // ── 카운터 업데이트 ──────────────────────────────────────────────────────────
 
 function updateCounters(records) {
@@ -241,23 +153,6 @@ function updateCounters(records) {
   _setText('sum-sell', sell);
   _setText('sum-strong', strong);
 }
-
-// ── 필터 핸들러 ──────────────────────────────────────────────────────────────
-
-function setDirFilter(btn, dir) {
-  _dirFilter = dir;
-  document.querySelectorAll('.tb-tag[data-dir]').forEach(function(b){ b.classList.remove('on'); });
-  if (btn) btn.classList.add('on');
-  applyFilters();
-}
-
-function toggleStrFilter(btn) {
-  _strFilter = !_strFilter;
-  if (btn) btn.classList.toggle('on', _strFilter);
-  applyFilters();
-}
-
-function applyFilters() { fetchDashboard(); }
 
 // ── 데몬 상태 ────────────────────────────────────────────────────────────────
 
