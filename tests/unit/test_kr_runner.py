@@ -280,18 +280,21 @@ class TestRunOneCycle:
         assert report.signals_sent == 0
         assert report.timeframe == "60"
 
-    async def test_no_symbols_in_settings_calls_list_symbols(self) -> None:
-        """whitelist가 비어있으면 exchange.list_symbols()를 호출한다."""
+    async def test_empty_whitelist_is_noop(self) -> None:
+        """빈 국장 화이트리스트는 list_symbols 미호출 + no-op(코인 러너 대칭).
+
+        v2.2 이후 "국장 0개"는 정상 입력이므로 전체 스캔(구 동작)이 아닌 no-op이어야 한다.
+        """
         exchange = AsyncMock()
         exchange.list_symbols = AsyncMock(return_value=["005930"])
-        exchange.fetch_candles = AsyncMock(return_value=[])
         settings = _make_settings(kr_whitelist_symbols=[])
         runner = _make_runner(exchange=exchange, settings=settings)
 
         now = _kst(2025, 5, 12, 10, 0)
-        await runner.run_one_cycle(now, "cid", Timeframe.HOUR_1)
+        report = await runner.run_one_cycle(now, "cid", Timeframe.HOUR_1)
 
-        exchange.list_symbols.assert_called_once()
+        exchange.list_symbols.assert_not_called()
+        assert report.processed_symbols == 0
 
     async def test_whitelist_skips_list_symbols(self) -> None:
         """whitelist가 있으면 exchange.list_symbols()를 호출하지 않는다."""

@@ -227,22 +227,19 @@ class KrStockRunnerService:
         started_at = now
         cooldown = self._cooldown_60m if timeframe == Timeframe.HOUR_1 else self._cooldown_120m
 
-        symbols = self._settings.kr_whitelist_symbols or []
+        symbols = list(self._settings.kr_whitelist_symbols)
         if not symbols:
-            try:
-                symbols = await self._exchange.list_symbols()
-            except Exception:
-                log.exception("kr_list_symbols_failed", cycle_id=cycle_id)
-                return KrCycleReport(
-                    cycle_id=cycle_id,
-                    started_at=started_at,
-                    ended_at=datetime.now(_KST),
-                    timeframe=timeframe.value,
-                    processed_symbols=0,
-                    signals_evaluated=0,
-                    signals_sent=0,
-                    failures=(),
-                )
+            log.info("kr_empty_whitelist_noop", cycle_id=cycle_id)
+            return KrCycleReport(
+                cycle_id=cycle_id,
+                started_at=started_at,
+                ended_at=datetime.now(_KST),
+                timeframe=timeframe.value,
+                processed_symbols=0,
+                signals_evaluated=0,
+                signals_sent=0,
+                failures=(),
+            )
 
         log.info(
             "kr_cycle_started",
