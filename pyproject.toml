@@ -34,6 +34,7 @@ dev = [
     "pandas-stubs>=2.2,<3.0",
     "pytest>=8.3,<9.0",
     "pytest-cov>=6.0,<8.0",
+    "pytest-timeout>=2.3,<3.0",
     "pytest-vcr>=1.0,<2.0",
     "pytest-xdist[psutil]>=3.6,<4.0",
     "ruff>=0.7,<1.0",
@@ -81,7 +82,7 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-n auto -m 'not slow'"
+addopts = "-n auto -m 'not slow' --timeout=60 --timeout-method=thread --max-worker-restart=3"
 markers = [
     "unit: 외부 의존성 없는 순수 단위 테스트",
     "integration: FastAPI TestClient + 파일 I/O",

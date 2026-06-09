@@ -116,6 +116,7 @@ _NEEDS_10M_DATA = pytest.mark.skipif(
 
 
 @pytest.mark.slow
+@pytest.mark.timeout(0)  # 워크포워드는 수백 초 정상 — 전역 --timeout=60 면제
 @_NEEDS_10M_DATA
 def test_walkforward_v2_fold_table_shows_grid_param_column() -> None:
     """V2 그리드 walkforward: fold 테이블에 실제 그리드 파라미터 컬럼이 나와야 한다."""
@@ -138,6 +139,7 @@ def test_walkforward_v2_fold_table_shows_grid_param_column() -> None:
 
 
 @pytest.mark.slow
+@pytest.mark.timeout(0)  # 워크포워드는 수백 초 정상 — 전역 --timeout=60 면제
 @_NEEDS_10M_DATA
 def test_walkforward_v1_fold_table_shows_bb_std_mult_column() -> None:
     """V1 그리드 walkforward: fold 테이블에 'bb_std_mult' 컬럼이 유지되어야 한다."""

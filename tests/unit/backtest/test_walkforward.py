@@ -504,6 +504,7 @@ def test_walkforward_engine_run_returns_result_with_empty_candles(
 
 
 @pytest.mark.slow
+@pytest.mark.timeout(0)  # 워크포워드는 수백 초 정상 — 전역 --timeout=60 면제
 def test_walkforward_engine_run_end_to_end(tmp_path: pytest.TempPathFactory) -> None:
     """WalkforwardEngine.run() 전체 흐름을 mock 캔들로 검증한다."""
     from datetime import timedelta
