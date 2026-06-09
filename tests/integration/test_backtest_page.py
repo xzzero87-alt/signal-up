@@ -105,7 +105,8 @@ def test_post_job_returns_429_when_queue_full(tmp_path: Path) -> None:
     from signal_program.web.jobs import BacktestJobManager
 
     def slow_executor(spec: object, output_path: _Path) -> None:
-        _time.sleep(30)
+        # 큐가 가득 차는 동안만 워커를 붙잡으면 됨 — teardown이 join하므로 짧게
+        _time.sleep(3)
 
     with tempfile.TemporaryDirectory() as td:
         tmp = _Path(td)

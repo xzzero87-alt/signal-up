@@ -40,7 +40,7 @@ uv run signal doctor             # 환경 점검
 uv run ruff check src/ --fix
 uv run ruff format src/
 uv run mypy src/                 # strict
-uv run pytest --cov=src/ --cov-fail-under=70
+uv run pytest --cov=src/ -m "" --cov-fail-under=70   # -m ""로 slow 포함 (기본 addopts는 slow 제외)
 uv run pip-audit
 ```
 

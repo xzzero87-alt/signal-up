@@ -176,7 +176,8 @@ async def test_failed_job_captures_error_message(tmp_path: Path) -> None:
 @pytest.mark.anyio
 async def test_job_timeout_marks_failed(tmp_path: Path) -> None:
     def slow_executor(spec: object, output_path: Path) -> None:
-        time.sleep(60)
+        # timeout(0.1s)보다 길기만 하면 됨 — teardown이 스레드를 join하므로 짧게
+        time.sleep(2)
 
     manager = _make_manager(tmp_path, executor=slow_executor, timeout=0.1)
     await manager.start()

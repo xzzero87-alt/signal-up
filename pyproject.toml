@@ -81,7 +81,7 @@ ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-n auto"
+addopts = "-n auto -m 'not slow'"
 markers = [
     "unit: 외부 의존성 없는 순수 단위 테스트",
     "integration: FastAPI TestClient + 파일 I/O",
