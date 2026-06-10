@@ -12,6 +12,7 @@
 
 ### 추가
 - **JS 타입 집합 ↔ SettingsUpdate 타입 drift 가드** — `tests/integration/test_settings_form_consistency.py::test_js_type_sets_match_schema` 신규 추가. `settings.js`의 `INT_FIELDS`/`FLOAT_FIELDS`/`STRING_FIELDS`/`CHECKBOX_FIELDS`와 `SettingsUpdate` 스키마 타입의 양방향 일치 회귀 가드
+- **`kr_strategy` backend 노출 (ADR-0018)** — `SettingsUpdate`/`SettingsView`에 `Literal["bb_cci", "fractal"]` 필드 추가. PUT/GET API 라운드트립 + 유효성 검사 + 불변 보장 테스트 4건. `help_text.py` 도움말 등록
 
 ---
 

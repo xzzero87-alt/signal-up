@@ -61,6 +61,7 @@ def _to_view(settings: object) -> SettingsView:
         kr_whitelist_symbols=tuple(s.kr_whitelist_symbols),
         kr_cooldown_hours_60m=s.kr_cooldown_hours_60m,
         kr_cooldown_hours_120m=s.kr_cooldown_hours_120m,
+        kr_strategy=s.kr_strategy,
     )
 
 

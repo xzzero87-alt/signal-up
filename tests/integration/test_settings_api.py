@@ -107,3 +107,36 @@ def test_put_settings_both_empty_korean_message(client: TestClient) -> None:
     assert "화이트리스트" in all_messages, f"한국어 메시지 없음: {all_messages}"
     assert "Value error" not in all_messages, f'"Value error" 영어 prefix 노출: {all_messages}'
     assert "tuple" not in all_messages, f'"tuple" 타입 이름 노출: {all_messages}'
+
+
+# ── Task 1: kr_strategy 노출 (ADR-0018) ──────────────────────────────────────
+
+
+def test_put_kr_strategy_bb_cci_round_trip(client: TestClient) -> None:
+    """PUT kr_strategy=bb_cci → 200, 응답 본문에 반영."""
+    resp = client.put("/api/settings", json={"kr_strategy": "bb_cci"})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["kr_strategy"] == "bb_cci"
+
+
+def test_put_kr_strategy_fractal_round_trip(client: TestClient) -> None:
+    """PUT kr_strategy=fractal → 200 왕복."""
+    resp = client.put("/api/settings", json={"kr_strategy": "fractal"})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["kr_strategy"] == "fractal"
+
+
+def test_put_kr_strategy_invalid_returns_422(client: TestClient) -> None:
+    """PUT kr_strategy=v1 → 422 (허용 값 아님)."""
+    resp = client.put("/api/settings", json={"kr_strategy": "v1"})
+    assert resp.status_code == 422, resp.text
+
+
+def test_put_kr_strategy_invalid_does_not_change_value(client: TestClient) -> None:
+    """422 후 기존 kr_strategy 값 불변."""
+    resp = client.put("/api/settings", json={"kr_strategy": "bb_cci"})
+    assert resp.status_code == 200, resp.text
+    client.put("/api/settings", json={"kr_strategy": "v1"})
+    resp = client.get("/api/settings")
+    assert resp.status_code == 200
+    assert resp.json()["kr_strategy"] == "bb_cci"

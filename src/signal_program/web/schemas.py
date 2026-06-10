@@ -66,6 +66,7 @@ class SettingsView(BaseModel):
     kr_whitelist_symbols: tuple[str, ...] = ()
     kr_cooldown_hours_60m: int = Field(default=2, ge=0, le=72)
     kr_cooldown_hours_120m: int = Field(default=4, ge=0, le=72)
+    kr_strategy: Literal["bb_cci", "fractal"] = "fractal"
 
 
 class SettingsUpdate(BaseModel):
@@ -117,6 +118,8 @@ class SettingsUpdate(BaseModel):
     kr_whitelist_symbols: list[str] | None = None
     kr_cooldown_hours_60m: int | None = Field(default=None, ge=0, le=72)
     kr_cooldown_hours_120m: int | None = Field(default=None, ge=0, le=72)
+    # ADR-0018: fractal=국장 전용, bb_cci=코인 전략 공유
+    kr_strategy: Literal["bb_cci", "fractal"] | None = None
 
 
 class HealthResponse(BaseModel):
