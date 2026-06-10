@@ -5,6 +5,21 @@
 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/)를 따르고,
 이 프로젝트는 [Semantic Versioning](https://semver.org/lang/ko/)을 준수합니다.
 
+## [2.3.0] — 2026-06-09
+
+### 추가
+- **GET /api/signals/{signal_id}/explanation** — 시그널 ID로 해석 결과 반환. `SignalExplanation` (신뢰도·요약·근거 목록·주의사항) (P2 v2.3)
+- **신뢰도 점수 산출** — `confidence.score_confidence()` 순수 함수: STRONG+15·거래량 비율·CCI 극값·BB 극값·피드백 거짓신호율 페널티 합산 (0~100 정수) (P2 v2.3)
+- **전략별 시그널 해석** — `signal_explainer.explain()`: A(평균회귀)·B(스퀴즈)·C(가중점수)·D(프랙탈)·E(Donchian)·F(RSI2) 각각 임계값 기반 pass/warn/neutral 상태 생성 (P2 v2.3)
+- **대시보드 해석 패널** — 시그널 행 클릭 시 `.sig-explain-panel` lazy-load: 신뢰도 배지(High/Mid/Low)·근거 행·주의사항 렌더링 (P2 v2.3)
+
+### 수정
+- **라이브 코인 캔들 정렬 누락** — 업비트 최신순 반환 캔들 미정렬로 `iloc[-1]`이 ~200h 전 봉을 읽는 버그 수정 (P0)
+- **미마감 봉 전략 평가 포함** — 진행 중 봉이 `iloc[-1]`에 들어올 수 있어 `iloc[:-1]`로 마감봉만 전달 (P0)
+- **국장 빈 화이트리스트 전 종목 스캔** — `kr_enabled` 상태에서 국장 0개 선택 시 전 종목 스캔 제거, 빈 화이트리스트 = no-op (P1)
+
+---
+
 ## [2.2.0] — 2026-06-09
 
 ### 추가
