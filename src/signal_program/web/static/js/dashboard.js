@@ -16,6 +16,14 @@ let _strFilter  = false;
 let _expandedId = null;      // 펼쳐진 행의 signal_id
 let _knownIds   = null;      // 직전 폴링의 signal_id 집합 (새 신호 플래시용)
 
+// P1: 정렬 상태
+let _sortKey = 'triggered_at';
+let _sortDir = 'desc';
+// P3/P4: 캐시 + 마켓 복원 대기
+let _lastCoinRecords = null;
+let _lastKrRecords   = null;
+let _pendingMarketFilter = '';
+
 // ── 상대 시간 ────────────────────────────────────────────────────────────────
 
 function relTime(iso) {
@@ -28,9 +36,76 @@ function relTime(iso) {
   return Math.floor(diff / 86400) + '일 전';
 }
 
+// ── P1: 정렬 ────────────────────────────────────────────────────────────────
+
+function sortRecords(records) {
+  if (!records || !_sortKey) return records;
+  return [...records].sort(function(a, b) {
+    const sa = a.signal ?? a;
+    const sb = b.signal ?? b;
+    let va, vb;
+    switch (_sortKey) {
+      case 'market':      va = sa.market ?? '';           vb = sb.market ?? '';           break;
+      case 'direction':   va = sa.direction ?? '';        vb = sb.direction ?? '';        break;
+      case 'mode':        va = sa.mode ?? sa.strategy_mode ?? ''; vb = sb.mode ?? sb.strategy_mode ?? ''; break;
+      case 'price':       va = sa.price ?? 0;             vb = sb.price ?? 0;             break;
+      case 'change_pct':  va = sa.change_pct ?? 0;        vb = sb.change_pct ?? 0;        break;
+      case 'strength':    va = sa.strength === 'STRONG' ? 1 : 0; vb = sb.strength === 'STRONG' ? 1 : 0; break;
+      case 'triggered_at': va = sa.triggered_at ?? '';   vb = sb.triggered_at ?? '';     break;
+      default: return 0;
+    }
+    if (va < vb) return _sortDir === 'asc' ? -1 : 1;
+    if (va > vb) return _sortDir === 'asc' ? 1 : -1;
+    return 0;
+  });
+}
+
+function _updateSortHeaders() {
+  document.querySelectorAll('th[data-sort-key]').forEach(function(th) {
+    const key = th.dataset.sortKey;
+    if (key === _sortKey) {
+      th.setAttribute('aria-sort', _sortDir === 'asc' ? 'ascending' : 'descending');
+      th.dataset.sortActive = '';
+      th.dataset.sortDir = _sortDir;
+    } else {
+      th.removeAttribute('aria-sort');
+      delete th.dataset.sortActive;
+      delete th.dataset.sortDir;
+    }
+  });
+}
+
+function setSortKey(key) {
+  if (_sortKey === key) {
+    _sortDir = _sortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    _sortKey = key;
+    _sortDir = 'desc';
+  }
+  _updateSortHeaders();
+  _saveFilterState();
+  const isKr = typeof _MARKET_MODE !== 'undefined' && _MARKET_MODE === 'kr';
+  if (isKr) {
+    if (_lastKrRecords) renderTable(_lastKrRecords, 'kr-signal-tbody', 'kr-signal-empty');
+  } else {
+    if (_lastCoinRecords) renderTable(_lastCoinRecords, 'signal-tbody', 'signal-empty');
+  }
+}
+
 // ── 폴링 ────────────────────────────────────────────────────────────────────
 
 let _daemonRunning = false;
+
+function _updateFooterScan(lastSignalAt, daemonRunning) {
+  const el = document.getElementById('footer-last-scan');
+  if (!el) return;
+  if (!lastSignalAt) { el.textContent = '없음'; el.className = ''; return; }
+  el.textContent = new Date(lastSignalAt).toLocaleTimeString('ko-KR');
+  const ageS = (Date.now() - new Date(lastSignalAt).getTime()) / 1000;
+  if (!daemonRunning)  { el.className = 'scan-danger'; }
+  else if (ageS > 300) { el.className = 'scan-stale'; }
+  else                 { el.className = ''; }
+}
 
 async function fetchDashboard() {
   try {
@@ -39,6 +114,7 @@ async function fetchDashboard() {
     const data = await res.json();
     _daemonRunning = data.daemon_status === 'running';
     _renderDaemonStatus(data);
+    _updateFooterScan((data.settings_summary ?? {}).last_signal_at, _daemonRunning);
     const wl = (data.settings_summary ?? {}).whitelist_markets;
     _renderEmptyState(_daemonRunning, Array.isArray(wl) ? wl.length : null);
     document.getElementById('error-msg').style.display = 'none';
@@ -56,7 +132,6 @@ async function fetchDashboard() {
       renderTable(records, 'signal-tbody', 'signal-empty');
       updateCounters(records);
       _populateMarketOptions(records);
-      document.getElementById('footer-last-scan').textContent = new Date().toLocaleTimeString('ko-KR');
     }
   } catch (_) { /* ignore */ }
 
@@ -77,6 +152,9 @@ function buildFilterParams() {
 // ── 테이블 렌더 ──────────────────────────────────────────────────────────────
 
 function renderTable(records, tbodyId, emptyId) {
+  if (tbodyId === 'signal-tbody')    _lastCoinRecords = records;
+  if (tbodyId === 'kr-signal-tbody') _lastKrRecords   = records;
+
   const tbody = document.getElementById(tbodyId);
   const empty = document.getElementById(emptyId);
   if (!tbody) return;
@@ -89,8 +167,9 @@ function renderTable(records, tbodyId, emptyId) {
   if (empty) empty.style.display = 'none';
 
   const newIds = new Set();
+  const sorted = sortRecords(records);
 
-  records.forEach(rec => {
+  sorted.forEach(rec => {
     const sig   = rec.signal ?? rec;
     const dir   = (sig.direction ?? '').toLowerCase();
     const isBuy = dir === 'buy';
@@ -122,6 +201,8 @@ function renderTable(records, tbodyId, emptyId) {
     const tr = document.createElement('tr');
     tr.className = 'sig-row' + (isNew ? ' row-new' : '') + (_expandedId === sigId ? ' expanded' : '');
     tr.dataset.sigId = sigId;
+    tr.tabIndex = 0;
+    tr._sigData = sig;
     tr.innerHTML = `
       <td>${marketHtml}</td>
       <td><span class="${isBuy ? 'dir-buy' : 'dir-sell'}">${isBuy ? '▲ 매수' : '▼ 매도'}</span></td>
@@ -433,7 +514,7 @@ function toggleStrFilter(btn) {
   applyFilters();
 }
 
-function applyFilters() { fetchDashboard(); }
+function applyFilters() { _saveFilterState(); fetchDashboard(); }
 
 async function toggleDaemon() {
   const btn = document.getElementById('nav-daemon-btn');
@@ -463,6 +544,7 @@ function _populateMarketOptions(records) {
     sel.appendChild(opt);
   });
   sel.dataset.populated = '1';
+  if (_pendingMarketFilter) { sel.value = _pendingMarketFilter; _pendingMarketFilter = ''; }
 }
 
 // ── 카운트다운 ───────────────────────────────────────────────────────────────
@@ -488,9 +570,92 @@ function showError(msg) {
   if (el) { el.textContent = msg; el.style.display = 'block'; }
 }
 
+// ── P4: localStorage 필터·정렬 유지 ─────────────────────────────────────────
+
+const _LS_KEY = 'su_dash_v1';
+
+function _saveFilterState() {
+  try {
+    localStorage.setItem(_LS_KEY, JSON.stringify({
+      dirFilter:    _dirFilter,
+      strFilter:    _strFilter,
+      filterMode:   document.getElementById('filter-mode')?.value ?? '',
+      filterMarket: _pendingMarketFilter || document.getElementById('filter-market')?.value || '',
+      sortKey:      _sortKey,
+      sortDir:      _sortDir,
+    }));
+  } catch (_) {}
+}
+
+function _restoreFilterState() {
+  try {
+    const raw = localStorage.getItem(_LS_KEY);
+    if (!raw) return;
+    const st = JSON.parse(raw);
+    _dirFilter  = st.dirFilter  ?? '';
+    _strFilter  = Boolean(st.strFilter);
+    _sortKey    = st.sortKey    ?? 'triggered_at';
+    _sortDir    = st.sortDir    ?? 'desc';
+    _pendingMarketFilter = st.filterMarket ?? '';
+    const fmo = document.getElementById('filter-mode');
+    if (fmo && st.filterMode) fmo.value = st.filterMode;
+    if (_dirFilter) {
+      document.querySelectorAll('.tb-tag[data-dir]').forEach(function(b) {
+        b.classList.toggle('on', b.dataset.dir === _dirFilter);
+      });
+    }
+    const strongBtn = document.getElementById('tb-strong-btn');
+    if (strongBtn) strongBtn.classList.toggle('on', _strFilter);
+    _updateSortHeaders();
+  } catch (_) {}
+}
+
 // ── 초기화 ───────────────────────────────────────────────────────────────────
 
+_restoreFilterState();
 fetchDashboard();
 fetchFeedbackStats();
 setInterval(fetchDashboard, POLL_INTERVAL_MS);
 setInterval(_tickCountdown, 1_000);
+
+// ── P3: 키보드 내비게이션 ────────────────────────────────────────────────────
+
+document.addEventListener('keydown', function(e) {
+  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+  const isKr = typeof _MARKET_MODE !== 'undefined' && _MARKET_MODE === 'kr';
+  const tbody = document.getElementById(isKr ? 'kr-signal-tbody' : 'signal-tbody');
+  const rows  = tbody ? [...tbody.querySelectorAll('tr.sig-row')] : [];
+
+  switch (e.key) {
+    case '/':
+      e.preventDefault();
+      document.getElementById('filter-market')?.focus();
+      break;
+    case 'Escape':
+      if (_expandedId) {
+        const exp = tbody?.querySelector('tr.sig-row.expanded');
+        if (exp && exp._sigData) toggleDetail(exp, exp._sigData);
+      }
+      break;
+    case 'j': {
+      e.preventDefault();
+      const idx = rows.findIndex(r => r === document.activeElement);
+      const next = idx < 0 ? rows[0] : rows[Math.min(idx + 1, rows.length - 1)];
+      if (next) { next.focus(); next.scrollIntoView({ block: 'nearest' }); }
+      break;
+    }
+    case 'k': {
+      e.preventDefault();
+      const idx = rows.findIndex(r => r === document.activeElement);
+      const prev = idx < 0 ? rows[rows.length - 1] : rows[Math.max(idx - 1, 0)];
+      if (prev) { prev.focus(); prev.scrollIntoView({ block: 'nearest' }); }
+      break;
+    }
+    case 'Enter':
+    case 'o': {
+      const focused = rows.find(r => r === document.activeElement);
+      if (focused && focused._sigData) toggleDetail(focused, focused._sigData);
+      break;
+    }
+  }
+});

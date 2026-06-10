@@ -527,3 +527,16 @@ tr.row-new td { animation: row-flash 2.5s ease-out; }
 .stepper input { width: 64px; height: 32px; border: none; background: none; color: var(--color-text); text-align: center; font-size: 0.84rem; font-weight: 600; outline: none; font-variant-numeric: tabular-nums; border-left: 1px solid var(--color-border); border-right: 1px solid var(--color-border); }
 .stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .stepper input[type=number] { -moz-appearance: textfield; }
+
+/* ── v2.5 P1: 컬럼 정렬 인디케이터 ── */
+th[data-sort-key] { cursor: pointer; user-select: none; }
+th[data-sort-key]::after { content: '⇅'; margin-left: 4px; opacity: 0.25; font-size: 9px; }
+th[data-sort-key][data-sort-active][data-sort-dir="asc"]::after  { content: '▲'; opacity: 0.75; }
+th[data-sort-key][data-sort-active][data-sort-dir="desc"]::after { content: '▼'; opacity: 0.75; }
+
+/* ── v2.5 P2: 푸터 마지막스캔 신선도 ── */
+#footer-last-scan.scan-stale  { color: var(--color-strong); }
+#footer-last-scan.scan-danger { color: var(--color-danger); }
+
+/* ── v2.5 P3: 키보드 행 포커스 ── */
+tr.sig-row:focus { outline: 1px solid var(--color-primary, #3b82f6); outline-offset: -1px; }

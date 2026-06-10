@@ -71,9 +71,13 @@
     </colgroup>
     <thead>
       <tr>
-        <th>마켓</th><th>방향</th><th>전략</th>
-        <th class="r">현재가</th><th class="r">등락률</th>
-        <th class="r">강도</th><th class="r">시각</th>
+        <th data-sort-key="market" onclick="setSortKey('market')">마켓</th>
+        <th data-sort-key="direction" onclick="setSortKey('direction')">방향</th>
+        <th data-sort-key="mode" onclick="setSortKey('mode')">전략</th>
+        <th class="r" data-sort-key="price" onclick="setSortKey('price')">현재가</th>
+        <th class="r" data-sort-key="change_pct" onclick="setSortKey('change_pct')">등락률</th>
+        <th class="r" data-sort-key="strength" onclick="setSortKey('strength')">강도</th>
+        <th class="r" data-sort-key="triggered_at" onclick="setSortKey('triggered_at')">시각</th>
       </tr>
     </thead>
     <tbody id="signal-tbody"></tbody>
@@ -92,9 +96,13 @@
     </colgroup>
     <thead>
       <tr>
-        <th>종목</th><th>방향</th><th>전략</th>
-        <th class="r">현재가</th><th class="r">등락률</th>
-        <th class="r">강도</th><th class="r">시각</th>
+        <th data-sort-key="market" onclick="setSortKey('market')">종목</th>
+        <th data-sort-key="direction" onclick="setSortKey('direction')">방향</th>
+        <th data-sort-key="mode" onclick="setSortKey('mode')">전략</th>
+        <th class="r" data-sort-key="price" onclick="setSortKey('price')">현재가</th>
+        <th class="r" data-sort-key="change_pct" onclick="setSortKey('change_pct')">등락률</th>
+        <th class="r" data-sort-key="strength" onclick="setSortKey('strength')">강도</th>
+        <th class="r" data-sort-key="triggered_at" onclick="setSortKey('triggered_at')">시각</th>
       </tr>
     </thead>
     <tbody id="kr-signal-tbody"></tbody>
@@ -133,7 +141,6 @@ async function loadKrSignals() {
     const records = await resp.json();
     renderTable(records, 'kr-signal-tbody', 'kr-signal-empty');
     updateCounters(records);
-    document.getElementById('footer-last-scan').textContent = new Date().toLocaleTimeString('ko-KR');
   } catch (e) {
     const box = document.getElementById('error-msg');
     box.textContent = '국장 시그널 로드 실패: ' + e.message;
