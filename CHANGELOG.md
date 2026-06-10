@@ -5,6 +5,16 @@
 형식은 [Keep a Changelog](https://keepachangelog.com/ko/1.1.0/)를 따르고,
 이 프로젝트는 [Semantic Versioning](https://semver.org/lang/ko/)을 준수합니다.
 
+## [Unreleased]
+
+### 수정
+- **settings.js `showFieldErrors` silent fail 차단** — 숨겨진 전략 패널 내부 에러 스팬에 매칭되어 `matchedCount >= 1`이 되던 결함 수정. `offsetParent === null` 조상 체크로 보이지 않는 매칭은 카운트하지 않아 글로벌 배너 폴백이 올바르게 동작
+
+### 추가
+- **JS 타입 집합 ↔ SettingsUpdate 타입 drift 가드** — `tests/integration/test_settings_form_consistency.py::test_js_type_sets_match_schema` 신규 추가. `settings.js`의 `INT_FIELDS`/`FLOAT_FIELDS`/`STRING_FIELDS`/`CHECKBOX_FIELDS`와 `SettingsUpdate` 스키마 타입의 양방향 일치 회귀 가드
+
+---
+
 ## [2.3.0] — 2026-06-09
 
 ### 추가

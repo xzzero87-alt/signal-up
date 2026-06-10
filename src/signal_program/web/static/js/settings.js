@@ -175,7 +175,11 @@ function showFieldErrors(errors) {
     // 안전망: 옛 응답 형식 호환 — "body.bb_period" → "bb_period"
     const fieldName = (field || '').replace(/^(body|query|path|header|cookie)\./, '');
     const el = document.getElementById('err-' + fieldName);
-    if (el) { el.textContent = message; matchedCount++; }
+    if (el) {
+      el.textContent = message;
+      // display:none 조상이 있으면 offsetParent === null → 보이지 않는 매칭
+      if (el.offsetParent !== null) matchedCount++;
+    }
     const input = document.getElementById(fieldName);
     if (input) input.style.borderColor = '#c62828';
   }
