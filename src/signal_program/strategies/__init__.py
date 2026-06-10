@@ -81,7 +81,7 @@ def get_strategy(version: str, settings: Settings) -> Strategy:
     Parameters
     ----------
     version:
-        "v1" 또는 "v2".
+        "v1"~"v5".
     settings:
         config.Settings 인스턴스.
 
