@@ -169,6 +169,25 @@ def _schema_type_map() -> dict[str, set[str]]:
     }
 
 
+def test_kr_strategy_radio_exists_and_checked(client: TestClient) -> None:
+    """settings.html에 kr_strategy radio 2개 존재 + 저장된 값에 checked."""
+    assert client.put("/api/settings", json={"kr_strategy": "bb_cci"}).status_code == 200
+    html = client.get("/settings").text
+    form = _form_html(html, "settings-form")
+    radio_tags = re.findall(r'<input[^>]+name="kr_strategy"[^>]*>', form)
+    assert len(radio_tags) == 2, f"kr_strategy radio가 2개가 아님: {len(radio_tags)}"
+    checked = [t for t in radio_tags if "checked" in t]
+    assert len(checked) == 1, f"checked radio가 1개가 아님: {checked}"
+    assert 'value="bb_cci"' in checked[0], f"checked가 bb_cci가 아님: {checked[0]}"
+
+
+def test_dashboard_kr_strategy_reflects_settings(client: TestClient) -> None:
+    """PUT kr_strategy=bb_cci → /api/dashboard settings_summary.kr_strategy == 'bb_cci'."""
+    assert client.put("/api/settings", json={"kr_strategy": "bb_cci"}).status_code == 200
+    data = client.get("/api/dashboard").json()
+    assert data["settings_summary"]["kr_strategy"] == "bb_cci"
+
+
 def test_js_type_sets_match_schema() -> None:
     """JS 타입 집합 ↔ SettingsUpdate 필드 타입 양방향 일치 가드 (타입 drift 차단)."""
     js_path = Path(signal_program.web.__file__).parent / "static" / "js" / "settings.js"

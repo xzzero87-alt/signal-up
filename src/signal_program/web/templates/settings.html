@@ -104,7 +104,7 @@
 
   <!-- ② 전략 -->
   <section class="settings-section">
-    <h2><span class="sec-num">2</span>전략 <span class="sec-desc">하나만 운용됩니다 — 선택 즉시 아래 파라미터가 바뀝니다</span></h2>
+    <h2><span class="sec-num">2</span>코인 전략 <span class="sec-desc">코인에 적용됩니다. 하나만 운용됩니다 — 선택 즉시 아래 파라미터가 바뀝니다</span></h2>
 
     <div class="strat-grid">
       <label class="strat-card {% if settings.strategy_version == 'v1' %}on{% endif %}" id="card-v1">
@@ -285,6 +285,28 @@
       {% endfor %}
     </div>
     {% endfor %}
+
+    <!-- 국장 전략 서브섹션 (ADR-0018) -->
+    <div class="ind-param" style="margin-top:1.5rem">
+      <div class="ind-param-info">
+        <div class="pl">국장 전략
+          <button type="button" class="help" data-help="{{ help['kr_strategy'] }}" aria-label="설명" aria-expanded="false">?</button>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem">
+        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+          <input type="radio" name="kr_strategy" value="fractal"
+            {% if settings.kr_strategy == 'fractal' %}checked{% endif %}>
+          프랙탈 (국장 전용, ADR-0018)
+        </label>
+        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer">
+          <input type="radio" name="kr_strategy" value="bb_cci"
+            {% if settings.kr_strategy == 'bb_cci' %}checked{% endif %}>
+          코인 전략 공유
+        </label>
+      </div>
+      <span class="field-error" id="err-kr_strategy"></span>
+    </div>
   </section>
 
   {# 운영·국장연결(KIS)·알림 설정은 v2.2 M4에서 [시스템] 페이지로 이동. #}

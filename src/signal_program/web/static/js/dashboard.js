@@ -280,7 +280,7 @@ function _renderStatusPanel(data, running) {
   _renderNotifyCard(s);
 }
 
-const KR_STRATEGY_LABEL = { fractal: '프랙탈', bb_cci: 'BB+CCI' };
+const KR_STRATEGY_LABEL = { fractal: '프랙탈', bb_cci: '코인 전략 공유' };
 
 function _esc(t) {
   const d = document.createElement('span');
