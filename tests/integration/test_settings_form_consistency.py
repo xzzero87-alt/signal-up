@@ -8,13 +8,14 @@
 from __future__ import annotations
 
 import re
+from typing import TYPE_CHECKING
 
 import pytest
 from fastapi.testclient import TestClient
 
 from signal_program.web.app import create_app
+from signal_program.web.help_text import SETTING_HELP
 from signal_program.web.schemas import SettingsUpdate
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -102,3 +103,14 @@ def test_only_selected_strategy_panel_visible(client: TestClient, ver: str) -> N
 
     on_cards = [v for v in _PANEL if _card_on(html, f"card-{v}")]
     assert on_cards == [ver], f"{ver} 선택인데 강조된 카드: {on_cards}"
+
+
+def test_all_param_fields_have_help_text(client: TestClient) -> None:
+    """settings.html data-field 입력이 SETTING_HELP에 누락 없이 존재해야 함 (v2.6 재발 방지)."""
+    resp = client.get("/settings")
+    assert resp.status_code == 200
+    field_names = set(re.findall(r'data-field="([a-zA-Z0-9_]+)"', resp.text))
+    missing = sorted(f for f in field_names if f not in SETTING_HELP or not SETTING_HELP[f])
+    assert not missing, (
+        f"settings.html data-field가 SETTING_HELP에 없거나 비어있음: {missing}"
+    )

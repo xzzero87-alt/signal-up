@@ -189,7 +189,7 @@
           <div class="ind-param">
             <div class="ind-param-info">
               <div class="pl">{{ label }}
-                <span class="help" title="{{ help[field_name] }}">?</span>
+                <button type="button" class="help" data-help="{{ help[field_name] }}" aria-label="설명" aria-expanded="false">?</button>
               </div>
               <div class="ph">{{ pdesc }} <span class="pr-default">· 기본 {{ default }}</span></div>
             </div>
@@ -228,7 +228,9 @@
       ] %}
       <div class="ind-param">
         <div class="ind-param-info">
-          <div class="pl">{{ lbl }}</div>
+          <div class="pl">{{ lbl }}
+            <button type="button" class="help" data-help="{{ help[fname] if fname in help else '' }}" aria-label="설명" aria-expanded="false">?</button>
+          </div>
           <div class="ph"><span class="pr-default">기본 {{ default }}</span></div>
         </div>
         <div class="stepper">
@@ -268,7 +270,7 @@
       <div class="ind-param">
         <div class="ind-param-info">
           <div class="pl">{{ lbl }}
-            <span class="help" title="{{ help[fname] if fname in help else '' }}">?</span>
+            <button type="button" class="help" data-help="{{ help[fname] if fname in help else '' }}" aria-label="설명" aria-expanded="false">?</button>
           </div>
           <div class="ph"><span class="pr-default">기본 {{ default }}</span></div>
         </div>

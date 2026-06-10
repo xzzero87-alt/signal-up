@@ -192,3 +192,36 @@ function clearErrors() {
   const ge = document.getElementById('form-errors');
   if (ge) ge.style.display = 'none';
 }
+
+// ── 도움말 '?' 클릭 인라인 확장 ──
+(function () {
+  var _open = null;
+
+  function closeHelp() {
+    if (!_open) return;
+    _open.setAttribute('aria-expanded', 'false');
+    var tip = _open.nextElementSibling;
+    if (tip && tip.classList.contains('help-inline')) tip.remove();
+    _open = null;
+  }
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('button.help');
+    if (!btn) { closeHelp(); return; }
+    e.stopPropagation();
+    if (_open === btn) { closeHelp(); return; }
+    closeHelp();
+    var text = btn.dataset.help || '';
+    if (!text) return;
+    var tip = document.createElement('div');
+    tip.className = 'help-inline';
+    tip.textContent = text;
+    btn.insertAdjacentElement('afterend', tip);
+    btn.setAttribute('aria-expanded', 'true');
+    _open = btn;
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeHelp();
+  });
+}());

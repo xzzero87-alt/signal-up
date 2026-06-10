@@ -17,7 +17,17 @@ SETTING_HELP: dict[str, str] = {
     "telegram_bot_token": "BotFather에서 발급받은 봇 토큰. 비워두면 기존 값 유지.",
     "telegram_chat_id": "알림을 받을 채팅 ID. 본인 사용자 ID 또는 그룹 ID.",
     "dry_run": "켜면 시그널 계산은 하지만 텔레그램 송출은 하지 않음. 테스트용.",
+    # 전략 V2 (4지표 가중치, ADR-0010)
+    "bb_weight": "V2 BB 가중치. 4지표 합이 1.00 권장. 기본 0.20.",
+    "cci_weight": "V2 CCI 가중치. 4지표 합이 1.00 권장. 기본 0.20.",
+    "sto_weight": "V2 Stochastic 가중치. 4지표 합이 1.00 권장. 기본 0.20.",
+    "obv_weight": "V2 OBV 가중치. 거래량 중시 기본 0.40 (ADR-0010 §2). 합이 1.00 권장.",
+    "buy_threshold": "V2 매수 점수 임계값. 지표 가중 합이 이 값 이상 시 매수 신호. 기본 0.65.",
+    "sell_threshold": "V2 매도 점수 임계값. 지표 가중 합이 이 값 이상 시 매도 신호. 기본 0.65.",
+    "sto_oversold": "V2 Stochastic 과매도 기준. 이 값 미만 시 매수 점수 가산. 기본 15.",
+    "sto_overbought": "V2 Stochastic 과매수 기준. 이 값 초과 시 매도 점수 가산. 기본 85.",
     # 전략 확장 v2.3 (V3 Fractal · V4 Donchian · V5 RSI2)
+    "fractal_lookback": "V3 프랙탈 판정 좌우 봉 수. Williams Fractal N봉 기준. 기본 100봉.",
     "fractal_volume_threshold": "V3 프랙탈 진입 최소 거래량 배수. 기본 1.2배.",
     "fractal_volume_strong": "V3 프랙탈 강한 신호 거래량 배수. 기본 2.0배.",
     "fractal_max_age": "V3 확정 프랙탈 유효 봉 수. 이보다 오래되면 신호 제외. 기본 20봉.",
