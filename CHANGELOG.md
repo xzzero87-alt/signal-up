@@ -14,6 +14,7 @@
 - **JS 타입 집합 ↔ SettingsUpdate 타입 drift 가드** — `tests/integration/test_settings_form_consistency.py::test_js_type_sets_match_schema` 신규 추가. `settings.js`의 `INT_FIELDS`/`FLOAT_FIELDS`/`STRING_FIELDS`/`CHECKBOX_FIELDS`와 `SettingsUpdate` 스키마 타입의 양방향 일치 회귀 가드
 - **`kr_strategy` backend 노출 (ADR-0018)** — `SettingsUpdate`/`SettingsView`에 `Literal["bb_cci", "fractal"]` 필드 추가. PUT/GET API 라운드트립 + 유효성 검사 + 불변 보장 테스트 4건. `help_text.py` 도움말 등록
 - **설정 페이지 국장 전략 UI + 코인 전용 표기** — 전략 섹션 제목을 "코인 전략"으로 명확화. 국장 전략 radio 서브섹션(fractal/bb_cci) 추가. `dashboard.js` `KR_STRATEGY_LABEL.bb_cci` "BB+CCI" → "코인 전략 공유" 정합화
+- **system.html dry_run err-span 추가** — `dry_run` 체크박스 옆 `<span class="field-error" id="err-dry_run">` 누락 보완 (FINDING-1)
 
 ---
 
