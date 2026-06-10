@@ -4,6 +4,7 @@
   - 봉 단위 시뮬레이터. 직전봉 시그널 → 다음봉 시가 진입
   - 단일 종목, 단일 방향(BUY만), 1회 1포지션
   - 청산: max_holding_bars 보유 또는 BB 중심선(entry 시점 기준) 도달 중 빠른 쪽
+           (BB 중심선 도달은 bb_middle > 0인 시그널에 한함 — 비-BB 전략은 0.0으로 채움)
   - 미청산 포지션은 마지막 봉 close로 강제 청산
 
 §6.2 비용 모델:
@@ -88,7 +89,8 @@ class BacktestEngine:
                 entry: float = position["entry_price"]
                 pnl_raw = close / entry - 1.0
                 hit_sl = self.stop_loss_pct is not None and pnl_raw <= -self.stop_loss_pct
-                should_exit = bars_held >= self.max_holding_bars or close >= bb_middle or hit_sl
+                hit_target = bb_middle > 0 and close >= bb_middle
+                should_exit = bars_held >= self.max_holding_bars or hit_target or hit_sl
 
                 if should_exit:
                     opened_at = candles_df.iloc[i]["opened_at"]

@@ -8,6 +8,7 @@
 ## [Unreleased]
 
 ### 수정
+- **백테스트 엔진 v3/v4/v5 1봉 청산 버그 수정** — `bb_middle=0.0`(비-BB 전략)에서 `close >= 0.0`이 항상 참이 되어 모든 포지션이 1봉 만에 청산되던 결함 수정. `hit_target = bb_middle > 0 and close >= bb_middle` 가드 추가. DESIGN.md §6.1 단서 동기화
 - **settings.js `showFieldErrors` silent fail 차단** — 숨겨진 전략 패널 내부 에러 스팬에 매칭되어 `matchedCount >= 1`이 되던 결함 수정. `offsetParent === null` 조상 체크로 보이지 않는 매칭은 카운트하지 않아 글로벌 배너 폴백이 올바르게 동작
 
 ### 추가

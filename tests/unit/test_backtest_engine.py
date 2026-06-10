@@ -235,6 +235,24 @@ def test_h_entry_price_is_next_bar_open() -> None:
     assert float(df.iloc[50]["close"]) != float(df.iloc[51]["open"])
 
 
+# ── i-2) bb_middle=0.0 (비-BB 전략) → 1봉 즉시 청산 버그 가드 ───────────────
+
+
+def test_i2_bb_middle_zero_does_not_trigger_target_exit() -> None:
+    """bb_middle=0.0인 시그널(v3/v4/v5)은 타깃 청산이 발동하지 않아야 함.
+
+    버그 전: close >= 0.0이 항상 참 → bars_held == 1
+    버그 후: bb_middle > 0 가드로 max_holding_bars까지 보유
+    """
+    df = _make_candles_df(200)
+    sig = _buy_signal(bb_middle=0.0)
+    result = _engine(_MockStrategy({50: [sig]}), max_holding_bars=24).run(_MARKET, df)
+    assert result.trades[0].bars_held == 24, (
+        f"bb_middle=0.0 시그널이 {result.trades[0].bars_held}봉 만에 청산됨 "
+        "(close >= 0.0 → 즉시 청산 버그)"
+    )
+
+
 # ── i) 24봉 동안 BB 중심선 미도달 → 정확히 24봉 후 청산 ─────────────────────
 
 
