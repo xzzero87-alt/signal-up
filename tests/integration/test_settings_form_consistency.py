@@ -8,17 +8,16 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+import typing
+from pathlib import Path
 
 import pytest
+import signal_program.web
 from fastapi.testclient import TestClient
 
 from signal_program.web.app import create_app
 from signal_program.web.help_text import SETTING_HELP
 from signal_program.web.schemas import SettingsUpdate
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 @pytest.fixture
@@ -114,3 +113,80 @@ def test_all_param_fields_have_help_text(client: TestClient) -> None:
     assert not missing, (
         f"settings.html data-field가 SETTING_HELP에 없거나 비어있음: {missing}"
     )
+
+
+# ── Task 2: JS 타입 집합 ↔ SettingsUpdate 타입 drift 가드 ──────────────────────
+
+
+def _parse_js_type_sets(js_path: Path) -> dict[str, set[str]]:
+    """settings.js에서 INT_FIELDS / FLOAT_FIELDS / STRING_FIELDS / CHECKBOX_FIELDS 파싱."""
+    content = js_path.read_text(encoding="utf-8")
+    result: dict[str, set[str]] = {}
+    for m in re.finditer(
+        r"const\s+(INT_FIELDS|FLOAT_FIELDS|STRING_FIELDS|CHECKBOX_FIELDS)"
+        r"\s*=\s*new\s+Set\(\[([\s\S]*?)\]\)",
+        content,
+    ):
+        result[m.group(1)] = set(re.findall(r"'([a-z0-9_]+)'", m.group(2)))
+    return result
+
+
+def _schema_type_map() -> dict[str, set[str]]:
+    """SettingsUpdate 필드를 int / float / str / bool 타입별로 분류.
+
+    list[str] 필드(whitelist_markets 등)와 Literal 필드(strategy_version)는 제외.
+    """
+    int_f: set[str] = set()
+    float_f: set[str] = set()
+    str_f: set[str] = set()
+    bool_f: set[str] = set()
+
+    for name, field_info in SettingsUpdate.model_fields.items():
+        ann = field_info.annotation
+        args = typing.get_args(ann)
+        non_none = [a for a in args if a is not type(None)]
+        base = non_none[0] if non_none else ann
+
+        if typing.get_origin(base) is list:
+            continue
+        if typing.get_origin(base) is typing.Literal:
+            continue
+
+        if base is bool:
+            bool_f.add(name)
+        elif base is int:
+            int_f.add(name)
+        elif base is float:
+            float_f.add(name)
+        elif base is str:
+            str_f.add(name)
+
+    return {
+        "INT_FIELDS": int_f,
+        "FLOAT_FIELDS": float_f,
+        "STRING_FIELDS": str_f,
+        "CHECKBOX_FIELDS": bool_f,
+    }
+
+
+def test_js_type_sets_match_schema() -> None:
+    """JS 타입 집합 ↔ SettingsUpdate 필드 타입 양방향 일치 가드 (타입 drift 차단)."""
+    js_path = Path(signal_program.web.__file__).parent / "static" / "js" / "settings.js"
+    js_sets = _parse_js_type_sets(js_path)
+    schema_map = _schema_type_map()
+    all_schema_fields = set(SettingsUpdate.model_fields)
+
+    for set_name, schema_fields in schema_map.items():
+        js_fields = js_sets.get(set_name, set())
+
+        # ① 스키마 → JS: 스키마 필드가 해당 JS 집합에 없으면 브라우저가 잘못된 타입으로 전송
+        missing_in_js = sorted(schema_fields - js_fields)
+        assert not missing_in_js, (
+            f"{set_name}: SettingsUpdate 필드가 JS 집합에 없음 → 타입 변환 누락: {missing_in_js}"
+        )
+
+        # ② JS → 스키마: JS 집합 항목이 SettingsUpdate에 없으면 오타·죽은 항목
+        dead_in_js = sorted(js_fields - all_schema_fields)
+        assert not dead_in_js, (
+            f"{set_name}: JS 집합 항목이 SettingsUpdate에 없음 → 오타·죽은 항목: {dead_in_js}"
+        )
