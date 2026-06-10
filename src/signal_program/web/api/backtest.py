@@ -72,6 +72,7 @@ async def submit_job(
         period_from=_to_dt(body.period_from),
         period_to=_to_dt(body.period_to),
         mode=body.mode,
+        strategy_version=body.strategy_version,
         train_months=body.train_months,
         validate_months=body.validate_months,
         grid_str=body.grid_str,

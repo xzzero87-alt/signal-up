@@ -37,8 +37,8 @@
       <div class="field-row">
         <label for="kr_market">국장 종목</label>
         <select id="kr_market" name="kr_market">
-          {% for s in kr_whitelist_symbols %}
-            <option value="{{ s }}">{{ s }}</option>
+          {% for o in kr_options %}
+            <option value="{{ o.code }}">{{ o.code }}{% if o.name %} · {{ o.name }}{% endif %}</option>
           {% else %}
             <option value="" disabled>종목 없음 — 설정 페이지에서 추가하세요</option>
           {% endfor %}
@@ -58,7 +58,17 @@
       <input type="date" id="period_to" name="period_to" value="">
     </div>
     <div class="field-row">
-      <label for="mode">전략 모드</label>
+      <label for="strategy_version">전략 버전</label>
+      <select id="strategy_version" name="strategy_version" onchange="onStrategyVersionChange(this.value)">
+        <option value="v1" selected>V1 — BB+CCI 평균회귀/스퀴즈</option>
+        <option value="v2">V2 — 4지표 가중점수</option>
+        <option value="v3">V3 — Williams Fractal 돌파</option>
+        <option value="v4">V4 — Donchian 채널 추세추종</option>
+        <option value="v5">V5 — RSI(2) 단기 평균회귀</option>
+      </select>
+    </div>
+    <div class="field-row" id="mode-row">
+      <label for="mode">전략 모드 <span style="font-size:0.75rem;color:var(--color-muted)">(V1 전용)</span></label>
       <select id="mode" name="mode">
         <option value="both" selected>A + B (모두)</option>
         <option value="A">A (평균회귀)</option>

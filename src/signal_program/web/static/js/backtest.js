@@ -9,6 +9,11 @@ let _btActiveTab = 'coin';
 // 비교 선택 (max 2): job_id → job object
 const _selectedForCompare = new Map();
 
+function onStrategyVersionChange(version) {
+  const modeRow = document.getElementById('mode-row');
+  if (modeRow) modeRow.style.display = (version === 'v1') ? '' : 'none';
+}
+
 function switchBtTab(tab) {
   _btActiveTab = tab;
   document.getElementById('bt-coin-section').style.display = (tab === 'coin') ? '' : 'none';
@@ -40,16 +45,17 @@ async function submitJob(isWalkforward) {
     showError('마켓/종목을 선택하세요.');
     return;
   }
-  const period_from = document.getElementById('period_from').value;
-  const period_to   = document.getElementById('period_to').value;
-  const mode        = document.getElementById('mode').value;
+  const period_from       = document.getElementById('period_from').value;
+  const period_to         = document.getElementById('period_to').value;
+  const strategy_version  = document.getElementById('strategy_version')?.value || 'v1';
+  const mode              = document.getElementById('mode').value;
 
   if (!period_from || !period_to) {
     showError('시작일과 종료일을 입력하세요.');
     return;
   }
 
-  const body = { market, period_from, period_to, mode };
+  const body = { market, period_from, period_to, strategy_version, mode };
 
   if (isWalkforward) {
     body.kind = 'walkforward';

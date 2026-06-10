@@ -58,6 +58,7 @@ class JobSpec:
     period_from: datetime
     period_to: datetime
     mode: str  # "A" | "B" | "both"
+    strategy_version: str = "v1"  # "v1"~"v5"
     train_months: int | None = None
     validate_months: int | None = None
     grid_str: str | None = None
@@ -77,6 +78,7 @@ class JobRecord:
     mode: str
     result_path: Path | None
     error_message: str | None
+    strategy_version: str = "v1"
 
 
 # ── path traversal 헬퍼 ──────────────────────────────────────────────────────
@@ -156,6 +158,7 @@ class BacktestJobManager:
             mode=spec.mode,
             result_path=None,
             error_message=None,
+            strategy_version=spec.strategy_version,
         )
         self._jobs[job_id] = record
         self._ordered.append(job_id)
@@ -193,6 +196,7 @@ class BacktestJobManager:
                 period_from=record.period_from,
                 period_to=record.period_to,
                 mode=record.mode,
+                strategy_version=record.strategy_version,
                 train_months=None,
                 validate_months=None,
                 grid_str=None,
@@ -245,7 +249,8 @@ class BacktestJobManager:
             from signal_program.backtest.engine import BacktestEngine
             from signal_program.backtest.report import _TEMPLATE_DIR, BacktestReportRenderer
             from signal_program.backtest.walkforward import WalkforwardEngine, parse_grid
-            from signal_program.strategies.bb_cci import BbCciStrategy
+            from signal_program.config import Settings as _Settings
+            from signal_program.strategies import get_strategy
 
             kst = ZoneInfo("Asia/Seoul")
             settings = store.load() if store is not None else None
@@ -271,20 +276,8 @@ class BacktestJobManager:
                     f"--from {period_from.date()} --to {period_to.date()}` 먼저 실행하세요."
                 )
 
-            def _s(attr: str, default: Any) -> Any:
-                return getattr(settings, attr, default) if settings is not None else default
-
-            strategy = BbCciStrategy(
-                bb_period=_s("bb_period", 20),
-                bb_std_mult=_s("bb_std_mult", 2.0),
-                cci_period=_s("cci_period", 20),
-                cci_threshold_normal=_s("cci_threshold_normal", 100),
-                cci_threshold_strong=_s("cci_threshold_strong", 200),
-                volume_ratio_min_a=_s("volume_ratio_min_a", 1.0),
-                volume_ratio_min_b=_s("volume_ratio_min_b", 1.5),
-                squeeze_lookback=_s("squeeze_lookback", 120),
-                squeeze_quantile=_s("squeeze_quantile", 0.20),
-            )
+            _settings = settings if settings is not None else _Settings()
+            strategy = get_strategy(spec.strategy_version, _settings)
             base_engine = BacktestEngine(strategy=strategy)
             generated_at = datetime.now(tz=kst)
 
@@ -316,10 +309,11 @@ class BacktestJobManager:
                 df = pd.DataFrame([c.model_dump() for c in filtered])
                 result = base_engine.run(spec.market, df)
                 renderer = BacktestReportRenderer(template_dir=_TEMPLATE_DIR)
+                mode_label = spec.mode if spec.strategy_version == "v1" else spec.strategy_version
                 html = renderer.render_html(
                     result,
                     market=spec.market,
-                    mode_label=spec.mode,
+                    mode_label=mode_label,
                     generated_at=generated_at,
                 )
 

@@ -152,6 +152,7 @@ class BacktestJobSubmit(BaseModel):
     market: str
     period_from: date
     period_to: date
+    strategy_version: Literal["v1", "v2", "v3", "v4", "v5"] = "v1"
     mode: Literal["A", "B", "both"] = "both"
     train_months: int | None = Field(default=None, ge=1, le=24)
     validate_months: int | None = Field(default=None, ge=1, le=12)
