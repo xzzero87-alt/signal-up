@@ -72,14 +72,21 @@ def backtest_page(
     request: Request,  # noqa: ARG001
     store: SettingsStore = Depends(get_settings_store),
 ) -> HTMLResponse:
+    from signal_program.data.kr_universe import KR_UNIVERSE
+
     settings_data = store.load()
+    _kr_name = {s.code: s.name for s in KR_UNIVERSE}
+    kr_options = [
+        {"code": c, "name": _kr_name.get(c, "")}
+        for c in settings_data.kr_whitelist_symbols
+    ]
     html = (
         _env()
         .get_template("backtest.html")
         .render(
             active="backtest",
             whitelist_markets=list(settings_data.whitelist_markets),
-            kr_whitelist_symbols=list(settings_data.kr_whitelist_symbols),
+            kr_options=kr_options,
         )
     )
     return HTMLResponse(content=html)
