@@ -98,6 +98,16 @@ class DonchianStrategy:
             )
         return signals
 
+    def should_exit(self, market: str, candles: pd.DataFrame, entry_bar_idx: int) -> bool:
+        """직전 donchian_exit_period봉 최저 low 하향 마감 시 청산 (ADR-0021).
+
+        봉 수가 exit_period + 1 미만이면 False (캡에 위임).
+        """
+        if len(candles) < self.exit_period + 1:
+            return False
+        window = candles.iloc[-(self.exit_period + 1) : -1]
+        return float(candles.iloc[-1]["close"]) < float(window["low"].min())
+
     def _build_signal(
         self,
         market: str,

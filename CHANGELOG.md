@@ -12,6 +12,7 @@
 - **settings.js `showFieldErrors` silent fail 차단** — 숨겨진 전략 패널 내부 에러 스팬에 매칭되어 `matchedCount >= 1`이 되던 결함 수정. `offsetParent === null` 조상 체크로 보이지 않는 매칭은 카운트하지 않아 글로벌 배너 폴백이 올바르게 동작
 
 ### 추가
+- **v4 Donchian 고유 청산 (ADR-0021)** — `SupportsExit` @runtime_checkable 선택 프로토콜 추가. `BacktestEngine`이 포지션 진입 시 isinstance 캐시 후 보유 매 봉 `should_exit` 위임 (BB 타깃 미적용, `max_holding_bars` 캡 항상 유지). `DonchianStrategy.should_exit`: 직전 `donchian_exit_period`봉 최저 low 하향 마감 시 청산 (현재 봉 제외). 전략 비교 매트릭스 재실행 (`strategy_matrix_time_exit.csv` 백업 보존)
 - **AI 시그널 컨텍스트 보강 (ADR-0020)** — 시그널 발송 후 `asyncio.create_task`로 Anthropic Claude API(web_search) 비차단 호출. KST 자정 기준 일일 cap 리셋, 실패·타임아웃 조용히 삼킴. `TelegramNotifier.send_text()` + `RunnerService.on_signal_sent` 콜백 배선. CLI `_run_async`/`_run_live_coro`에서 `ai_enrichment_enabled` + `anthropic_api_key` 충족 시 조립
 - **AI enrichment 설정 GUI 노출 (ADR-0020)** — 시스템 페이지에 "AI 컨텍스트 (Claude API)" 섹션 추가(enabled 체크박스·API Key 패스워드·모델 ID·일일 cap·타임아웃). API 응답에 `anthropic_api_key_masked`(끝 4자 마스킹). 대시보드 운용 현황에 "AI 컨텍스트 ON" 뱃지. `settings.js` 타입 집합 갱신
 - **JS 타입 집합 ↔ SettingsUpdate 타입 drift 가드** — `tests/integration/test_settings_form_consistency.py::test_js_type_sets_match_schema` 신규 추가. `settings.js`의 `INT_FIELDS`/`FLOAT_FIELDS`/`STRING_FIELDS`/`CHECKBOX_FIELDS`와 `SettingsUpdate` 스키마 타입의 양방향 일치 회귀 가드

@@ -122,3 +122,57 @@ def test_insufficient_data_returns_empty() -> None:
 
 def test_name() -> None:
     assert DonchianStrategy().name == "v4_donchian"
+
+
+# ── should_exit 경계 테스트 (ADR-0021) ────────────────────────────────────────
+
+
+def _exit_candles(lows: list[float], closes: list[float]) -> pd.DataFrame:
+    """should_exit 테스트용 단순 합성 캔들 (high=close+1)."""
+    n = len(closes)
+    base = datetime(2026, 1, 1, 9, 0, tzinfo=KST)
+    rows = [
+        {
+            "market": "KRW-BTC",
+            "opened_at": base + timedelta(hours=i),
+            "open": closes[i],
+            "high": closes[i] + 1.0,
+            "low": lows[i],
+            "close": closes[i],
+            "volume": 1.0,
+            "quote_volume": closes[i],
+        }
+        for i in range(n)
+    ]
+    return pd.DataFrame(rows)
+
+
+def test_should_exit_true_when_below_channel_low() -> None:
+    # exit_period=3: window = candles[-4:-1] → lows [90,90,90], min=90
+    # current close = 80 < 90 → True
+    strat = DonchianStrategy(donchian_exit_period=3)
+    lows   = [90.0, 90.0, 90.0, 90.0, 70.0]
+    closes = [95.0, 95.0, 95.0, 95.0, 80.0]
+    assert strat.should_exit("KRW-BTC", _exit_candles(lows, closes), 0) is True
+
+
+def test_should_exit_false_when_above_channel_low() -> None:
+    # same window min=90, current close=95 >= 90 → False
+    strat = DonchianStrategy(donchian_exit_period=3)
+    lows   = [90.0, 90.0, 90.0, 90.0, 70.0]
+    closes = [95.0, 95.0, 95.0, 95.0, 95.0]
+    assert strat.should_exit("KRW-BTC", _exit_candles(lows, closes), 0) is False
+
+
+def test_should_exit_false_when_insufficient_bars() -> None:
+    # exit_period=3: need ≥4 bars; 3 bars → False
+    strat = DonchianStrategy(donchian_exit_period=3)
+    lows   = [90.0, 90.0, 90.0]
+    closes = [80.0, 80.0, 80.0]
+    assert strat.should_exit("KRW-BTC", _exit_candles(lows, closes), 0) is False
+
+
+def test_isinstance_supports_exit() -> None:
+    from signal_program.strategies.base import SupportsExit
+
+    assert isinstance(DonchianStrategy(), SupportsExit)
