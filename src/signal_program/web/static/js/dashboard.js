@@ -334,6 +334,11 @@ function _renderRunList(s) {
     rows.push('<div class="run-row"><span class="run-off">⚠ dry-run 켜짐 — 신호는 기록되지만 텔레그램 발송 안 함</span></div>');
   }
 
+  // AI 컨텍스트 (ADR-0020)
+  if (s.ai_enrichment_enabled) {
+    rows.push('<div class="run-row"><span class="run-scope">AI</span><span class="run-strat">AI 컨텍스트 ON</span></div>');
+  }
+
   box.innerHTML = rows.join('');
 }
 

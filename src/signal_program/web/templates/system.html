@@ -102,6 +102,53 @@
     </div>
   </section>
 
+  <!-- AI 컨텍스트 (Claude API) -->
+  <section class="settings-section">
+    <h2>AI 컨텍스트 (Claude API) <span class="sec-desc">시그널 후속 뉴스 요약 (ADR-0020)</span></h2>
+
+    <div class="field-row field-row-check">
+      <label>
+        <input id="ai_enrichment_enabled" name="ai_enrichment_enabled" type="checkbox"
+               {% if settings.ai_enrichment_enabled %}checked{% endif %}>
+        AI 컨텍스트 보강 활성화
+        <span class="help" title="{{ help.ai_enrichment_enabled }}">?</span>
+      </label>
+      <span class="field-error" id="err-ai_enrichment_enabled"></span>
+    </div>
+    <div class="field-row">
+      <label for="anthropic_api_key">Anthropic API Key
+        <span class="help" title="{{ help.anthropic_api_key }}">?</span>
+      </label>
+      <input id="anthropic_api_key" name="anthropic_api_key" type="password"
+             placeholder="{{ settings.anthropic_api_key_masked or '비워두면 기존 값 유지' }}" value="">
+      <span class="field-error" id="err-anthropic_api_key"></span>
+    </div>
+    <div class="field-row">
+      <label for="ai_enrichment_model">모델 ID
+        <span class="help" title="{{ help.ai_enrichment_model }}">?</span>
+      </label>
+      <input id="ai_enrichment_model" name="ai_enrichment_model" type="text"
+             value="{{ settings.ai_enrichment_model }}">
+      <span class="field-error" id="err-ai_enrichment_model"></span>
+    </div>
+    <div class="field-row">
+      <label for="ai_enrichment_daily_cap">일일 최대 호출 (1~500)
+        <span class="help" title="{{ help.ai_enrichment_daily_cap }}">?</span>
+      </label>
+      <input id="ai_enrichment_daily_cap" name="ai_enrichment_daily_cap" type="number"
+             value="{{ settings.ai_enrichment_daily_cap }}" min="1" max="500">
+      <span class="field-error" id="err-ai_enrichment_daily_cap"></span>
+    </div>
+    <div class="field-row">
+      <label for="ai_enrichment_timeout_seconds">타임아웃 (초, 5~120)
+        <span class="help" title="{{ help.ai_enrichment_timeout_seconds }}">?</span>
+      </label>
+      <input id="ai_enrichment_timeout_seconds" name="ai_enrichment_timeout_seconds" type="number"
+             value="{{ settings.ai_enrichment_timeout_seconds }}" min="5" max="120">
+      <span class="field-error" id="err-ai_enrichment_timeout_seconds"></span>
+    </div>
+  </section>
+
   <!-- 알림 채널 -->
   <section class="settings-section">
     <h2>알림 채널 <span class="sec-desc">신호를 어디로 보낼지</span></h2>

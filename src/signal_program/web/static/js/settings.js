@@ -5,8 +5,10 @@
 const STRING_FIELDS = new Set([
   'telegram_bot_token',
   'telegram_chat_id',
-  'kis_app_key',   // KIS (ADR-0016)
+  'kis_app_key',              // KIS (ADR-0016)
   'kis_app_secret',
+  'anthropic_api_key',        // AI enrichment (ADR-0020)
+  'ai_enrichment_model',
 ]);
 
 // 정수 필드
@@ -17,10 +19,11 @@ const INT_FIELDS = new Set([
   'fractal_lookback', 'fractal_max_age', 'donchian_entry_period', 'donchian_exit_period', // 전략 확장 v2.3
   'rsi2_period', 'rsi2_trend_period',
   'kr_cooldown_hours_60m', 'kr_cooldown_hours_120m', // KIS (ADR-0016)
+  'ai_enrichment_daily_cap', 'ai_enrichment_timeout_seconds', // AI enrichment (ADR-0020)
 ]);
 
 // 체크박스 필드 집합 (미체크 시 false 명시 전달)
-const CHECKBOX_FIELDS = new Set(['dry_run', 'kr_enabled', 'kis_is_paper']);
+const CHECKBOX_FIELDS = new Set(['dry_run', 'kr_enabled', 'kis_is_paper', 'ai_enrichment_enabled']);
 
 // 부동소수 필드
 const FLOAT_FIELDS = new Set([
@@ -116,7 +119,7 @@ function refreshForm(settings) {
     if (el.type === 'checkbox') el.checked = !!val;
     else if (key === 'whitelist_markets' || key === 'kr_whitelist_symbols')
       el.value = Array.isArray(val) ? val.join(',') : val;
-    else if (key !== 'telegram_bot_token' && key !== 'kis_app_key_masked' && key !== 'kis_app_secret_masked')
+    else if (key !== 'telegram_bot_token' && key !== 'kis_app_key_masked' && key !== 'kis_app_secret_masked' && key !== 'anthropic_api_key_masked')
       el.value = val;
   }
 }

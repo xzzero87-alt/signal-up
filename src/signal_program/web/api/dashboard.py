@@ -35,6 +35,7 @@ def dashboard_view(
         "kr_enabled": s.kr_enabled,
         "kr_strategy": s.kr_strategy,
         "kr_whitelist_symbols": list(s.kr_whitelist_symbols),
+        "ai_enrichment_enabled": s.ai_enrichment_enabled,
     }
 
     handle = getattr(request.app.state, "runner_handle", None)

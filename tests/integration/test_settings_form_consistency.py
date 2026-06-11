@@ -188,6 +188,13 @@ def test_dashboard_kr_strategy_reflects_settings(client: TestClient) -> None:
     assert data["settings_summary"]["kr_strategy"] == "bb_cci"
 
 
+def test_dashboard_ai_enrichment_reflects_settings(client: TestClient) -> None:
+    """PUT ai_enrichment_enabled=True → /api/dashboard settings_summary에 반영 (ADR-0020)."""
+    assert client.put("/api/settings", json={"ai_enrichment_enabled": True}).status_code == 200
+    data = client.get("/api/dashboard").json()
+    assert data["settings_summary"]["ai_enrichment_enabled"] is True
+
+
 def test_js_type_sets_match_schema() -> None:
     """JS 타입 집합 ↔ SettingsUpdate 필드 타입 양방향 일치 가드 (타입 drift 차단)."""
     js_path = Path(signal_program.web.__file__).parent / "static" / "js" / "settings.js"
