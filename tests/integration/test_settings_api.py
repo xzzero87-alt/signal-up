@@ -140,3 +140,36 @@ def test_put_kr_strategy_invalid_does_not_change_value(client: TestClient) -> No
     resp = client.get("/api/settings")
     assert resp.status_code == 200
     assert resp.json()["kr_strategy"] == "bb_cci"
+
+
+# ── Task 1: AI enrichment 설정 노출 (ADR-0020) ────────────────────────────────
+
+
+def test_put_ai_enrichment_enabled_round_trip(client: TestClient) -> None:
+    """PUT ai_enrichment_enabled=true → 200, 응답에 반영."""
+    resp = client.put("/api/settings", json={"ai_enrichment_enabled": True})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["ai_enrichment_enabled"] is True
+
+
+def test_put_anthropic_api_key_masked_in_response(client: TestClient) -> None:
+    """PUT anthropic_api_key → 응답의 anthropic_api_key_masked가 마스킹됨 (원문 미노출)."""
+    resp = client.put("/api/settings", json={"anthropic_api_key": "sk-ant-test1234"})
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert "anthropic_api_key" not in data, "원문 키가 응답에 노출되면 안 됨"
+    masked = data.get("anthropic_api_key_masked", "")
+    assert masked.endswith("1234"), f"끝 4자리 '1234'가 없음: {masked}"
+    assert "sk-ant-test" not in masked, "원문 일부가 마스킹 값에 포함됨"
+
+
+def test_put_ai_enrichment_daily_cap_zero_returns_422(client: TestClient) -> None:
+    """PUT ai_enrichment_daily_cap=0 → 422 (ge=1 위반)."""
+    resp = client.put("/api/settings", json={"ai_enrichment_daily_cap": 0})
+    assert resp.status_code == 422, resp.text
+
+
+def test_put_ai_enrichment_timeout_out_of_range_returns_422(client: TestClient) -> None:
+    """PUT ai_enrichment_timeout_seconds=999 → 422 (le=120 위반)."""
+    resp = client.put("/api/settings", json={"ai_enrichment_timeout_seconds": 999})
+    assert resp.status_code == 422, resp.text

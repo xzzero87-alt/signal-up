@@ -67,6 +67,12 @@ class SettingsView(BaseModel):
     kr_cooldown_hours_60m: int = Field(default=2, ge=0, le=72)
     kr_cooldown_hours_120m: int = Field(default=4, ge=0, le=72)
     kr_strategy: Literal["bb_cci", "fractal"] = "fractal"
+    # AI enrichment (ADR-0020)
+    ai_enrichment_enabled: bool = False
+    anthropic_api_key_masked: str = ""
+    ai_enrichment_model: str = "claude-haiku-4-5"
+    ai_enrichment_daily_cap: int = Field(default=30, ge=1, le=500)
+    ai_enrichment_timeout_seconds: int = Field(default=25, ge=5, le=120)
 
 
 class SettingsUpdate(BaseModel):
@@ -120,6 +126,12 @@ class SettingsUpdate(BaseModel):
     kr_cooldown_hours_120m: int | None = Field(default=None, ge=0, le=72)
     # ADR-0018: fractal=국장 전용, bb_cci=코인 전략 공유
     kr_strategy: Literal["bb_cci", "fractal"] | None = None
+    # AI enrichment (ADR-0020)
+    ai_enrichment_enabled: bool | None = None
+    anthropic_api_key: str | None = None
+    ai_enrichment_model: str | None = None
+    ai_enrichment_daily_cap: int | None = Field(default=None, ge=1, le=500)
+    ai_enrichment_timeout_seconds: int | None = Field(default=None, ge=5, le=120)
 
 
 class HealthResponse(BaseModel):

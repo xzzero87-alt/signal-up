@@ -62,6 +62,12 @@ def _to_view(settings: object) -> SettingsView:
         kr_cooldown_hours_60m=s.kr_cooldown_hours_60m,
         kr_cooldown_hours_120m=s.kr_cooldown_hours_120m,
         kr_strategy=s.kr_strategy,
+        # AI enrichment (ADR-0020)
+        ai_enrichment_enabled=s.ai_enrichment_enabled,
+        anthropic_api_key_masked=mask_secret_value(s.anthropic_api_key),
+        ai_enrichment_model=s.ai_enrichment_model,
+        ai_enrichment_daily_cap=s.ai_enrichment_daily_cap,
+        ai_enrichment_timeout_seconds=s.ai_enrichment_timeout_seconds,
     )
 
 

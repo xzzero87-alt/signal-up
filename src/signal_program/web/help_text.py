@@ -43,4 +43,19 @@ SETTING_HELP: dict[str, str] = {
         "국장 시그널 전략. 프랙탈=국장 전용(ADR-0018),"
         " 코인 전략 공유=위에서 선택한 코인 전략을 국장에도 적용."
     ),
+    # AI enrichment (ADR-0020)
+    "ai_enrichment_enabled": (
+        "시그널 발송 후 AI가 최근 뉴스 요약을 후속 메시지로 첨부합니다 (ADR-0020)."
+        " 매수·매도 판단 아님, 정보 제공 목적. Anthropic API 키 필수."
+    ),
+    "anthropic_api_key": (
+        "Anthropic Console에서 발급받은 API 키 (sk-ant-...). 비워두면 기존 값 유지."
+    ),
+    "ai_enrichment_model": (
+        "사용할 Claude 모델 ID. 기본 claude-haiku-4-5. 변경 시 비용 구조 달라짐."
+    ),
+    "ai_enrichment_daily_cap": "하루 최대 AI 보강 호출 수 (1~500). 기본 30. KST 자정 리셋.",
+    "ai_enrichment_timeout_seconds": (
+        "Anthropic API 호출 타임아웃 (초). 5~120. 기본 25. 초과 시 조용히 무시."
+    ),
 }
