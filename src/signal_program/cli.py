@@ -571,6 +571,10 @@ def backtest(
             ),
         ),
     ] = "",
+    max_hold: Annotated[
+        int,
+        typer.Option("--max-hold", help="최대 보유 봉 수 (기본 24)"),
+    ] = 24,
 ) -> None:
     """저장된 parquet 캔들로 백테스트를 실행하고 결과를 표로 출력한다."""
     import asyncio
@@ -585,7 +589,9 @@ def backtest(
 
     configure_logging(settings)
     asyncio.run(
-        _backtest_async(settings, market, from_date, to_date, mode, strategy, report_path, grid)
+        _backtest_async(
+            settings, market, from_date, to_date, mode, strategy, report_path, grid, max_hold
+        )
     )
 
 
@@ -598,6 +604,7 @@ async def _backtest_async(
     strategy_version: str = "v1",
     report_path: Path | None = None,
     grid_str: str = "",
+    max_hold: int = 24,
 ) -> None:
     from datetime import datetime as _dt
     from datetime import timedelta as _td
@@ -648,7 +655,7 @@ async def _backtest_async(
         return
 
     strategy = get_strategy(strategy_version, settings)
-    engine = BacktestEngine(strategy=strategy)
+    engine = BacktestEngine(strategy=strategy, max_holding_bars=max_hold)
     result = engine.run(market, df)
 
     console = Console()
@@ -703,6 +710,10 @@ def walkforward(
     ] = "bb_std_mult:1.5,2.0,2.5",
     strategy: Annotated[str, typer.Option("--strategy", help="전략 버전 (v1~v5)")] = "v1",
     report_html: Annotated[str, typer.Option("--report-html", help="HTML 리포트 출력 경로")] = "",
+    max_hold: Annotated[
+        int,
+        typer.Option("--max-hold", help="최대 보유 봉 수 (기본 24)"),
+    ] = 24,
 ) -> None:
     """워크포워드 파라미터 검증 실행. 학습/검증 슬라이딩 윈도우 + 그리드 서치."""
     import asyncio
@@ -727,6 +738,7 @@ def walkforward(
             grid,
             strategy,
             report_path,
+            max_hold,
         )
     )
 
@@ -741,6 +753,7 @@ async def _walkforward_async(
     grid_str: str,
     strategy_version: str = "v1",
     report_path: Path | None = None,
+    max_hold: int = 24,
 ) -> None:
     from datetime import datetime as _dt
     from datetime import timedelta as _td
@@ -761,6 +774,14 @@ async def _walkforward_async(
     # V2 전략인데 V1 기본 그리드가 그대로면 V2 기본 그리드로 자동 스왑
     _V1_DEFAULT_GRID = "bb_std_mult:1.5,2.0,2.5"
     _V2_DEFAULT_GRID = "buy_threshold:0.60,0.65,0.70;obv_weight:0.30,0.40,0.50"
+    if strategy_version == "v4" and grid_str == _V1_DEFAULT_GRID:
+        typer.echo(
+            "오류: v4 전략은 V1 기본 그리드(bb_std_mult)를 사용할 수 없습니다.\n"
+            "--grid donchian_entry_period:10,20,30,55"
+            ";donchian_exit_period:5,10,20 형식으로 지정하세요.",
+            err=True,
+        )
+        raise typer.Exit(1)
     if strategy_version == "v2" and grid_str == _V1_DEFAULT_GRID:
         grid_str = _V2_DEFAULT_GRID
         console = Console()
@@ -775,7 +796,7 @@ async def _walkforward_async(
     )  # noqa: E501
 
     base_strategy = get_strategy(strategy_version, settings)
-    base_engine = BacktestEngine(strategy=base_strategy)
+    base_engine = BacktestEngine(strategy=base_strategy, max_holding_bars=max_hold)
 
     cache_root = Path("data/candles")
     wf_engine = WalkforwardEngine(

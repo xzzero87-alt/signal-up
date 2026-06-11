@@ -713,3 +713,78 @@ def test_walkforward_engine_accepts_strategy_version_kwarg() -> None:
         base_settings=settings,
     )
     assert wf.strategy_version == "v2"
+
+
+# ── V4 Donchian 테스트 ─────────────────────────────────────────────────────────
+
+
+def test_parse_grid_donchian_fields_are_int() -> None:
+    """parse_grid가 donchian_entry_period / donchian_exit_period를 int로 파싱한다."""
+    params = parse_grid("donchian_entry_period:10,20,30;donchian_exit_period:5,10")
+    assert len(params) == 6
+    for p in params:
+        assert isinstance(p.donchian_entry_period, int)
+        assert isinstance(p.donchian_exit_period, int)
+    entry_vals = sorted({p.donchian_entry_period for p in params if p.donchian_entry_period is not None})
+    exit_vals = sorted({p.donchian_exit_period for p in params if p.donchian_exit_period is not None})
+    assert entry_vals == [10, 20, 30]
+    assert exit_vals == [5, 10]
+
+
+def test_params_to_strategy_v4_returns_donchian_strategy() -> None:
+    """v4 _params_to_strategy가 DonchianStrategy를 반환한다."""
+    from signal_program.config import Settings
+    from signal_program.strategies.donchian import DonchianStrategy
+
+    params = StrategyParams(donchian_entry_period=20, donchian_exit_period=10)
+    settings = Settings()
+    strategy = _params_to_strategy(params, strategy_version="v4", base_settings=settings)
+    assert isinstance(strategy, DonchianStrategy)
+
+
+def test_params_to_strategy_v4_applies_overrides() -> None:
+    """v4 _params_to_strategy가 donchian_entry_period / donchian_exit_period 오버라이드를 적용한다."""
+    from signal_program.config import Settings
+    from signal_program.strategies.donchian import DonchianStrategy
+
+    params = StrategyParams(donchian_entry_period=55, donchian_exit_period=20)
+    settings = Settings()
+    strategy = _params_to_strategy(params, strategy_version="v4", base_settings=settings)
+    assert isinstance(strategy, DonchianStrategy)
+    assert strategy.entry_period == 55
+    assert strategy.exit_period == 20
+
+
+# ── max_hold 배선 테스트 ──────────────────────────────────────────────────────
+
+
+def test_max_hold_propagates_to_engine() -> None:
+    """--max-hold 168 값이 WalkforwardEngine 내부 BacktestEngine의 max_holding_bars에 도달한다."""
+    from unittest.mock import patch
+
+    from signal_program.backtest.engine import BacktestEngine
+    from signal_program.backtest.walkforward import WalkforwardEngine
+    from signal_program.config import Settings
+    from signal_program.strategies.donchian import DonchianStrategy
+
+    settings = Settings()
+    strategy = DonchianStrategy()
+    engine = BacktestEngine(strategy=strategy, max_holding_bars=168)
+    wf = WalkforwardEngine(
+        backtest_engine=engine,
+        candles_cache_root=Path("data/candles"),
+        param_grid=(StrategyParams(donchian_entry_period=20, donchian_exit_period=10),),
+        strategy_version="v4",
+        base_settings=settings,
+    )
+    # _engine_factory는 template engine의 max_holding_bars를 복사해야 한다
+    assert wf.backtest_engine.max_holding_bars == 168
+
+
+def test_max_hold_default_is_24() -> None:
+    """max_holding_bars 기본값은 24로 유지된다 (기존 동작 회귀 없음)."""
+    from signal_program.backtest.engine import BacktestEngine
+    from signal_program.strategies.bb_cci import BbCciStrategy
+
+    engine = BacktestEngine(strategy=BbCciStrategy())
+    assert engine.max_holding_bars == 24

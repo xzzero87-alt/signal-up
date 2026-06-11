@@ -46,12 +46,18 @@ class WalkforwardDataError(Exception):
 
 # ── StrategyParams ────────────────────────────────────────────────────────────
 
+# parse_grid에서 int 변환이 필요한 필드 목록
+_INT_GRID_FIELDS: frozenset[str] = frozenset(
+    {"cci_threshold_normal", "donchian_entry_period", "donchian_exit_period"}
+)
+
 
 class StrategyParams(BaseModel):
     """그리드 서치 대상 파라미터. 기본값은 Settings 기본값과 일치.
 
     V1 필드: bb_std_mult, cci_threshold_normal, volume_ratio_min_a
     V2 필드: buy_threshold, obv_weight (None = base_settings 기본값, ADR-0010 §4.2)
+    V4 필드: donchian_entry_period, donchian_exit_period (None = base_settings 기본값)
     """
 
     model_config = ConfigDict(frozen=True, extra="forbid")
@@ -63,6 +69,9 @@ class StrategyParams(BaseModel):
     # V2 (ADR-0010 §4.2) — None이면 base_settings 기본값 유지
     buy_threshold: float | None = None
     obv_weight: float | None = None
+    # V4 — None이면 base_settings 기본값 유지
+    donchian_entry_period: int | None = None
+    donchian_exit_period: int | None = None
 
     @field_validator("bb_std_mult")
     @classmethod
@@ -164,6 +173,18 @@ def _params_to_strategy(
     V1: BbCciStrategy (3개 파라미터만 적용).
     V2: FourIndicatorStrategy — base_settings에 buy_threshold/obv_weight 오버라이드 적용.
     """
+    if strategy_version == "v4":
+        from signal_program.strategies import get_strategy
+
+        v4_overrides: dict[str, int] = {}
+        if params.donchian_entry_period is not None:
+            v4_overrides["donchian_entry_period"] = params.donchian_entry_period
+        if params.donchian_exit_period is not None:
+            v4_overrides["donchian_exit_period"] = params.donchian_exit_period
+
+        effective = base_settings.model_copy(update=v4_overrides) if v4_overrides else base_settings
+        return get_strategy("v4", effective)
+
     if strategy_version == "v2":
         from signal_program.strategies import get_strategy
 
@@ -322,7 +343,7 @@ def parse_grid(grid_str: str) -> tuple[StrategyParams, ...]:
     for combo in itertools.product(*value_lists):
         kwargs: dict[str, Any] = {}
         for key, val in zip(keys, combo, strict=True):
-            if key == "cci_threshold_normal":
+            if key in _INT_GRID_FIELDS:
                 kwargs[key] = int(float(val))
             else:
                 kwargs[key] = float(val)
