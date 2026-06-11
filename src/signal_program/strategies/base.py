@@ -1,11 +1,21 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     import pandas as pd
 
     from signal_program.models import Signal
+
+
+@runtime_checkable
+class SupportsExit(Protocol):
+    """선택적 보조 프로토콜 — 청산 판단을 전략에 위임 (ADR-0021).
+
+    구현 시 엔진은 BB 타깃 청산을 적용하지 않고, max_holding_bars 캡은 항상 유지.
+    """
+
+    def should_exit(self, market: str, candles: pd.DataFrame, entry_bar_idx: int) -> bool: ...
 
 
 class Strategy(Protocol):

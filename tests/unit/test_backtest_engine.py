@@ -408,3 +408,79 @@ def test_parametrize_signal_types(
     df = _make_candles_df(200)
     result = _engine(_MockStrategy(signal_dict)).run(_MARKET, df)
     assert len(result.trades) == expected_trades
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Phase 4 — SupportsExit 위임 (ADR-0021)
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class _MockExitStrategy:
+    """should_exit 구현 mock — SupportsExit 위임 경로 테스트."""
+
+    name = "mock_exit"
+
+    def __init__(
+        self,
+        signals: dict[int, list[Signal]],
+        exit_at_bars: int | None = None,
+    ) -> None:
+        self._signals = signals
+        self._exit_at = exit_at_bars  # None = 항상 False (캡에 위임)
+
+    def evaluate(self, market: str, candles: pd.DataFrame) -> list[Signal]:
+        idx = len(candles) - 1
+        return list(self._signals.get(idx, []))
+
+    def should_exit(self, market: str, candles: pd.DataFrame, entry_bar_idx: int) -> bool:
+        if self._exit_at is None:
+            return False
+        bars_held = len(candles) - 1 - entry_bar_idx
+        return bars_held >= self._exit_at
+
+
+# ── m) should_exit 조기 청산 → bars_held == k (SupportsExit 위임) ─────────────
+
+
+def test_m_should_exit_early_exit() -> None:
+    k = 5
+    df = _make_candles_df(200)
+    sig = _buy_signal(bb_middle=0.0)
+    strat = _MockExitStrategy({50: [sig]}, exit_at_bars=k)
+    result = BacktestEngine(
+        strategy=strat, fee_rate=0.0, slippage_rate=0.0, max_holding_bars=24
+    ).run(_MARKET, df)
+    assert len(result.trades) == 1
+    assert result.trades[0].bars_held == k, (
+        f"should_exit 위임 미작동: {result.trades[0].bars_held}봉 (기대 {k}봉)"
+    )
+
+
+# ── n) should_exit 항상 False → 캡(max_holding_bars) 유지 ────────────────────
+
+
+def test_n_should_exit_always_false_falls_back_to_cap() -> None:
+    df = _make_candles_df(200)
+    sig = _buy_signal(bb_middle=0.0)
+    strat = _MockExitStrategy({50: [sig]}, exit_at_bars=None)
+    result = BacktestEngine(
+        strategy=strat, fee_rate=0.0, slippage_rate=0.0, max_holding_bars=24
+    ).run(_MARKET, df)
+    assert len(result.trades) == 1
+    assert result.trades[0].bars_held == 24
+
+
+# ── o) SupportsExit 미구현 + bb_middle 유효 → 기존 BB 타깃 청산 (회귀 가드) ──
+
+
+def test_o_no_should_exit_uses_bb_target_regression() -> None:
+    df = _make_candles_df(200)
+    # signal bar 50 → entry bar 51 → 청산 bar 60 → bars_held = 60 - 50 = 10
+    bb_mid = float(df.iloc[60]["close"])
+    sig = _buy_signal(bb_middle=bb_mid)
+    strat = _MockStrategy({50: [sig]})  # should_exit 없음 → 기존 BB 타깃 경로
+    result = BacktestEngine(
+        strategy=strat, fee_rate=0.0, slippage_rate=0.0, max_holding_bars=24
+    ).run(_MARKET, df)
+    assert len(result.trades) == 1
+    assert result.trades[0].bars_held == 10

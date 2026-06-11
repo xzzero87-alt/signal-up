@@ -5,6 +5,7 @@
   - 단일 종목, 단일 방향(BUY만), 1회 1포지션
   - 청산: max_holding_bars 보유 또는 BB 중심선(entry 시점 기준) 도달 중 빠른 쪽
            (BB 중심선 도달은 bb_middle > 0인 시그널에 한함 — 비-BB 전략은 0.0으로 채움)
+           SupportsExit 구현 전략은 청산을 전략에 위임; BB 타깃 미적용, 캡 항상 유지 (ADR-0021)
   - 미청산 포지션은 마지막 봉 close로 강제 청산
 
 §6.2 비용 모델:
@@ -19,7 +20,7 @@ import 사용처:
 from __future__ import annotations
 
 from datetime import datetime  # noqa: TC003
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import pandas as pd
 
@@ -30,6 +31,7 @@ from signal_program.backtest.metrics import (
     calculate_sharpe_annualized,
 )
 from signal_program.enums import SignalDirection
+from signal_program.strategies.base import SupportsExit
 
 if TYPE_CHECKING:
     from signal_program.strategies.base import Strategy
@@ -58,6 +60,8 @@ class BacktestEngine:
         self.slippage_rate = slippage_rate
         self.max_holding_bars = max_holding_bars
         self.stop_loss_pct = stop_loss_pct
+        # 매 봉 isinstance 비용 회피 — 전략은 run() 중 교체되지 않으므로 1회 캐시
+        self._uses_strategy_exit: bool = isinstance(strategy, SupportsExit)
 
     def run(self, market: str, candles_df: pd.DataFrame) -> BacktestResult:
         """백테스트 실행. 전체 시뮬레이션 결과를 BacktestResult로 반환."""
@@ -89,10 +93,18 @@ class BacktestEngine:
                 entry: float = position["entry_price"]
                 pnl_raw = close / entry - 1.0
                 hit_sl = self.stop_loss_pct is not None and pnl_raw <= -self.stop_loss_pct
-                hit_target = bb_middle > 0 and close >= bb_middle
-                should_exit = bars_held >= self.max_holding_bars or hit_target or hit_sl
 
-                if should_exit:
+                if self._uses_strategy_exit:
+                    # SupportsExit 위임: BB 타깃 미적용, 캡은 항상 유지 (ADR-0021)
+                    hit_exit = cast("SupportsExit", self.strategy).should_exit(
+                        market, candles_df.iloc[: i + 1], position["signal_bar_idx"]
+                    )
+                    do_exit = bars_held >= self.max_holding_bars or hit_exit or hit_sl
+                else:
+                    hit_target = bb_middle > 0 and close >= bb_middle
+                    do_exit = bars_held >= self.max_holding_bars or hit_target or hit_sl
+
+                if do_exit:
                     opened_at = candles_df.iloc[i]["opened_at"]
                     trades.append(self._make_trade(position, close, opened_at, bars_held, market))
                     position = None
