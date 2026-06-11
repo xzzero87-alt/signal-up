@@ -26,6 +26,7 @@
 | [0018](0018-kr-fractal-strategy.md) | 국내 주식 시그널 전략 — Williams Fractal 기반 (`KrFractalStrategy`) | accepted | 2026-05-28 |
 | [0019](0019-planner-generator-evaluator-loop.md) | 개발 진행 구조 — Planner / Generator / Evaluator 루프 | accepted | 2026-06-08 |
 | [0020](0020-ai-signal-enrichment.md) | AI 시그널 컨텍스트 보강 — Claude API 이벤트 드리븐 호출 | proposed | 2026-06-10 |
+| [0021](0021-strategy-owned-backtest-exit.md) | 백테스트 청산 로직의 전략 위임 (SupportsExit 선택 프로토콜) | accepted | 2026-06-11 |
 
 ## 작성 규칙
 
