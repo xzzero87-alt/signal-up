@@ -164,6 +164,13 @@ class Settings(BaseSettings):
     web_port: int = 8765
     web_auth_password: str = ""
 
+    # AI 시그널 enrichment (ADR-0020)
+    ai_enrichment_enabled: bool = False
+    anthropic_api_key: str = ""
+    ai_enrichment_model: str = "claude-haiku-4-5"
+    ai_enrichment_daily_cap: int = Field(default=30, ge=1, le=500)
+    ai_enrichment_timeout_seconds: int = Field(default=25, ge=5, le=120)
+
     @field_validator("kr_whitelist_symbols", mode="before")
     @classmethod
     def _parse_kr_symbols(cls, v: object) -> list[str]:

@@ -65,3 +65,19 @@ def test_web_bind_with_password_passes(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = Settings(_env_file=None)  # type: ignore[call-arg]
     assert settings.web_bind == "0.0.0.0"
     assert settings.web_auth_password == "strong-secret"
+
+
+def test_ai_enrichment_defaults() -> None:
+    settings = Settings(_env_file=None)  # type: ignore[call-arg]
+    assert settings.ai_enrichment_enabled is False
+    assert settings.anthropic_api_key == ""
+    assert settings.ai_enrichment_model == "claude-haiku-4-5"
+    assert settings.ai_enrichment_daily_cap == 30
+    assert settings.ai_enrichment_timeout_seconds == 25
+
+
+def test_ai_enrichment_cap_bounds() -> None:
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, ai_enrichment_daily_cap=0)  # type: ignore[call-arg]
+    with pytest.raises(ValidationError):
+        Settings(_env_file=None, ai_enrichment_daily_cap=501)  # type: ignore[call-arg]
