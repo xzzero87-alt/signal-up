@@ -25,6 +25,7 @@
 | [0017](0017-v2-strategy-no-go-redesign.md) | V2 전략 D+7 NO-GO 판정 — v1 운용 유지 + V2 재설계 | accepted | 2026-05-27 |
 | [0018](0018-kr-fractal-strategy.md) | 국내 주식 시그널 전략 — Williams Fractal 기반 (`KrFractalStrategy`) | accepted | 2026-05-28 |
 | [0019](0019-planner-generator-evaluator-loop.md) | 개발 진행 구조 — Planner / Generator / Evaluator 루프 | accepted | 2026-06-08 |
+| [0020](0020-ai-signal-enrichment.md) | AI 시그널 컨텍스트 보강 — Claude API 이벤트 드리븐 호출 | proposed | 2026-06-10 |
 
 ## 작성 규칙
 

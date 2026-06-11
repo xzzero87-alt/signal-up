@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Sequence  # noqa: TC003
+from collections.abc import Awaitable, Callable, Sequence  # noqa: TC003
 from datetime import datetime, timedelta
 from pathlib import Path  # noqa: TC003
 from typing import TYPE_CHECKING, Any
@@ -22,6 +22,7 @@ from signal_program.state.signal_log import SignalLog  # noqa: TC001
 
 if TYPE_CHECKING:
     from signal_program.exchanges.base import Exchange
+    from signal_program.models import Signal
     from signal_program.notifiers.base import Notifier
     from signal_program.strategies.base import Strategy
 
@@ -69,6 +70,8 @@ class RunnerService:
         notifier: Notifier,
         signal_log: SignalLog,
         charts_dir: Path,
+        *,
+        on_signal_sent: Callable[[Signal], Awaitable[None]] | None = None,
     ) -> None:
         self._settings = settings
         self._exchange = exchange
@@ -77,6 +80,7 @@ class RunnerService:
         self._notifier = notifier
         self._signal_log = signal_log
         self._charts_dir = charts_dir
+        self._on_signal_sent = on_signal_sent
 
     async def run_one_cycle(self, now: datetime, cycle_id: str) -> CycleReport:
         """화이트리스트 전체를 Semaphore(5) 동시 처리 후 CycleReport 반환."""
@@ -118,6 +122,19 @@ class RunnerService:
 
                         if not self._settings.dry_run:
                             self._cooldown.mark_sent(key, now)
+                            if self._on_signal_sent is not None:
+                                _cb, _sig = self._on_signal_sent, signal
+
+                                async def _fire(
+                                    cb: Callable[[Signal], Awaitable[None]] = _cb,
+                                    s: Signal = _sig,
+                                ) -> None:
+                                    try:
+                                        await cb(s)
+                                    except Exception:
+                                        log.warning("on_signal_sent_error", market=s.market)
+
+                                asyncio.create_task(_fire())
 
                         await self._signal_log.append(signal, sent_status, now)
                         signals_sent += 1

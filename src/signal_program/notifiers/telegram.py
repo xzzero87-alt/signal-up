@@ -131,6 +131,11 @@ class TelegramNotifier:
         self._retry_mult = _retry_wait_multiplier
         self._failure_log = failure_log
 
+    async def send_text(self, text: str) -> None:
+        """임의 텍스트를 텔레그램으로 전송. enrichment 후속 메시지 등에 사용."""
+        url = f"{_BASE_URL}/bot{self._token.get_secret_value()}/sendMessage"
+        await self._send_with_retry(url, {"chat_id": self._chat_id, "text": text})
+
     async def send_signal(self, signal: Signal, chart_path: Path | None = None) -> None:
         """시그널 텔레그램 전송. 실패 시 예외 없이 로깅(§5.5)."""
         if self._dry_run:

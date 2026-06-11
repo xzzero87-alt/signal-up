@@ -215,6 +215,13 @@ async def _run_async(settings: Settings) -> None:
             chat_id=settings.telegram_chat_id,
             dry_run=settings.dry_run,
         )
+        on_signal_sent = None
+        if settings.ai_enrichment_enabled and settings.anthropic_api_key:
+            from signal_program.enrichment import AiEnrichmentService
+
+            enricher = AiEnrichmentService(settings, notifier.send_text)
+            on_signal_sent = enricher.enrich
+
         runner = RunnerService(
             settings=settings,
             exchange=exchange,
@@ -223,6 +230,7 @@ async def _run_async(settings: Settings) -> None:
             notifier=notifier,
             signal_log=signal_log,
             charts_dir=settings.charts_dir,
+            on_signal_sent=on_signal_sent,
         )
         import contextlib
 
@@ -382,6 +390,13 @@ async def _run_live_coro(settings: Settings) -> None:
             dry_run=settings.dry_run,
             failure_log=failure_log,
         )
+        on_signal_sent = None
+        if settings.ai_enrichment_enabled and settings.anthropic_api_key:
+            from signal_program.enrichment import AiEnrichmentService
+
+            enricher = AiEnrichmentService(settings, notifier.send_text)
+            on_signal_sent = enricher.enrich
+
         runner = RunnerService(
             settings=settings,
             exchange=exchange,
@@ -390,6 +405,7 @@ async def _run_live_coro(settings: Settings) -> None:
             notifier=notifier,
             signal_log=signal_log,
             charts_dir=settings.charts_dir,
+            on_signal_sent=on_signal_sent,
         )
 
         if settings.kr_enabled and settings.kis_app_key and settings.kis_app_secret:
