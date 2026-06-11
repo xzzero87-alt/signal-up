@@ -77,8 +77,7 @@ def backtest_page(
     settings_data = store.load()
     _kr_name = {s.code: s.name for s in KR_UNIVERSE}
     kr_options = [
-        {"code": c, "name": _kr_name.get(c, "")}
-        for c in settings_data.kr_whitelist_symbols
+        {"code": c, "name": _kr_name.get(c, "")} for c in settings_data.kr_whitelist_symbols
     ]
     html = (
         _env()
