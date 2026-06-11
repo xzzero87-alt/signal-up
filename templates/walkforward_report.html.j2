@@ -91,7 +91,7 @@
       <td class="metric-val">{{ fold.fold_index }}</td>
       <td>{{ fold.train_period_from.strftime("%Y-%m-%d") }} ~ {{ fold.train_period_to.strftime("%Y-%m-%d") }}</td>
       <td>{{ fold.validate_period_from.strftime("%Y-%m-%d") }} ~ {{ fold.validate_period_to.strftime("%Y-%m-%d") }}</td>
-      <td>bb_std={{ fold.best_params.bb_std_mult }}<br>cci={{ fold.best_params.cci_threshold_normal }}</td>
+      <td>{% if fold.best_params.donchian_entry_period is not none %}entry={{ fold.best_params.donchian_entry_period }}<br>exit={{ fold.best_params.donchian_exit_period }}{% elif fold.best_params.buy_threshold is not none %}threshold={{ fold.best_params.buy_threshold }}<br>obv={{ fold.best_params.obv_weight }}{% else %}bb_std={{ fold.best_params.bb_std_mult }}<br>cci={{ fold.best_params.cci_threshold_normal }}{% endif %}</td>
       <td class="metric-val label-insample">{{ "%.2f" % fold.train_result.sharpe_annualized }}</td>
       <td class="metric-val {% if fold.validate_result.sharpe_annualized >= 0 %}pos{% else %}neg{% endif %}">
         {{ "%.2f" % fold.validate_result.sharpe_annualized }}
