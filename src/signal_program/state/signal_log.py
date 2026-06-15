@@ -30,13 +30,22 @@ class SignalLog:
         self._lock = asyncio.Lock()
         self._path.parent.mkdir(parents=True, exist_ok=True)
 
-    async def append(self, signal: Signal, sent_status: str, sent_at: datetime) -> None:
+    async def append(
+        self,
+        signal: Signal,
+        sent_status: str,
+        sent_at: datetime,
+        *,
+        sparkline_prices: list[float] | None = None,
+    ) -> None:
         """시그널 1건 기록. 실패해도 예외 없이 structlog error만."""
-        record = {
+        record: dict[str, object] = {
             "signal": signal.model_dump(mode="json"),
             "sent_status": sent_status,
             "sent_at": sent_at.isoformat(),
         }
+        if sparkline_prices is not None:
+            record["sparkline_prices"] = sparkline_prices
         line = json.dumps(record, ensure_ascii=False) + "\n"
         async with self._lock:
             try:

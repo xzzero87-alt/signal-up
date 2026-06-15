@@ -82,6 +82,7 @@ def signal_cards(
         ts_str = triggered_at_dt.strftime("%Y%m%dT%H%M")
         chart_url = f"/api/charts/{safe_market}_{ts_str}.png"
 
+        raw_sp = record.get("sparkline_prices")
         entries.append(
             SignalCardEntry(
                 signal_id=signal_id,
@@ -94,7 +95,7 @@ def signal_cards(
                 bb_pct_b=float(indicators.get("bb_pct_b", 0.0)),
                 cci=float(indicators.get("cci", 0.0)),
                 volume_ratio=float(indicators.get("volume_ratio", 0.0)),
-                sparkline_prices=None,
+                sparkline_prices=tuple(raw_sp) if raw_sp is not None else None,
                 feedback=feedback_map.get(signal_id),
                 chart_url=chart_url,
             )

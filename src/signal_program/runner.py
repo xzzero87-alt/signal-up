@@ -136,7 +136,12 @@ class RunnerService:
 
                                 asyncio.create_task(_fire())
 
-                        await self._signal_log.append(signal, sent_status, now)
+                        await self._signal_log.append(
+                            signal,
+                            sent_status,
+                            now,
+                            sparkline_prices=df["close"].tail(14).tolist(),
+                        )
                         signals_sent += 1
 
                 except asyncio.CancelledError:

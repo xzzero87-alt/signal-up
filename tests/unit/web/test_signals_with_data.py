@@ -145,3 +145,31 @@ def test_signal_cards_returns_empty_when_no_history(client: TestClient) -> None:
     resp = client.get("/api/signals/cards")
     assert resp.status_code == 200
     assert resp.json() == []
+
+
+def test_signal_cards_sparkline_prices_mixed_records(client: TestClient) -> None:
+    """sparkline_prices 있는 레코드와 없는 레코드가 혼재해도 올바르게 변환된다."""
+    with_prices = {
+        "signal": {
+            "market": "KRW-BTC",
+            "triggered_at": "2025-01-15T14:00:00+09:00",
+            "mode": "A",
+            "direction": "buy",
+            "strength": "NORMAL",
+            "price": 85_000_000.0,
+            "indicators": {"bb_pct_b": 0.85, "cci": 120.5, "volume_ratio": 2.1},
+        },
+        "sparkline_prices": [100.0, 200.0, 300.0],
+    }
+    without_prices = _crypto_record(market="KRW-ETH")
+
+    mock_hist = MagicMock()
+    mock_hist.read_recent.return_value = [with_prices, without_prices]
+    signals_mod.set_signal_history(mock_hist)
+
+    resp = client.get("/api/signals/cards")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 2
+    assert data[0]["sparkline_prices"] == [100.0, 200.0, 300.0]
+    assert data[1]["sparkline_prices"] is None

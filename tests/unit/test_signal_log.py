@@ -91,3 +91,32 @@ async def test_file_permissions_600(tmp_path: Path) -> None:
     slog = SignalLog(path=tmp_path / "perm.jsonl")
     await slog.append(make_signal(), "ok", BASE_DT)
     assert oct(stat.S_IMODE(os.stat(tmp_path / "perm.jsonl").st_mode)) == "0o600"
+
+
+# ── sparkline_prices ──────────────────────────────────────────────────────────
+
+
+async def test_sparkline_prices_stored_when_provided(tmp_path: Path) -> None:
+    """sparkline_prices 전달 시 JSON에 해당 키가 포함된다."""
+    prices = [100.0, 200.0, 300.0]
+    slog = SignalLog(path=tmp_path / "sp.jsonl")
+    await slog.append(make_signal(), "ok", BASE_DT, sparkline_prices=prices)
+    rec = json.loads((tmp_path / "sp.jsonl").read_text())
+    assert rec["sparkline_prices"] == prices
+
+
+async def test_sparkline_prices_omitted_when_none(tmp_path: Path) -> None:
+    """sparkline_prices=None 이면 JSON 키 자체가 없다 (구 포맷 호환)."""
+    slog = SignalLog(path=tmp_path / "sp_none.jsonl")
+    await slog.append(make_signal(), "ok", BASE_DT, sparkline_prices=None)
+    rec = json.loads((tmp_path / "sp_none.jsonl").read_text())
+    assert "sparkline_prices" not in rec
+
+
+async def test_sparkline_prices_absent_by_default(tmp_path: Path) -> None:
+    """인자 없이 호출(구 포맷)해도 키가 없고, 기존 필드는 유지된다."""
+    slog = SignalLog(path=tmp_path / "old.jsonl")
+    await slog.append(make_signal(), "cooled_down", BASE_DT)
+    rec = json.loads((tmp_path / "old.jsonl").read_text())
+    assert rec["sent_status"] == "cooled_down"
+    assert "sparkline_prices" not in rec
