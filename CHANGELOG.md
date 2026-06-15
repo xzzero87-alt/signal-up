@@ -7,6 +7,9 @@
 
 ## [Unreleased]
 
+### 추가
+- **스파크라인 실데이터 배선** — `SignalLog.append`에 `sparkline_prices: list[float] | None` 파라미터 추가(None 시 키 생략으로 구 포맷 하위 호환). `runner.py` 메인 시그널 경로에서 마감봉 close 최근 14개 전달. `/api/signals/cards` 카드 빌드 루프가 `record.get("sparkline_prices")`를 읽어 `SignalCardEntry.sparkline_prices`에 주입. 대시보드 테이블 8번째 '추세' 열 추가: 신규 시그널은 방향색 `<polyline>` 인라인 SVG, 구 시그널은 점선 placeholder 유지 (코인·국장 테이블 양쪽, 펼침 행 colspan 7→8 보정)
+
 ---
 
 ## [2.4.0] — 2026-06-12

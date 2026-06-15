@@ -149,6 +149,31 @@ function buildFilterParams() {
   return p.toString();
 }
 
+// ── 스파크라인 SVG ───────────────────────────────────────────────────────────
+
+function _sparklinePlaceholder() {
+  return '<svg viewBox="0 0 100 40" style="width:56px;height:22px;display:block;margin:0 auto">' +
+    '<line x1="0" y1="20" x2="100" y2="20" stroke="var(--color-muted-2)" stroke-width="1.5" stroke-dasharray="3,3"/>' +
+    '</svg>';
+}
+
+function _sparklineSvg(prices, isBuy) {
+  const n = prices.length;
+  if (!n) return _sparklinePlaceholder();
+  const mn = Math.min(...prices);
+  const mx = Math.max(...prices);
+  const range = mx - mn || 1;
+  const pts = prices.map((p, i) => {
+    const x = n === 1 ? 50 : (i / (n - 1)) * 100;
+    const y = 37 - ((p - mn) / range) * 34;
+    return x.toFixed(1) + ',' + y.toFixed(1);
+  }).join(' ');
+  const color = isBuy ? 'var(--color-buy)' : 'var(--color-sell)';
+  return '<svg viewBox="0 0 100 40" style="width:56px;height:22px;display:block;margin:0 auto">' +
+    '<polyline points="' + pts + '" fill="none" stroke="' + color + '" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>' +
+    '</svg>';
+}
+
 // ── 테이블 렌더 ──────────────────────────────────────────────────────────────
 
 function renderTable(records, tbodyId, emptyId) {
@@ -203,6 +228,9 @@ function renderTable(records, tbodyId, emptyId) {
     tr.dataset.sigId = sigId;
     tr.tabIndex = 0;
     tr._sigData = sig;
+    const spHtml = Array.isArray(sig.sparkline_prices) && sig.sparkline_prices.length
+      ? _sparklineSvg(sig.sparkline_prices, isBuy)
+      : _sparklinePlaceholder();
     tr.innerHTML = `
       <td>${marketHtml}</td>
       <td><span class="${isBuy ? 'dir-buy' : 'dir-sell'}">${isBuy ? '▲ 매수' : '▼ 매도'}</span></td>
@@ -211,6 +239,7 @@ function renderTable(records, tbodyId, emptyId) {
       <td class="r">${chgHtml}</td>
       <td class="r"><span class="${isStrong ? 'str-strong' : 'str-normal'}">${isStrong ? '★ STRONG' : 'NORMAL'}</span></td>
       <td class="r" style="color:var(--color-muted-2);font-size:11px" title="${sig.triggered_at ?? ''}">${relTime(sig.triggered_at)}</td>
+      <td class="r">${spHtml}</td>
     `;
     tr.addEventListener('click', () => toggleDetail(tr, sig));
     tbody.appendChild(tr);
@@ -397,7 +426,7 @@ function buildDetailRow(sig) {
   const tr = document.createElement('tr');
   tr.className = 'sig-detail';
   const td = document.createElement('td');
-  td.colSpan = 7;
+  td.colSpan = 8;
 
   const fmt = (v, d = 2) => (v == null || isNaN(v)) ? '—' : Number(v).toFixed(d);
   const fb = sig.feedback ?? null;

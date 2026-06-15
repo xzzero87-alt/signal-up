@@ -65,9 +65,9 @@
 <div class="tbl-wrap">
   <table id="signal-table" {% if market=='kr' %}style="display:none"{% endif %}>
     <colgroup>
-      <col style="width:16%"><col style="width:10%"><col style="width:13%">
-      <col style="width:17%"><col style="width:11%"><col style="width:11%">
-      <col style="width:11%">
+      <col style="width:15%"><col style="width:10%"><col style="width:12%">
+      <col style="width:16%"><col style="width:10%"><col style="width:10%">
+      <col style="width:10%"><col style="width:9%">
     </colgroup>
     <thead>
       <tr>
@@ -78,6 +78,7 @@
         <th class="r" data-sort-key="change_pct" onclick="setSortKey('change_pct')">등락률</th>
         <th class="r" data-sort-key="strength" onclick="setSortKey('strength')">강도</th>
         <th class="r" data-sort-key="triggered_at" onclick="setSortKey('triggered_at')">시각</th>
+        <th class="r">추세</th>
       </tr>
     </thead>
     <tbody id="signal-tbody"></tbody>
@@ -90,9 +91,9 @@
   <!-- 국장 테이블 -->
   <table id="kr-signal-table" {% if market!='kr' %}style="display:none"{% endif %}>
     <colgroup>
-      <col style="width:16%"><col style="width:10%"><col style="width:13%">
-      <col style="width:17%"><col style="width:11%"><col style="width:11%">
-      <col style="width:11%">
+      <col style="width:15%"><col style="width:10%"><col style="width:12%">
+      <col style="width:16%"><col style="width:10%"><col style="width:10%">
+      <col style="width:10%"><col style="width:9%">
     </colgroup>
     <thead>
       <tr>
@@ -103,6 +104,7 @@
         <th class="r" data-sort-key="change_pct" onclick="setSortKey('change_pct')">등락률</th>
         <th class="r" data-sort-key="strength" onclick="setSortKey('strength')">강도</th>
         <th class="r" data-sort-key="triggered_at" onclick="setSortKey('triggered_at')">시각</th>
+        <th class="r">추세</th>
       </tr>
     </thead>
     <tbody id="kr-signal-tbody"></tbody>
