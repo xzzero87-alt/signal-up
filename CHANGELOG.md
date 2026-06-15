@@ -7,6 +7,10 @@
 
 ## [Unreleased]
 
+---
+
+## [2.4.0] — 2026-06-12
+
 ### 수정
 - **백테스트 엔진 v3/v4/v5 1봉 청산 버그 수정** — `bb_middle=0.0`(비-BB 전략)에서 `close >= 0.0`이 항상 참이 되어 모든 포지션이 1봉 만에 청산되던 결함 수정. `hit_target = bb_middle > 0 and close >= bb_middle` 가드 추가. DESIGN.md §6.1 단서 동기화
 - **settings.js `showFieldErrors` silent fail 차단** — 숨겨진 전략 패널 내부 에러 스팬에 매칭되어 `matchedCount >= 1`이 되던 결함 수정. `offsetParent === null` 조상 체크로 보이지 않는 매칭은 카운트하지 않아 글로벌 배너 폴백이 올바르게 동작
@@ -20,6 +24,9 @@
 - **`kr_strategy` backend 노출 (ADR-0018)** — `SettingsUpdate`/`SettingsView`에 `Literal["bb_cci", "fractal"]` 필드 추가. PUT/GET API 라운드트립 + 유효성 검사 + 불변 보장 테스트 4건. `help_text.py` 도움말 등록
 - **설정 페이지 국장 전략 UI + 코인 전용 표기** — 전략 섹션 제목을 "코인 전략"으로 명확화. 국장 전략 radio 서브섹션(fractal/bb_cci) 추가. `dashboard.js` `KR_STRATEGY_LABEL.bb_cci` "BB+CCI" → "코인 전략 공유" 정합화
 - **system.html dry_run err-span 추가** — `dry_run` 체크박스 옆 `<span class="field-error" id="err-dry_run">` 누락 보완 (FINDING-1)
+- **웹 백테스트 전략 V1~V5 선택 + 국장 드롭다운 한글 종목명** — 백테스트 페이지에 전략 버전 V1~V5 선택 드롭다운 추가. `pages.py`에서 `kr_options`(코드·한글명 쌍) 주입으로 국장 종목 드롭다운에 한글 종목명 표시
+- **대시보드 사용성 고도화 (P1~P4)** — 신호 테이블 정렬·필터 개선, 레이아웃 반응성 보강, 가독성·UX 고도화 포함 P1~P4 항목 반영
+- **설정 도움말 '?' 클릭 표시 + 필드 9개 보강** — 설정 페이지 각 필드 옆 '?' 아이콘 클릭 시 인라인 도움말 표시. 기존에 도움말이 누락된 9개 필드 보강. `test_settings_form_consistency.py` 가드 테스트 추가
 
 ---
 
