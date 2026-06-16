@@ -594,7 +594,15 @@ def backtest(
     configure_logging(settings)
     asyncio.run(
         _backtest_async(
-            settings, market, from_date, to_date, mode, strategy, report_path, grid, max_hold,
+            settings,
+            market,
+            from_date,
+            to_date,
+            mode,
+            strategy,
+            report_path,
+            grid,
+            max_hold,
             timeframe,
         )
     )
@@ -1026,7 +1034,6 @@ async def _fetch_candles_kr_async(
     from datetime import timedelta as _td
     from itertools import groupby
     from pathlib import Path
-    from typing import Any
     from zoneinfo import ZoneInfo
 
     from rich.progress import Progress, SpinnerColumn, TextColumn
@@ -1047,10 +1054,12 @@ async def _fetch_candles_kr_async(
 
     console = Console()
 
+    # 모의투자 서버(VTS)는 SSL 인증서 호스트명 불일치로 일봉 조회 불가.
+    # 시장 데이터는 실투 서버와 동일하므로 is_paper=False 고정.
     async with KisApiAdapter(
         app_key=app_key,
         app_secret=app_secret,
-        is_paper=is_paper,
+        is_paper=False,
     ) as adapter:
         with Progress(
             SpinnerColumn(),
