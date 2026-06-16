@@ -1054,12 +1054,11 @@ async def _fetch_candles_kr_async(
 
     console = Console()
 
-    # 모의투자 서버(VTS)는 SSL 인증서 호스트명 불일치로 일봉 조회 불가.
-    # 시장 데이터는 실투 서버와 동일하므로 is_paper=False 고정.
+    # VTS 모의투자 서버는 SSL 호스트명 불일치이므로 KisApiAdapter가 verify=False 처리 (ADR-0023).
     async with KisApiAdapter(
         app_key=app_key,
         app_secret=app_secret,
-        is_paper=False,
+        is_paper=is_paper,
     ) as adapter:
         with Progress(
             SpinnerColumn(),

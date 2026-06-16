@@ -28,7 +28,7 @@ KST = ZoneInfo("Asia/Seoul")
 UTC = UTC
 
 _REAL_BASE = "https://openapi.koreainvestment.com:9443"
-_PAPER_BASE = "https://openapivts.koreainvestment.com:9443"
+_PAPER_BASE = "https://openapivts.koreainvestment.com:29443"
 _TOKEN_PATH = "/oauth2/tokenP"
 _MINUTE_CHART_PATH = "/uapi/domestic-stock/v1/quotations/inquire-time-itemchartprice"
 _TR_ID = "FHKST03010200"
@@ -85,7 +85,8 @@ class KisApiAdapter:
         self._token_lock = asyncio.Lock()
         self._token: str = ""
         self._token_expires_at: datetime | None = None
-        self._client = httpx.AsyncClient(timeout=http_timeout)
+        # VTS 모의투자 서버는 SSL 인증서 호스트명 불일치 → verify=False (ADR-0023)
+        self._client = httpx.AsyncClient(timeout=http_timeout, verify=not is_paper)
 
     # ------------------------------------------------------------------ #
     # Protocol 구현
@@ -443,7 +444,7 @@ class KisApiAdapter:
                 extra={
                     "symbol": symbol,
                     "rt_cd": data.get("rt_cd"),
-                    "msg": data.get("msg1"),
+                    "api_msg": data.get("msg1"),
                 },
             )
             return []
