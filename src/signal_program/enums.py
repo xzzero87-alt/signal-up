@@ -4,6 +4,7 @@ from enum import StrEnum
 class Timeframe(StrEnum):
     HOUR_1 = "60"
     HOUR_2 = "120"  # 120분봉 — KIS 60분봉 2개 집계 (ADR-0016)
+    DAY = "1440"  # 일봉 — KIS inquire-daily-itemchartprice (ADR-0023)
 
 
 class KrMarket(StrEnum):

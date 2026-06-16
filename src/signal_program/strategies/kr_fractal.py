@@ -13,6 +13,7 @@ from signal_program.models import IndicatorSnapshot, Signal
 from signal_program.strategies.base import calc_change_pct
 
 _KST = ZoneInfo("Asia/Seoul")
+_20H = timedelta(hours=20)   # 일봉 판별 임계치 (주말 포함 최소 간격 20h)
 _90M = timedelta(minutes=90)
 
 
@@ -20,6 +21,8 @@ def _infer_timeframe(candles: pd.DataFrame) -> Timeframe:
     if len(candles) < 2:
         return Timeframe.HOUR_1
     delta = candles["opened_at"].iloc[-1] - candles["opened_at"].iloc[-2]
+    if delta >= _20H:
+        return Timeframe.DAY
     return Timeframe.HOUR_2 if delta >= _90M else Timeframe.HOUR_1
 
 

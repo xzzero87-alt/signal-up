@@ -27,6 +27,8 @@
 | [0019](0019-planner-generator-evaluator-loop.md) | 개발 진행 구조 — Planner / Generator / Evaluator 루프 | accepted | 2026-06-08 |
 | [0020](0020-ai-signal-enrichment.md) | AI 시그널 컨텍스트 보강 — Claude API 이벤트 드리븐 호출 | proposed | 2026-06-10 |
 | [0021](0021-strategy-owned-backtest-exit.md) | 백테스트 청산 로직의 전략 위임 (SupportsExit 선택 프로토콜) | accepted | 2026-06-11 |
+| [0022](0022-post-v24-roadmap-edge-first.md) | v2.4 이후 로드맵 — 전략 엣지 검증을 게이트로 둔 단계 배치 | proposed | 2026-06-16 |
+| [0023](0023-kr-backtest-daily-timeframe.md) | 국장 백테스트 일봉 채택 — KIS 일봉 엔드포인트 추가, 라이브 전환은 엣지 게이트 후 | accepted | 2026-06-16 |
 
 ## 작성 규칙
 

@@ -80,6 +80,18 @@ def test_infer_timeframe_single_candle_defaults_to_60m() -> None:
     assert _infer_timeframe(df).value == "60"
 
 
+def test_infer_timeframe_day() -> None:
+    """24시간 간격 캔들은 DAY(1440)로 추론된다."""
+    df = _make_candles(10, interval_hours=24)
+    assert _infer_timeframe(df).value == "1440"
+
+
+def test_infer_timeframe_day_weekend_gap() -> None:
+    """금→월 72시간 간격도 DAY로 추론된다."""
+    df = _make_candles(10, interval_hours=72)
+    assert _infer_timeframe(df).value == "1440"
+
+
 # ---------------------------------------------------------------------------
 # _find_fractals
 # ---------------------------------------------------------------------------

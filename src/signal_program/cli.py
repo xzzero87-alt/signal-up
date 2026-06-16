@@ -575,6 +575,10 @@ def backtest(
         int,
         typer.Option("--max-hold", help="최대 보유 봉 수 (기본 24)"),
     ] = 24,
+    timeframe: Annotated[
+        str,
+        typer.Option("--timeframe", help="캔들 타임프레임: 60 (1시간봉, 기본) / 1440 (일봉)"),
+    ] = "60",
 ) -> None:
     """저장된 parquet 캔들로 백테스트를 실행하고 결과를 표로 출력한다."""
     import asyncio
@@ -590,7 +594,8 @@ def backtest(
     configure_logging(settings)
     asyncio.run(
         _backtest_async(
-            settings, market, from_date, to_date, mode, strategy, report_path, grid, max_hold
+            settings, market, from_date, to_date, mode, strategy, report_path, grid, max_hold,
+            timeframe,
         )
     )
 
@@ -605,6 +610,7 @@ async def _backtest_async(
     report_path: Path | None = None,
     grid_str: str = "",
     max_hold: int = 24,
+    timeframe: str = "60",
 ) -> None:
     from datetime import datetime as _dt
     from datetime import timedelta as _td
@@ -621,12 +627,12 @@ async def _backtest_async(
     start = _dt.strptime(from_date, "%Y-%m-%d").replace(tzinfo=kst)
     end = _dt.strptime(to_date, "%Y-%m-%d").replace(tzinfo=kst) + _td(days=1)
 
-    # 월 단위 parquet 로드
+    # 월 단위 parquet 로드 (timeframe 서브디렉토리)
     all_candles = []
     cur = start.replace(day=1)
     while cur < end:
         month_str = cur.strftime("%Y-%m")
-        path = Path(f"data/candles/{market}/60/{month_str}.parquet")
+        path = Path(f"data/candles/{market}/{timeframe}/{month_str}.parquet")
         if path.exists():
             all_candles.extend(load_candles(path))
         cur = (cur + _td(days=32)).replace(day=1)
@@ -975,6 +981,110 @@ def fetch_candles(
     import asyncio
 
     asyncio.run(_fetch_candles_async(market, from_date, to_date or None))
+
+
+@app.command(name="fetch-candles-kr")
+def fetch_candles_kr(
+    market: Annotated[str, typer.Option("--market", "-m", help="종목코드 (예: 005930)")],
+    from_date: Annotated[str, typer.Option("--from", help="시작일 (YYYY-MM-DD)")],
+    to_date: Annotated[str, typer.Option("--to", help="종료일 (YYYY-MM-DD, 기본: 오늘)")] = "",
+) -> None:
+    """KIS에서 국내 주식 일봉(수정주가)을 다운로드해 data/candles/{market}/1440/ 에 저장한다."""
+    import asyncio
+
+    try:
+        settings = Settings()
+    except SystemExit as exc:
+        typer.echo(f"설정 오류: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    if not settings.kis_app_key or not settings.kis_app_secret:
+        typer.echo("KIS_APP_KEY / KIS_APP_SECRET 미설정. .env를 확인하세요.", err=True)
+        raise typer.Exit(1)
+
+    asyncio.run(
+        _fetch_candles_kr_async(
+            market,
+            from_date,
+            to_date or None,
+            settings.kis_app_key,
+            settings.kis_app_secret,
+            settings.kis_is_paper,
+        )
+    )
+
+
+async def _fetch_candles_kr_async(
+    market: str,
+    from_date: str,
+    to_date: str | None,
+    app_key: str,
+    app_secret: str,
+    is_paper: bool,
+) -> None:
+    from datetime import datetime as _dt
+    from datetime import timedelta as _td
+    from itertools import groupby
+    from pathlib import Path
+    from typing import Any
+    from zoneinfo import ZoneInfo
+
+    from rich.progress import Progress, SpinnerColumn, TextColumn
+
+    from signal_program.backtest.candles_io import save_candles
+    from signal_program.enums import Timeframe
+    from signal_program.exchanges.kis_api import KisApiAdapter
+
+    kst = ZoneInfo("Asia/Seoul")
+    start = _dt.strptime(from_date, "%Y-%m-%d").replace(tzinfo=kst)
+    end = (
+        _dt.strptime(to_date, "%Y-%m-%d").replace(tzinfo=kst) + _td(days=1)
+        if to_date
+        else _dt.now(tz=kst)
+    )
+    # 요청 캔들 수 = 기간 달력일 + 여유 (영업일은 절반 이하이므로 충분)
+    count = int((end - start).total_seconds() / 86400) + 30
+
+    console = Console()
+
+    async with KisApiAdapter(
+        app_key=app_key,
+        app_secret=app_secret,
+        is_paper=is_paper,
+    ) as adapter:
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task(f"Fetching {market} (일봉)...", total=None)
+            all_candles = await adapter.fetch_candles(
+                market,
+                Timeframe.DAY,
+                count=count,
+                to=end,
+            )
+            progress.update(task, description=f"{market}: {len(all_candles)}봉 수신")
+
+    candles = [c for c in all_candles if start <= c.opened_at < end]
+    candles.sort(key=lambda c: c.opened_at)
+
+    def _month_key(c: Any) -> str:
+        result: str = c.opened_at.strftime("%Y-%m")
+        return result
+
+    saved_total = 0
+    for month_str, group in groupby(candles, key=_month_key):
+        month_list = list(group)
+        path = Path(f"data/candles/{market}/1440/{month_str}.parquet")
+        save_candles(month_list, path)
+        console.print(f"  saved {len(month_list):>4} candles → {path}")
+        saved_total += len(month_list)
+
+    end_label = to_date or "오늘"
+    console.print(
+        f"\n[green]완료[/green] {market}: 총 {saved_total:,}일봉 저장 ({from_date} ~ {end_label})"
+    )
 
 
 async def _fetch_candles_async(market: str, from_date: str, to_date: str | None) -> None:

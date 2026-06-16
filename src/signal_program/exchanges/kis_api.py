@@ -1,10 +1,12 @@
-"""KIS Open API (한국투자증권) 어댑터 — HOUR_1 (60분봉) + HOUR_2 (120분봉 집계).
+"""KIS Open API (한국투자증권) 어댑터 — HOUR_1/HOUR_2 분봉 + DAY 일봉.
 
-ADR-0016: https://github.com/… (로컬 docs/adr/0016-kis-api-korean-stock-datasource.md)
+ADR-0016: docs/adr/0016-kis-api-korean-stock-datasource.md
+ADR-0023: docs/adr/0023-kr-backtest-daily-timeframe.md
 
 인증: OAuth2 액세스 토큰 (24h TTL), 만료 10분 전 자동 재발급.
 Rate limit: asyncio.Semaphore(5) — KIS 초당 20건 제한 대응.
 HOUR_2: KIS 미지원 → 60분봉 2개씩 페어링 후 집계 (_resample_to_120m).
+DAY: FHKST03010100 (inquire-daily-itemchartprice) + 수정주가(FID_ORG_ADJ_PRC=0).
 """
 
 from __future__ import annotations
@@ -34,6 +36,13 @@ _MKT_DIV_CODE = "J"  # 주식 시장 구분 코드 (코스피/코스닥 공통)
 _MAX_CANDLES_PER_CALL = 30  # KIS API 단일 호출 최대 반환 캔들 수
 _MAX_PAGINATION_CALLS = 5  # 최대 페이지네이션 횟수 (5 × 30 = 150 candles)
 _TOKEN_REFRESH_MARGIN = timedelta(minutes=10)  # 만료 N분 전 선제 재발급
+
+# 일봉 (ADR-0023)
+_DAILY_CHART_PATH = "/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice"
+_DAILY_TR_ID = "FHKST03010100"
+_MAX_DAILY_PER_CALL = 100  # 단일 호출 최대 반환 영업일 수
+_MAX_DAILY_PAGINATION_CALLS = 20  # 20 × ~130영업일 ≈ 2600일 ≈ 10년
+_DAILY_WINDOW_DAYS = 180  # 호출당 달력 기준 조회 기간 (약 130 영업일)
 
 
 class KoreanStockExchange(Protocol):
@@ -97,21 +106,23 @@ class KisApiAdapter:
         count: int,
         to: datetime | None = None,
     ) -> list[Candle]:
-        """60분봉 또는 120분봉 캔들을 반환한다.
+        """분봉 또는 일봉 캔들을 반환한다.
 
-        HOUR_2(120분봉)는 KIS 미지원이므로 60분봉 2배를 가져와 집계한다.
+        HOUR_2(120분봉)는 KIS 미지원 → 60분봉 2배 수집 후 집계.
+        DAY(일봉)는 FHKST03010100으로 수정주가 기준 수집 (ADR-0023).
 
         Args:
             symbol: 종목코드 (예: "005930")
-            timeframe: HOUR_1(60분) 또는 HOUR_2(120분)
+            timeframe: HOUR_1 / HOUR_2 / DAY
             count: 필요한 캔들 수
             to: 이 시각 이전 캔들을 반환 (None이면 현재 시각)
 
         Returns:
             oldest → newest 정렬된 Candle 목록 (count개 이하)
         """
+        if timeframe == Timeframe.DAY:
+            return await self._fetch_daily_candles(symbol, count=count, to=to)
         if timeframe == Timeframe.HOUR_2:
-            # 120분봉: 60분봉을 2배 수집 후 집계
             raw = await self._fetch_60m_candles(symbol, count=count * 2, to=to)
             return self._resample_to_120m(raw, target_count=count)
         return await self._fetch_60m_candles(symbol, count=count, to=to)
@@ -319,6 +330,163 @@ class KisApiAdapter:
             except (ValueError, KeyError) as exc:
                 logger.warning(
                     "kis_candle_parse_error",
+                    extra={"symbol": symbol, "item": item, "error": str(exc)},
+                )
+
+        return candles
+
+    # ------------------------------------------------------------------ #
+    # 일봉 수집 (ADR-0023)
+    # ------------------------------------------------------------------ #
+
+    async def _fetch_daily_candles(
+        self,
+        symbol: str,
+        count: int,
+        to: datetime | None = None,
+    ) -> list[Candle]:
+        """KIS API에서 일봉(수정주가)을 페이지네이션으로 수집한다.
+
+        호출당 ~180달력일 윈도우를 소급하며 최대 _MAX_DAILY_PAGINATION_CALLS 회 반복.
+
+        Args:
+            symbol: 종목코드
+            count: 목표 영업일 수
+            to: 이 날짜 이전 데이터 요청 (None이면 현재 KST)
+
+        Returns:
+            oldest → newest 정렬, 중복 제거된 Candle 목록 (count개 이하)
+        """
+        cursor: datetime = (to or datetime.now(tz=KST)).astimezone(KST)
+        accumulated: list[Candle] = []
+
+        async with self._semaphore:
+            token = await self._ensure_token()
+
+            for _ in range(_MAX_DAILY_PAGINATION_CALLS):
+                from_date = cursor - timedelta(days=_DAILY_WINDOW_DAYS)
+                batch = await self._call_daily_chart(symbol, from_date, cursor, token)
+                if not batch:
+                    break
+
+                accumulated.extend(batch)
+
+                if len(accumulated) >= count:
+                    break
+
+                oldest = min(batch, key=lambda c: c.opened_at)
+                cursor = oldest.opened_at - timedelta(days=1)
+
+        accumulated.sort(key=lambda c: c.opened_at)
+        seen_times: set[datetime] = set()
+        deduped: list[Candle] = []
+        for candle in accumulated:
+            if candle.opened_at not in seen_times:
+                seen_times.add(candle.opened_at)
+                deduped.append(candle)
+
+        return deduped[-count:]
+
+    async def _call_daily_chart(
+        self,
+        symbol: str,
+        from_date: datetime,
+        to_date: datetime,
+        token: str,
+    ) -> list[Candle]:
+        """KIS 일봉 차트 단일 호출 → Candle 목록 반환.
+
+        Args:
+            symbol: 종목코드
+            from_date: 조회 시작일 (KST)
+            to_date: 조회 종료일 (KST)
+            token: 유효한 액세스 토큰
+
+        Returns:
+            Candle 목록. API 오류 시 빈 리스트.
+        """
+        params = {
+            "FID_COND_MRKT_DIV_CODE": _MKT_DIV_CODE,
+            "FID_INPUT_ISCD": symbol,
+            "FID_INPUT_DATE_1": from_date.strftime("%Y%m%d"),
+            "FID_INPUT_DATE_2": to_date.strftime("%Y%m%d"),
+            "FID_PERIOD_DIV_CODE": "D",
+            "FID_ORG_ADJ_PRC": "0",  # 수정주가
+        }
+        headers = {
+            "authorization": f"Bearer {token}",
+            "appkey": self._app_key,
+            "appsecret": self._app_secret,
+            "tr_id": _DAILY_TR_ID,
+            "custtype": "P",
+        }
+
+        try:
+            resp = await self._client.get(
+                f"{self._base_url}{_DAILY_CHART_PATH}",
+                params=params,
+                headers=headers,
+            )
+            resp.raise_for_status()
+        except (httpx.HTTPStatusError, httpx.RequestError) as exc:
+            logger.warning(
+                "kis_daily_chart_request_failed",
+                extra={"symbol": symbol, "error": str(exc)},
+            )
+            return []
+
+        data = resp.json()
+
+        if data.get("rt_cd") != "0":
+            logger.warning(
+                "kis_daily_chart_api_error",
+                extra={
+                    "symbol": symbol,
+                    "rt_cd": data.get("rt_cd"),
+                    "msg": data.get("msg1"),
+                },
+            )
+            return []
+
+        output2: list[dict[str, Any]] = data.get("output2") or []
+        return self._parse_daily_candles(symbol, output2)
+
+    @staticmethod
+    def _parse_daily_candles(symbol: str, output2: list[dict[str, Any]]) -> list[Candle]:
+        """KIS 일봉 output2 항목을 Candle 목록으로 변환한다.
+
+        일봉 close 필드는 stck_clpr (intraday stck_prpr와 다름).
+        opened_at은 영업일 자정 KST.
+        잘못된 항목은 WARNING 후 건너뛴다.
+        """
+        candles: list[Candle] = []
+        for item in output2:
+            try:
+                date_str = item.get("stck_bsop_date", "")  # "YYYYMMDD"
+                if len(date_str) != 8:
+                    continue
+
+                opened_at = datetime(
+                    int(date_str[:4]),
+                    int(date_str[4:6]),
+                    int(date_str[6:8]),
+                    tzinfo=KST,
+                )
+                candles.append(
+                    Candle(
+                        market=symbol,
+                        opened_at=opened_at,
+                        open=float(item["stck_oprc"]),
+                        high=float(item["stck_hgpr"]),
+                        low=float(item["stck_lwpr"]),
+                        close=float(item["stck_clpr"]),
+                        volume=float(item["acml_vol"]),
+                        quote_volume=float(item["acml_tr_pbmn"]),
+                    )
+                )
+            except (ValueError, KeyError) as exc:
+                logger.warning(
+                    "kis_daily_candle_parse_error",
                     extra={"symbol": symbol, "item": item, "error": str(exc)},
                 )
 

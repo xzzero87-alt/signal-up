@@ -410,8 +410,121 @@ class TestNewEnums:
     def test_hour1_unchanged(self) -> None:
         assert Timeframe.HOUR_1 == "60"
 
+    def test_day_value(self) -> None:
+        assert Timeframe.DAY == "1440"
+
     def test_kr_market_values(self) -> None:
         from signal_program.enums import KrMarket
 
         assert KrMarket.KOSPI == "KOSPI"
         assert KrMarket.KOSDAQ == "KOSDAQ"
+
+
+# ------------------------------------------------------------------ #
+# _parse_daily_candles — 순수 함수 테스트 (ADR-0023)
+# ------------------------------------------------------------------ #
+
+
+class TestParseDailyCandles:
+    def _make_daily_item(
+        self,
+        date: str = "20260526",
+        oprc: str = "70000",
+        hgpr: str = "71000",
+        lwpr: str = "69000",
+        clpr: str = "70500",
+        vol: str = "500000",
+        pbmn: str = "35000000000",
+    ) -> dict:
+        return {
+            "stck_bsop_date": date,
+            "stck_oprc": oprc,
+            "stck_hgpr": hgpr,
+            "stck_lwpr": lwpr,
+            "stck_clpr": clpr,
+            "acml_vol": vol,
+            "acml_tr_pbmn": pbmn,
+        }
+
+    def test_valid_item_parsed_correctly(self) -> None:
+        item = self._make_daily_item()
+        candles = KisApiAdapter._parse_daily_candles("005930", [item])
+
+        assert len(candles) == 1
+        c = candles[0]
+        assert c.market == "005930"
+        assert c.opened_at == datetime(2026, 5, 26, 0, 0, 0, tzinfo=KST)
+        assert c.open == 70000.0
+        assert c.high == 71000.0
+        assert c.low == 69000.0
+        assert c.close == 70500.0
+        assert c.volume == 500000.0
+        assert c.quote_volume == 35_000_000_000.0
+
+    def test_empty_date_skipped(self) -> None:
+        item = self._make_daily_item(date="")
+        candles = KisApiAdapter._parse_daily_candles("005930", [item])
+        assert candles == []
+
+    def test_short_date_skipped(self) -> None:
+        item = self._make_daily_item(date="2026052")  # 7자리
+        candles = KisApiAdapter._parse_daily_candles("005930", [item])
+        assert candles == []
+
+    def test_invalid_number_skipped(self) -> None:
+        item = self._make_daily_item(clpr="INVALID")
+        candles = KisApiAdapter._parse_daily_candles("005930", [item])
+        assert candles == []
+
+    def test_multiple_items(self) -> None:
+        items = [
+            self._make_daily_item(date="20260526"),
+            self._make_daily_item(date="20260527"),
+        ]
+        candles = KisApiAdapter._parse_daily_candles("005930", items)
+        assert len(candles) == 2
+
+    def test_timezone_is_kst(self) -> None:
+        item = self._make_daily_item()
+        candles = KisApiAdapter._parse_daily_candles("005930", [item])
+        assert candles[0].opened_at.tzinfo == KST
+
+    def test_no_time_component(self) -> None:
+        """일봉 opened_at은 자정(00:00:00) KST."""
+        item = self._make_daily_item(date="20260101")
+        candles = KisApiAdapter._parse_daily_candles("005930", [item])
+        assert candles[0].opened_at.hour == 0
+        assert candles[0].opened_at.minute == 0
+        assert candles[0].opened_at.second == 0
+
+
+# ------------------------------------------------------------------ #
+# fetch_candles(DAY) — 일봉 경로 (ADR-0023)
+# ------------------------------------------------------------------ #
+
+
+class TestFetchCandlesDay:
+    async def test_day_calls_fetch_daily_candles(self) -> None:
+        adapter = _make_adapter()
+
+        base = datetime(2026, 1, 2, tzinfo=KST)
+        mock_daily = [_make_candle("005930", base + timedelta(days=d)) for d in range(3)]
+
+        with patch.object(
+            adapter, "_fetch_daily_candles", new=AsyncMock(return_value=mock_daily)
+        ) as mock_fetch:
+            result = await adapter.fetch_candles("005930", Timeframe.DAY, count=3)
+
+        mock_fetch.assert_called_once_with("005930", count=3, to=None)
+        assert len(result) == 3
+
+    async def test_day_passes_to_parameter(self) -> None:
+        adapter = _make_adapter()
+        to_dt = datetime(2026, 6, 1, tzinfo=KST)
+
+        with patch.object(
+            adapter, "_fetch_daily_candles", new=AsyncMock(return_value=[])
+        ) as mock_fetch:
+            await adapter.fetch_candles("005930", Timeframe.DAY, count=10, to=to_dt)
+
+        mock_fetch.assert_called_once_with("005930", count=10, to=to_dt)
