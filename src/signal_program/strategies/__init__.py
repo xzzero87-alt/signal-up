@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from signal_program.strategies.bb_cci import BbCciStrategy
 from signal_program.strategies.donchian import DonchianStrategy
 from signal_program.strategies.fractal import FractalStrategy
+from signal_program.strategies.kr_fractal import KrFractalStrategy
 from signal_program.strategies.rsi2 import Rsi2Strategy
 from signal_program.strategies.v2_4indicator import FourIndicatorStrategy
 
@@ -65,6 +66,15 @@ def _build_rsi2(settings: Settings) -> Rsi2Strategy:
     )
 
 
+def _build_kr_fractal(settings: Settings) -> KrFractalStrategy:
+    """Settings → KrFractalStrategy (국장 일봉 백테스트용, ADR-0023)."""
+    return KrFractalStrategy(
+        fractal_lookback=settings.fractal_lookback,
+        fractal_volume_threshold=settings.fractal_volume_threshold,
+        fractal_volume_strong=settings.fractal_volume_strong,
+    )
+
+
 #: 전략 버전 → 팩토리 매핑 (ADR-0010 §4 / 전략 확장 v2.3)
 STRATEGY_CATALOG: dict[str, Callable[[Settings], Strategy]] = {
     "v1": _build_v1,
@@ -72,6 +82,7 @@ STRATEGY_CATALOG: dict[str, Callable[[Settings], Strategy]] = {
     "v3": _build_fractal,
     "v4": _build_donchian,
     "v5": _build_rsi2,
+    "kr_fractal": _build_kr_fractal,
 }
 
 
