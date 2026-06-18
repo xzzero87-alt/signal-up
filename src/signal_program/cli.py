@@ -232,10 +232,56 @@ async def _run_async(settings: Settings) -> None:
             charts_dir=settings.charts_dir,
             on_signal_sent=on_signal_sent,
         )
-        import contextlib
+        if settings.kr_enabled and settings.kis_app_key and settings.kis_app_secret:
+            from signal_program.exchanges.kis_api import KisApiAdapter
+            from signal_program.kr_runner import KrStockRunnerService
 
-        with contextlib.suppress(asyncio.CancelledError):
-            await runner.run_forever()
+            if settings.kr_strategy == "bb_cci":
+                from signal_program.strategies import get_strategy
+
+                kr_strategy = get_strategy("v1", settings)
+            else:
+                from signal_program.strategies.kr_fractal import KrFractalStrategy
+
+                kr_strategy = KrFractalStrategy(
+                    fractal_lookback=settings.fractal_lookback,
+                    fractal_volume_threshold=settings.fractal_volume_threshold,
+                    fractal_volume_strong=settings.fractal_volume_strong,
+                )
+
+            async with KisApiAdapter(
+                app_key=settings.kis_app_key,
+                app_secret=settings.kis_app_secret,
+                is_paper=settings.kis_is_paper,
+            ) as kr_exchange:
+                kr_runner = KrStockRunnerService(
+                    settings=settings,
+                    exchange=kr_exchange,
+                    strategy=kr_strategy,
+                    notifier=notifier,
+                    signal_log=signal_log,
+                    cooldown_60m=CooldownStore(
+                        path=Path("state/kr_cooldown_60m.json"),
+                        cooldown=timedelta(hours=settings.kr_cooldown_hours_60m),
+                    ),
+                    cooldown_120m=CooldownStore(
+                        path=Path("state/kr_cooldown_120m.json"),
+                        cooldown=timedelta(hours=settings.kr_cooldown_hours_120m),
+                    ),
+                    cooldown_day=CooldownStore(
+                        path=Path("state/kr_cooldown_day.json"),
+                        cooldown=timedelta(hours=settings.kr_cooldown_hours_day),
+                    ),
+                    charts_dir=settings.charts_dir,
+                )
+                async with asyncio.TaskGroup() as tg:
+                    tg.create_task(runner.run_forever())
+                    tg.create_task(kr_runner.run_forever())
+        else:
+            import contextlib
+
+            with contextlib.suppress(asyncio.CancelledError):
+                await runner.run_forever()
 
 
 @app.command()
