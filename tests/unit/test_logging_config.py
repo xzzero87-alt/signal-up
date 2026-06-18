@@ -8,8 +8,8 @@ import sys
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from pathlib import Path
     from collections.abc import MutableMapping
+    from pathlib import Path
 
 import structlog
 

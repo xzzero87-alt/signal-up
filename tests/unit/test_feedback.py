@@ -10,13 +10,13 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from signal_program.web.api.feedback import router
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path

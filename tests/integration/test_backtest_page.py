@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import time
+from typing import TYPE_CHECKING
 
 import pytest
 from fastapi.testclient import TestClient
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -180,7 +180,7 @@ def test_get_job_report_serves_html_file_for_succeeded_job(client: TestClient) -
         json={"market": "KRW-BTC", "period_from": "2025-01-01", "period_to": "2025-02-01"},
     )
     job_id = resp.json()["job_id"]
-    for _ in range(40):
+    for _ in range(100):  # 풀스위트 CPU 경합 시 워커 지연 여유 (flaky 방지). 성공 시 즉시 break
         time.sleep(0.1)
         r = client.get(f"/api/backtest/jobs/{job_id}")
         if r.json().get("status") == "succeeded":

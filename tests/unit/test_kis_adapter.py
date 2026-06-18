@@ -9,7 +9,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 from zoneinfo import ZoneInfo
 
@@ -20,7 +20,7 @@ from signal_program.exchanges.kis_api import KisApiAdapter
 from signal_program.models import Candle
 
 KST = ZoneInfo("Asia/Seoul")
-UTC = timezone.utc
+UTC = UTC
 
 pytestmark = pytest.mark.anyio
 
@@ -247,6 +247,11 @@ class TestParseCandles:
 
 
 class TestEnsureToken:
+    @pytest.fixture(autouse=True)
+    def _no_disk_cache(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(KisApiAdapter, "_load_cached_token", lambda self, now: None)
+        monkeypatch.setattr(KisApiAdapter, "_save_cached_token", lambda self, tok, exp: None)
+
     async def test_issues_new_token_when_empty(self) -> None:
         adapter = _make_adapter()
 
@@ -306,6 +311,98 @@ class TestEnsureToken:
 
         assert token == "fresh_token"
         mock_post.assert_not_called()
+
+
+# ------------------------------------------------------------------ #
+# 토큰 디스크 캐시 — _load/_save/_cache_key 검증
+# ------------------------------------------------------------------ #
+
+
+class TestTokenDiskCache:
+    def _make_adapter_with_cache(self, tmp_path, is_paper: bool = True) -> KisApiAdapter:
+        return KisApiAdapter(
+            app_key="test_key",
+            app_secret="test_secret",
+            is_paper=is_paper,
+            token_cache_path=tmp_path / "kis_token.json",
+        )
+
+    async def test_new_token_saved_to_disk(self, tmp_path) -> None:
+        import json as _json
+
+        adapter = self._make_adapter_with_cache(tmp_path)
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json.return_value = {"access_token": "disk_tok", "expires_in": 86400}
+        with patch.object(adapter._client, "post", new=AsyncMock(return_value=mock_resp)):
+            await adapter._ensure_token()
+
+        assert adapter._token_cache_path.exists()
+        d = _json.loads(adapter._token_cache_path.read_text(encoding="utf-8"))
+        assert d["access_token"] == "disk_tok"
+        assert "expires_at" in d
+        assert d["key"] == adapter._token_cache_key()
+
+    async def test_valid_disk_cache_skips_post(self, tmp_path) -> None:
+        adapter = self._make_adapter_with_cache(tmp_path)
+        exp = datetime.now(tz=UTC) + timedelta(hours=23)
+        adapter._save_cached_token("cached_tok", exp)
+
+        with patch.object(adapter._client, "post", new=AsyncMock()) as mock_post:
+            token = await adapter._ensure_token()
+
+        assert token == "cached_tok"
+        mock_post.assert_not_called()
+
+    async def test_expired_disk_cache_triggers_post(self, tmp_path) -> None:
+        adapter = self._make_adapter_with_cache(tmp_path)
+        # 5분 후 만료 → TOKEN_REFRESH_MARGIN(10분) 이내 → 캐시 무효
+        exp = datetime.now(tz=UTC) + timedelta(minutes=5)
+        adapter._save_cached_token("stale_tok", exp)
+
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json.return_value = {"access_token": "fresh_tok", "expires_in": 86400}
+        with patch.object(adapter._client, "post", new=AsyncMock(return_value=mock_resp)):
+            token = await adapter._ensure_token()
+
+        assert token == "fresh_tok"
+
+    async def test_wrong_key_disk_cache_ignored(self, tmp_path) -> None:
+        import json as _json
+
+        adapter = self._make_adapter_with_cache(tmp_path)
+        exp = datetime.now(tz=UTC) + timedelta(hours=23)
+        cache_file = tmp_path / "kis_token.json"
+        cache_file.write_text(
+            _json.dumps(
+                {"key": "deadbeef00000000", "access_token": "other", "expires_at": exp.isoformat()}
+            ),
+            encoding="utf-8",
+        )
+
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json.return_value = {"access_token": "new_tok", "expires_in": 86400}
+        with patch.object(adapter._client, "post", new=AsyncMock(return_value=mock_resp)):
+            token = await adapter._ensure_token()
+
+        assert token == "new_tok"
+
+    def test_cache_key_differs_by_mode(self, tmp_path) -> None:
+        paper = self._make_adapter_with_cache(tmp_path, is_paper=True)
+        real = KisApiAdapter(
+            app_key="test_key",
+            app_secret="test_secret",
+            is_paper=False,
+            token_cache_path=tmp_path / "kis_token.json",
+        )
+        assert paper._token_cache_key() != real._token_cache_key()
+
+    def test_cache_key_differs_by_app_key(self, tmp_path) -> None:
+        a1 = KisApiAdapter(app_key="key_A", app_secret="s", token_cache_path=tmp_path / "t.json")
+        a2 = KisApiAdapter(app_key="key_B", app_secret="s", token_cache_path=tmp_path / "t.json")
+        assert a1._token_cache_key() != a2._token_cache_key()
 
 
 # ------------------------------------------------------------------ #

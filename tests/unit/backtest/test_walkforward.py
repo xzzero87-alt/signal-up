@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import pytest
 from dateutil.relativedelta import relativedelta
+from pydantic import ValidationError
 
 from signal_program.backtest.metrics import BacktestResult, TradeRecord
 from signal_program.backtest.walkforward import (
@@ -243,7 +244,7 @@ def test_out_of_sample_combined_sharpe_uses_validate_window() -> None:
     trades = tuple(_make_trade(val_from + timedelta(days=i * 3), 0.005) for i in range(10))
     oos = _build_result(trades, val_from, val_to)
     assert isinstance(oos.sharpe_annualized, float)
-    assert not (oos.sharpe_annualized != oos.sharpe_annualized)  # not NaN
+    assert oos.sharpe_annualized == oos.sharpe_annualized  # not NaN
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -402,9 +403,9 @@ def test_walkforward_html_is_self_contained() -> None:
 # Phase 3 — Hypothesis property + 결정성 회귀
 # ══════════════════════════════════════════════════════════════════════════════
 
-from hypothesis import given
-from hypothesis import settings as h_settings
-from hypothesis import strategies as st
+from hypothesis import given  # noqa: E402
+from hypothesis import settings as h_settings  # noqa: E402
+from hypothesis import strategies as st  # noqa: E402
 
 
 @given(
@@ -436,7 +437,7 @@ def test_hypothesis_generate_folds_train_to_equals_validate_from(
     except WalkforwardDataError:
         return  # 기간 부족 — 정상
 
-    for train_from, train_to, validate_from, validate_to in folds:
+    for _train_from, train_to, validate_from, _validate_to in folds:
         # 핵심 불변: train_to == validate_from (구간 연속성)
         assert train_to == validate_from, f"Gap: train_to={train_to}, validate_from={validate_from}"
 
@@ -447,17 +448,17 @@ def test_hypothesis_generate_folds_train_to_equals_validate_from(
 
 
 def test_strategy_params_invalid_bb_std_mult() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         StrategyParams(bb_std_mult=-1.0)
 
 
 def test_strategy_params_invalid_cci_threshold() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         StrategyParams(cci_threshold_normal=-50)
 
 
 def test_strategy_params_invalid_volume_ratio() -> None:
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         StrategyParams(volume_ratio_min_a=0.0)
 
 
@@ -615,7 +616,7 @@ def test_walkforward_engine_run_end_to_end(tmp_path: pytest.TempPathFactory) -> 
     )
 
     assert len(result.folds) >= 1
-    for fold in result.folds:
+    for _fold in result.folds:
         # train 기간 내 거래만 있는지 확인 (OOS leakage 없음)
         for trade in result.out_of_sample_combined.trades:
             assert trade.entry_at >= result.folds[0].validate_period_from
@@ -725,8 +726,12 @@ def test_parse_grid_donchian_fields_are_int() -> None:
     for p in params:
         assert isinstance(p.donchian_entry_period, int)
         assert isinstance(p.donchian_exit_period, int)
-    entry_vals = sorted({p.donchian_entry_period for p in params if p.donchian_entry_period is not None})
-    exit_vals = sorted({p.donchian_exit_period for p in params if p.donchian_exit_period is not None})
+    entry_vals = sorted(
+        {p.donchian_entry_period for p in params if p.donchian_entry_period is not None}
+    )
+    exit_vals = sorted(
+        {p.donchian_exit_period for p in params if p.donchian_exit_period is not None}
+    )
     assert entry_vals == [10, 20, 30]
     assert exit_vals == [5, 10]
 
@@ -743,7 +748,7 @@ def test_params_to_strategy_v4_returns_donchian_strategy() -> None:
 
 
 def test_params_to_strategy_v4_applies_overrides() -> None:
-    """v4 _params_to_strategy가 donchian_entry_period / donchian_exit_period 오버라이드를 적용한다."""
+    """v4 _params_to_strategy가 donchian_entry_period / donchian_exit_period 오버라이드를 적용한다."""  # noqa: E501
     from signal_program.config import Settings
     from signal_program.strategies.donchian import DonchianStrategy
 
@@ -760,7 +765,6 @@ def test_params_to_strategy_v4_applies_overrides() -> None:
 
 def test_max_hold_propagates_to_engine() -> None:
     """--max-hold 168 값이 WalkforwardEngine 내부 BacktestEngine의 max_holding_bars에 도달한다."""
-    from unittest.mock import patch
 
     from signal_program.backtest.engine import BacktestEngine
     from signal_program.backtest.walkforward import WalkforwardEngine

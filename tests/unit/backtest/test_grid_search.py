@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 from zoneinfo import ZoneInfo
 
@@ -16,7 +17,6 @@ import pytest
 
 from signal_program.backtest.metrics import BacktestResult
 from signal_program.backtest.walkforward import parse_grid
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path

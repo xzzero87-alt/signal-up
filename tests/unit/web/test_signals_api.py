@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 
 import pytest
 from fastapi import FastAPI
@@ -13,7 +14,6 @@ from fastapi.testclient import TestClient
 import signal_program.state.signal_feedback as fb_module
 from signal_program.state.signal_feedback import save_feedback
 from signal_program.web.api.signals import router
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path

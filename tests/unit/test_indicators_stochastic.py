@@ -13,7 +13,6 @@ from datetime import datetime, timedelta, timezone
 
 import numpy as np
 import pandas as pd
-import pytest
 
 from signal_program.indicators.stochastic import compute_stochastic_slow
 
@@ -36,12 +35,12 @@ def make_candles(
             "opened_at": base + timedelta(hours=i),
             "open": c,
             "high": h,
-            "low": l,
+            "low": lo,
             "close": c,
             "volume": 1.0,
             "quote_volume": c,
         }
-        for i, (c, h, l) in enumerate(zip(closes, highs, lows))
+        for i, (c, h, lo) in enumerate(zip(closes, highs, lows, strict=False))
     ]
     return pd.DataFrame(rows)
 

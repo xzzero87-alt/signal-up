@@ -17,6 +17,7 @@ def _sell(mode: str, ind: dict | None = None) -> dict:
 
 # ── V1A MEAN_REVERSION ────────────────────────────────────────────────────────
 
+
 def test_v1a_buy_summary_contains_buy() -> None:
     r = explain("id", _buy("A"), {"bb_pct_b": -0.05, "cci": -120.0, "volume_ratio": 1.5}, 70)
     assert "매수" in r.summary
@@ -58,6 +59,7 @@ def test_v1a_returns_3_reasons() -> None:
 
 # ── V1B SQUEEZE_BREAKOUT ──────────────────────────────────────────────────────
 
+
 def test_v1b_buy_vol_pass_when_above_1_5() -> None:
     r = explain("id", _buy("B"), {"bb_pct_b": 1.05, "cci": 120.0, "volume_ratio": 1.6}, 70)
     vol = next(x for x in r.reasons if "거래량" in x.label)
@@ -71,6 +73,7 @@ def test_v1b_buy_vol_warn_when_below_1_5() -> None:
 
 
 # ── V2 WEIGHTED_SCORE ─────────────────────────────────────────────────────────
+
 
 def test_v2_buy_contains_score_threshold() -> None:
     r = explain("id", _buy("C"), {"weighted_score": 0.72}, 65)
@@ -91,6 +94,7 @@ def test_v2_score_warn_when_below_threshold() -> None:
 
 # ── V3 FRACTAL_BREAKOUT ───────────────────────────────────────────────────────
 
+
 def test_v3_buy_summary_contains_fractal() -> None:
     r = explain("id", _buy("D"), {"volume_ratio": 1.5, "fractal_age": 10}, 60)
     assert "프랙탈" in r.summary or "Fractal" in r.summary
@@ -110,6 +114,7 @@ def test_v3_age_warn_when_above_20() -> None:
 
 # ── V4 DONCHIAN_BREAKOUT ──────────────────────────────────────────────────────
 
+
 def test_v4_buy_summary_contains_donchian() -> None:
     r = explain("id", _buy("E"), {"volume_ratio": 1.8, "dc_upper": 50000.0}, 65)
     assert "Donchian" in r.summary
@@ -122,6 +127,7 @@ def test_v4_vol_pass_when_above_1_5() -> None:
 
 
 # ── V5 RSI2_REVERSION ────────────────────────────────────────────────────────
+
 
 def test_v5_buy_rsi_pass_when_below_10() -> None:
     r = explain("id", _buy("F"), {"rsi2": 5.0, "volume_ratio": 1.0}, 55)
@@ -142,6 +148,7 @@ def test_v5_sell_rsi_pass_when_above_90() -> None:
 
 
 # ── 공통 ──────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.parametrize("mode", ["A", "B", "C", "D", "E", "F"])
 def test_advisory_in_all_warnings(mode: str) -> None:

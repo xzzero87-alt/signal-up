@@ -418,9 +418,11 @@ async def test_sendphoto_caption_truncated(signal: Signal, tmp_path: Path) -> No
     tr = make_transport(200, _OK_BODY)
     notifier = make_notifier(tr)
 
-    with patch("signal_program.notifiers.telegram.format_message", return_value=long_text):
-        with structlog.testing.capture_logs() as cap:
-            await notifier.send_signal(signal, chart_path=chart)
+    with (
+        patch("signal_program.notifiers.telegram.format_message", return_value=long_text),
+        structlog.testing.capture_logs() as cap,
+    ):
+        await notifier.send_signal(signal, chart_path=chart)
 
     assert len(tr.requests) == 1
     body = tr.requests[0].content

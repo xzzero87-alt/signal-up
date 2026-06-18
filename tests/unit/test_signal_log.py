@@ -66,7 +66,7 @@ async def test_concurrent_appends_no_loss(tmp_path: Path) -> None:
     await asyncio.gather(*[slog.append(make_signal(m), "ok", BASE_DT) for m in markets])
     lines = path.read_text(encoding="utf-8").strip().split("\n")
     assert len(lines) == 10
-    assert {json.loads(l)["signal"]["market"] for l in lines} == set(markets)
+    assert {json.loads(ln)["signal"]["market"] for ln in lines} == set(markets)
 
 
 async def test_parent_dir_auto_created(tmp_path: Path) -> None:

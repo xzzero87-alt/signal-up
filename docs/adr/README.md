@@ -23,12 +23,13 @@
 | [0015](0015-korean-stock-market-support.md) | 국내 주식(KOSPI/KOSDAQ) 시장 지원 추가 | accepted | 2026-05-21 |
 | [0016](0016-kis-api-korean-stock-datasource.md) | KIS Open API (한국투자증권) 국내 주식 데이터 소스 채택 | accepted | 2026-05-21 |
 | [0017](0017-v2-strategy-no-go-redesign.md) | V2 전략 D+7 NO-GO 판정 — v1 운용 유지 + V2 재설계 | accepted | 2026-05-27 |
-| [0018](0018-kr-fractal-strategy.md) | 국내 주식 시그널 전략 — Williams Fractal 기반 (`KrFractalStrategy`) | accepted | 2026-05-28 |
+| [0018](0018-kr-fractal-strategy.md) | 국내 주식 시그널 전략 — Williams Fractal 기반 (`KrFractalStrategy`) | superseded by ADR-0024 | 2026-05-28 |
 | [0019](0019-planner-generator-evaluator-loop.md) | 개발 진행 구조 — Planner / Generator / Evaluator 루프 | accepted | 2026-06-08 |
 | [0020](0020-ai-signal-enrichment.md) | AI 시그널 컨텍스트 보강 — Claude API 이벤트 드리븐 호출 | proposed | 2026-06-10 |
 | [0021](0021-strategy-owned-backtest-exit.md) | 백테스트 청산 로직의 전략 위임 (SupportsExit 선택 프로토콜) | accepted | 2026-06-11 |
-| [0022](0022-post-v24-roadmap-edge-first.md) | v2.4 이후 로드맵 — 전략 엣지 검증을 게이트로 둔 단계 배치 | proposed | 2026-06-16 |
+| [0022](0022-post-v24-roadmap-edge-first.md) | v2.4 이후 로드맵 — 전략 엣지 검증을 게이트로 둔 단계 배치 | accepted | 2026-06-16 |
 | [0023](0023-kr-backtest-daily-timeframe.md) | 국장 백테스트 일봉 채택 — KIS 일봉 엔드포인트 추가, 라이브 전환은 엣지 게이트 후 | accepted | 2026-06-16 |
+| [0024](0024-kr-daily-mean-reversion-redesign.md) | 국장 일봉 전략 — fractal breakout NO-GO, BB+CCI 평균회귀(v1) 채택 | accepted | 2026-06-17 |
 
 ## 작성 규칙
 

@@ -12,8 +12,11 @@ DAY: FHKST03010100 (inquire-daily-itemchartprice) + 수정주가(FID_ORG_ADJ_PRC
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import logging
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any, Protocol
 from zoneinfo import ZoneInfo
 
@@ -43,6 +46,8 @@ _DAILY_TR_ID = "FHKST03010100"
 _MAX_DAILY_PER_CALL = 100  # 단일 호출 최대 반환 영업일 수
 _MAX_DAILY_PAGINATION_CALLS = 20  # 20 × ~130영업일 ≈ 2600일 ≈ 10년
 _DAILY_WINDOW_DAYS = 180  # 호출당 달력 기준 조회 기간 (약 130 영업일)
+
+_TOKEN_CACHE_PATH = Path("state/kis_token.json")
 
 
 class KoreanStockExchange(Protocol):
@@ -77,6 +82,7 @@ class KisApiAdapter:
         is_paper: bool = True,
         semaphore_count: int = 5,
         http_timeout: float = 30.0,
+        token_cache_path: Path | None = None,
     ) -> None:
         self._app_key = app_key
         self._app_secret = app_secret
@@ -85,6 +91,7 @@ class KisApiAdapter:
         self._token_lock = asyncio.Lock()
         self._token: str = ""
         self._token_expires_at: datetime | None = None
+        self._token_cache_path = token_cache_path or _TOKEN_CACHE_PATH
         # VTS 모의투자 서버는 SSL 인증서 호스트명 불일치 → verify=False (ADR-0023)
         self._client = httpx.AsyncClient(timeout=http_timeout, verify=not is_paper)
 
@@ -147,6 +154,12 @@ class KisApiAdapter:
             ):
                 return self._token
 
+            cached = self._load_cached_token(now)
+            if cached is not None:
+                self._token, self._token_expires_at = cached
+                logger.info("kis_token_loaded_from_cache")
+                return self._token
+
             try:
                 resp = await self._client.post(
                     f"{self._base_url}{_TOKEN_PATH}",
@@ -161,12 +174,43 @@ class KisApiAdapter:
                 self._token = data["access_token"]
                 expires_in: int = int(data.get("expires_in", 86400))
                 self._token_expires_at = now + timedelta(seconds=expires_in)
+                self._save_cached_token(self._token, self._token_expires_at)
                 logger.info("kis_token_issued", extra={"expires_in_seconds": expires_in})
             except (httpx.HTTPStatusError, httpx.RequestError, KeyError) as exc:
                 logger.error("kis_token_refresh_failed", extra={"error": str(exc)})
                 raise
 
             return self._token
+
+    def _token_cache_key(self) -> str:
+        mode = "paper" if self._base_url == _PAPER_BASE else "real"
+        raw = f"{mode}:{self._app_key}"
+        return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+    def _load_cached_token(self, now: datetime) -> tuple[str, datetime] | None:
+        try:
+            d = json.loads(self._token_cache_path.read_text(encoding="utf-8"))
+        except (FileNotFoundError, ValueError, OSError):
+            return None
+        if d.get("key") != self._token_cache_key():
+            return None
+        exp = datetime.fromisoformat(d["expires_at"])
+        if now >= exp - _TOKEN_REFRESH_MARGIN:
+            return None
+        return d["access_token"], exp
+
+    def _save_cached_token(self, token: str, expires_at: datetime) -> None:
+        self._token_cache_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = self._token_cache_path.with_suffix(".json.tmp")
+        payload = json.dumps(
+            {
+                "key": self._token_cache_key(),
+                "access_token": token,
+                "expires_at": expires_at.isoformat(),
+            }
+        )
+        tmp.write_text(payload, encoding="utf-8")
+        tmp.replace(self._token_cache_path)
 
     # ------------------------------------------------------------------ #
     # 60분봉 수집 (페이지네이션)

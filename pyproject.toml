@@ -94,7 +94,6 @@ markers = [
 source = ["src"]
 branch = true
 omit = ["src/signal_program/cli.py"]
-concurrency = ["multiprocessing", "thread"]
 
 [tool.coverage.report]
 fail_under = 90

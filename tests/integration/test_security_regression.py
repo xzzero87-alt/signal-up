@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import base64
+from typing import TYPE_CHECKING
 
 import pytest
 from fastapi.testclient import TestClient
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path

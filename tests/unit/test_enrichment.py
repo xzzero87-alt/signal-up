@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 import pytest
@@ -23,7 +23,7 @@ def _make_signal() -> Signal:
         direction=SignalDirection.BUY,
         strength=SignalStrength.STRONG,
         price=50_000_000.0,
-        triggered_at=datetime.now(timezone.utc),
+        triggered_at=datetime.now(UTC),
         indicators=IndicatorSnapshot(
             bb_upper=52_000_000.0,
             bb_middle=50_000_000.0,
@@ -67,6 +67,7 @@ def _error_transport(status: int) -> httpx.MockTransport:
 
 # ── 정상 응답 ─────────────────────────────────────────────────────────────────
 
+
 async def test_enrich_ok_calls_notify() -> None:
     from signal_program.enrichment import AiEnrichmentService
 
@@ -87,6 +88,7 @@ async def test_enrich_ok_calls_notify() -> None:
 
 # ── API 오류 격리 ──────────────────────────────────────────────────────────────
 
+
 async def test_enrich_api_500_no_raise() -> None:
     from signal_program.enrichment import AiEnrichmentService
 
@@ -103,6 +105,7 @@ async def test_enrich_api_500_no_raise() -> None:
 
 
 # ── 타임아웃 격리 ──────────────────────────────────────────────────────────────
+
 
 async def test_enrich_timeout_no_raise() -> None:
     from signal_program.enrichment import AiEnrichmentService
@@ -123,6 +126,7 @@ async def test_enrich_timeout_no_raise() -> None:
 
 
 # ── 일일 cap ──────────────────────────────────────────────────────────────────
+
 
 async def test_enrich_cap_no_http_call() -> None:
     from datetime import date
@@ -178,6 +182,7 @@ async def test_enrich_cap_resets_after_midnight() -> None:
 
 
 # ── 보안: API 키 로그 미노출 ──────────────────────────────────────────────────
+
 
 async def test_api_key_not_in_log() -> None:
     from signal_program.enrichment import AiEnrichmentService

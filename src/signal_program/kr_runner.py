@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import TYPE_CHECKING
 from uuid import uuid4
 from zoneinfo import ZoneInfo
@@ -36,7 +36,15 @@ _MARKET_CLOSE = time(15, 30)
 # HOUR_2 대상 시간대: 짝수 시, 10~14시 (10, 12, 14시 봉 마감 후)
 _HOUR_2_ELIGIBLE = frozenset({10, 12, 14})
 
+# 일봉 모드: 장 마감(15:30) 후 첫 정각(16시)에 하루 1회 평가 (ADR-0024)
+_DAILY_EVAL_HOUR = 16
+
 _KR_RUNNER_SEMAPHORE_COUNT = 3  # KIS 자체 세마포어가 있으므로 업비트보다 낮게
+
+
+def _should_run_daily(now: datetime, last_date: date | None) -> bool:
+    """일봉 평가 시점 판정: 평일 & 마감 후(16시~) & 당일 미실행 (ADR-0024)."""
+    return now.weekday() < 5 and now.hour >= _DAILY_EVAL_HOUR and last_date != now.date()
 
 
 def _is_market_open(now: datetime) -> bool:
@@ -91,6 +99,7 @@ class KrStockRunnerService:
         signal_log: SignalLog,
         cooldown_60m: CooldownStore,
         cooldown_120m: CooldownStore,
+        cooldown_day: CooldownStore,
         charts_dir: Path,
     ) -> None:
         self._settings = settings
@@ -100,6 +109,8 @@ class KrStockRunnerService:
         self._signal_log = signal_log
         self._cooldown_60m = cooldown_60m
         self._cooldown_120m = cooldown_120m
+        self._cooldown_day = cooldown_day
+        self._last_daily_date: date | None = None
         self._charts_dir = charts_dir
         self._semaphore = asyncio.Semaphore(_KR_RUNNER_SEMAPHORE_COUNT)
 
@@ -225,7 +236,12 @@ class KrStockRunnerService:
             스캔 결과 요약 KrCycleReport.
         """
         started_at = now
-        cooldown = self._cooldown_60m if timeframe == Timeframe.HOUR_1 else self._cooldown_120m
+        if timeframe == Timeframe.HOUR_1:
+            cooldown = self._cooldown_60m
+        elif timeframe == Timeframe.HOUR_2:
+            cooldown = self._cooldown_120m
+        else:  # Timeframe.DAY
+            cooldown = self._cooldown_day
 
         symbols = list(self._settings.kr_whitelist_symbols)
         if not symbols:
@@ -297,12 +313,15 @@ class KrStockRunnerService:
         return report
 
     async def run_forever(self) -> None:
-        """시장 개장 시간대에 매 정각마다 스캔 사이클을 실행한다.
+        """국장 스캔 루프. kr_timeframe에 따라 일봉/장중 스케줄로 분기한다.
 
         스케줄:
-        - HOUR_1 (60분봉): 시장 개장 시 매 정각 실행
-        - HOUR_2 (120분봉): 짝수 정각(10, 12, 14시)에 추가 실행
+        - daily(기본): 평일 장 마감 후 16시에 하루 1회 DAY 평가 (ADR-0024)
+        - intraday(하위호환): HOUR_1 매 정각 + HOUR_2 짝수 정각(10, 12, 14시)
         """
+        if self._settings.kr_timeframe == "daily":
+            await self._run_daily_forever()
+            return
         log.info("kr_runner_started")
         while True:
             now = datetime.now(_KST)
@@ -323,18 +342,9 @@ class KrStockRunnerService:
 
             # HOUR_1: 시장 개장 시 매 정각
             try:
-                await asyncio.wait_for(
-                    self.run_one_cycle(now, cycle_id, Timeframe.HOUR_1),
-                    timeout=float(self._settings.cycle_timeout_seconds),
-                )
+                await self.run_one_cycle(now, cycle_id, Timeframe.HOUR_1)
             except asyncio.CancelledError:
                 raise
-            except TimeoutError:
-                log.error(
-                    "kr_cycle_timeout",
-                    cycle_id=cycle_id,
-                    timeframe=Timeframe.HOUR_1.value,
-                )
             except Exception:
                 log.exception(
                     "kr_cycle_failed",
@@ -346,18 +356,9 @@ class KrStockRunnerService:
             if kst_hour in _HOUR_2_ELIGIBLE:
                 cycle_id_2 = uuid4().hex[:12]
                 try:
-                    await asyncio.wait_for(
-                        self.run_one_cycle(now, cycle_id_2, Timeframe.HOUR_2),
-                        timeout=float(self._settings.cycle_timeout_seconds),
-                    )
+                    await self.run_one_cycle(now, cycle_id_2, Timeframe.HOUR_2)
                 except asyncio.CancelledError:
                     raise
-                except TimeoutError:
-                    log.error(
-                        "kr_cycle_timeout",
-                        cycle_id=cycle_id_2,
-                        timeframe=Timeframe.HOUR_2.value,
-                    )
                 except Exception:
                     log.exception(
                         "kr_cycle_failed",
@@ -365,4 +366,32 @@ class KrStockRunnerService:
                         timeframe=Timeframe.HOUR_2.value,
                     )
 
-            await asyncio.sleep(0)
+    async def _run_daily_forever(self) -> None:
+        """일봉 모드 루프: 평일 16시 이후 하루 1회 DAY 타임프레임 평가 (ADR-0024)."""
+        log.info("kr_runner_started", mode="daily")
+        while True:
+            now = datetime.now(_KST)
+            if _should_run_daily(now, self._last_daily_date):
+                cycle_id = uuid4().hex[:12]
+                try:
+                    await asyncio.wait_for(
+                        self.run_one_cycle(now, cycle_id, Timeframe.DAY),
+                        timeout=float(self._settings.cycle_timeout_seconds),
+                    )
+                except asyncio.CancelledError:
+                    raise
+                except TimeoutError:
+                    log.error(
+                        "kr_cycle_timeout",
+                        cycle_id=cycle_id,
+                        timeframe=Timeframe.DAY.value,
+                    )
+                except Exception:
+                    log.exception(
+                        "kr_cycle_failed",
+                        cycle_id=cycle_id,
+                        timeframe=Timeframe.DAY.value,
+                    )
+                finally:
+                    self._last_daily_date = now.date()
+            await asyncio.sleep(60)

@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timedelta
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 from zoneinfo import ZoneInfo
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 import pytest
 

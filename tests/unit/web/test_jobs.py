@@ -5,9 +5,9 @@ from __future__ import annotations
 import asyncio
 import time
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 import pytest
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -90,7 +90,7 @@ async def test_worker_processes_queue_in_order(tmp_path: Path) -> None:
     manager = _make_manager(tmp_path, executor=tracking_executor)
     await manager.start()
     try:
-        r_a = await manager.submit(_make_spec(market="KRW-BTC"))
+        await manager.submit(_make_spec(market="KRW-BTC"))
         r_b = await manager.submit(_make_spec(market="KRW-ETH"))
         await _wait_for_status(manager, r_b.job_id, "succeeded", "failed")
         assert len(order) >= 2
@@ -116,7 +116,7 @@ async def test_concurrent_jobs_limited_to_one(tmp_path: Path) -> None:
     manager = _make_manager(tmp_path, executor=slow_executor)
     await manager.start()
     try:
-        r1 = await manager.submit(_make_spec(market="KRW-BTC"))
+        await manager.submit(_make_spec(market="KRW-BTC"))
         r2 = await manager.submit(_make_spec(market="KRW-ETH"))
         await _wait_for_status(manager, r2.job_id, "succeeded", "failed")
         assert max_observed <= 1

@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import pytest
 
 from signal_program.web.runner_handle import RunnerHandle, RunnerStateError
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pathlib import Path

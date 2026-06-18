@@ -151,7 +151,7 @@ def test_should_exit_true_when_below_channel_low() -> None:
     # exit_period=3: window = candles[-4:-1] → lows [90,90,90], min=90
     # current close = 80 < 90 → True
     strat = DonchianStrategy(donchian_exit_period=3)
-    lows   = [90.0, 90.0, 90.0, 90.0, 70.0]
+    lows = [90.0, 90.0, 90.0, 90.0, 70.0]
     closes = [95.0, 95.0, 95.0, 95.0, 80.0]
     assert strat.should_exit("KRW-BTC", _exit_candles(lows, closes), 0) is True
 
@@ -159,7 +159,7 @@ def test_should_exit_true_when_below_channel_low() -> None:
 def test_should_exit_false_when_above_channel_low() -> None:
     # same window min=90, current close=95 >= 90 → False
     strat = DonchianStrategy(donchian_exit_period=3)
-    lows   = [90.0, 90.0, 90.0, 90.0, 70.0]
+    lows = [90.0, 90.0, 90.0, 90.0, 70.0]
     closes = [95.0, 95.0, 95.0, 95.0, 95.0]
     assert strat.should_exit("KRW-BTC", _exit_candles(lows, closes), 0) is False
 
@@ -167,7 +167,7 @@ def test_should_exit_false_when_above_channel_low() -> None:
 def test_should_exit_false_when_insufficient_bars() -> None:
     # exit_period=3: need ≥4 bars; 3 bars → False
     strat = DonchianStrategy(donchian_exit_period=3)
-    lows   = [90.0, 90.0, 90.0]
+    lows = [90.0, 90.0, 90.0]
     closes = [80.0, 80.0, 80.0]
     assert strat.should_exit("KRW-BTC", _exit_candles(lows, closes), 0) is False
 

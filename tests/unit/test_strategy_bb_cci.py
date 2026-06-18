@@ -38,7 +38,7 @@ def make_candles(
             "volume": v,
             "quote_volume": c * v,
         }
-        for i, (c, v) in enumerate(zip(closes, volumes))
+        for i, (c, v) in enumerate(zip(closes, volumes, strict=False))
     ]
     return pd.DataFrame(rows)
 

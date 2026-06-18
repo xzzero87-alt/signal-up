@@ -14,7 +14,6 @@ from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from zoneinfo import ZoneInfo
 
-import pytest
 from typer.testing import CliRunner
 
 from signal_program.cli import app

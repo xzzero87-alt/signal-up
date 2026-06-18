@@ -33,7 +33,7 @@ def test_serve_async_accepts_web_auth_password_parameter() -> None:
 
     sig = inspect.signature(cli._serve_async)
     assert "web_auth_password" in sig.parameters, (
-        "_serve_async에 web_auth_password 파라미터 없음 — settings.json 비번이 create_app에 전달 안 됨"
+        "_serve_async에 web_auth_password 파라미터 없음 — settings.json 비번이 create_app에 전달 안 됨"  # noqa: E501
     )
 
 

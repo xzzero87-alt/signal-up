@@ -262,9 +262,7 @@ async def test_h_semaphore_limits_concurrency(mock_snap: MagicMock, tmp_path: Pa
 
 
 @patch("signal_program.runner.generate_snapshot")
-async def test_open_candle_excluded_from_evaluation(
-    mock_snap: MagicMock, tmp_path: Path
-) -> None:
+async def test_open_candle_excluded_from_evaluation(mock_snap: MagicMock, tmp_path: Path) -> None:
     """러너는 미마감(진행중) 봉을 제외하고 전략을 평가해야 한다 (도메인 규칙: 봉 마감 기준)."""
     strategy = MagicMock(evaluate=MagicMock(return_value=[]))
     runner = make_runner(tmp_path, strategy=strategy)

@@ -413,7 +413,12 @@ async def _run_live_coro(settings: Settings) -> None:
             from signal_program.kr_runner import KrStockRunnerService
 
             kr_strategy: Strategy
-            if settings.kr_strategy == "fractal":
+            if settings.kr_strategy == "bb_cci":
+                from signal_program.strategies import get_strategy
+
+                # KR 전용 v1 평균회귀 (ADR-0024) — 코인 strategy_version과 독립
+                kr_strategy = get_strategy("v1", settings)
+            else:  # "fractal" — 하위호환(intraday 전용)
                 from signal_program.strategies.kr_fractal import KrFractalStrategy
 
                 kr_strategy = KrFractalStrategy(
@@ -421,8 +426,6 @@ async def _run_live_coro(settings: Settings) -> None:
                     fractal_volume_threshold=settings.fractal_volume_threshold,
                     fractal_volume_strong=settings.fractal_volume_strong,
                 )
-            else:
-                kr_strategy = strategy
 
             async with KisApiAdapter(
                 app_key=settings.kis_app_key,
@@ -442,6 +445,10 @@ async def _run_live_coro(settings: Settings) -> None:
                     cooldown_120m=CooldownStore(
                         path=Path("state/kr_cooldown_120m.json"),
                         cooldown=timedelta(hours=settings.kr_cooldown_hours_120m),
+                    ),
+                    cooldown_day=CooldownStore(
+                        path=Path("state/kr_cooldown_day.json"),
+                        cooldown=timedelta(hours=settings.kr_cooldown_hours_day),
                     ),
                     charts_dir=settings.charts_dir,
                 )

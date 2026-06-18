@@ -1,8 +1,10 @@
 # ADR-0018: 국내 주식 시그널 전략 — Williams Fractal 기반 (`KrFractalStrategy`)
 
 **Date**: 2026-05-28
-**Status**: accepted
+**Status**: superseded by [ADR-0024](0024-kr-daily-mean-reversion-redesign.md)
 **Deciders**: 프로젝트 오너
+
+> **Superseded (2026-06-17)**: 국장 일봉 게이트(ADR-0022)에서 `KrFractalStrategy`가 엣지 미입증(NO-GO) → 국장 라이브가 일봉 v1(BB+CCI 평균회귀)로 전환됨([ADR-0024](0024-kr-daily-mean-reversion-redesign.md)). 본 문서는 이력 보존용.
 
 ## Context
 

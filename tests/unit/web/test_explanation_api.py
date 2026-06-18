@@ -54,7 +54,8 @@ def _record(
             "direction": direction,
             "strength": strength,
             "price": 85_000_000.0,
-            "indicators": indicators or {
+            "indicators": indicators
+            or {
                 "bb_pct_b": -0.05,
                 "cci": -120.0,
                 "volume_ratio": 1.5,
@@ -69,6 +70,7 @@ def _url(signal_id: str) -> str:
 
 # ── 404 ───────────────────────────────────────────────────────────────────────
 
+
 def test_404_when_no_history(client) -> None:  # type: ignore[no-untyped-def]
     signals_mod._signal_history = None
     assert client.get(_url(_SIGNAL_ID)).status_code == 404
@@ -80,6 +82,7 @@ def test_404_when_signal_not_found(client) -> None:  # type: ignore[no-untyped-d
 
 
 # ── 200 ───────────────────────────────────────────────────────────────────────
+
 
 def test_200_when_signal_found(client) -> None:  # type: ignore[no-untyped-def]
     signals_mod._signal_history = _mock_history([_record()])

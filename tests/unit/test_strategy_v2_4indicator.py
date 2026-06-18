@@ -76,12 +76,12 @@ def make_candles(
             "opened_at": base + timedelta(hours=i),
             "open": c,
             "high": h,
-            "low": l,
+            "low": lo,
             "close": c,
             "volume": v,
             "quote_volume": c * v,
         }
-        for i, (c, h, l, v) in enumerate(zip(closes, highs, lows, volumes))
+        for i, (c, h, lo, v) in enumerate(zip(closes, highs, lows, volumes, strict=False))
     ]
     return pd.DataFrame(rows)
 

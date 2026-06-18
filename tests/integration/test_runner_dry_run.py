@@ -93,7 +93,7 @@ async def test_dry_run_one_cycle_logs_signal(mock_snap: MagicMock, tmp_path: Pat
     await runner.run_one_cycle(NOW, "integration01")
 
     assert settings.signals_log_path.exists()
-    lines = [l for l in settings.signals_log_path.read_text().strip().split("\n") if l]
+    lines = [ln for ln in settings.signals_log_path.read_text().strip().split("\n") if ln]
     assert len(lines) >= 1
     rec = json.loads(lines[0])
     assert rec["sent_status"] == "dry_run"

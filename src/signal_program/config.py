@@ -138,9 +138,12 @@ class Settings(BaseSettings):
     kr_whitelist_symbols: list[str] = []
     kr_cooldown_hours_60m: int = 2
     kr_cooldown_hours_120m: int = 4
+    kr_cooldown_hours_day: int = 20  # 일봉 모드: 종목당 하루 1신호 (ADR-0024)
 
-    # KR 전략 선택 (ADR-0018) — fractal_* 는 암호화폐 V3(FractalStrategy)도 공유
-    kr_strategy: Literal["bb_cci", "fractal"] = "fractal"
+    # KR 전략 선택 (ADR-0018/0024) — fractal_* 는 암호화폐 V3(FractalStrategy)도 공유
+    # kr_timeframe="daily"(기본): 일봉 v1(BB+CCI) 평균회귀. "intraday": 구 60/120분봉(하위호환)
+    kr_timeframe: Literal["intraday", "daily"] = "daily"
+    kr_strategy: Literal["bb_cci", "fractal"] = "bb_cci"
     fractal_lookback: int = Field(default=100, ge=2, le=500)
     fractal_volume_threshold: float = Field(default=1.2, ge=0.0, le=100.0)
     fractal_volume_strong: float = Field(default=2.0, ge=0.0, le=100.0)

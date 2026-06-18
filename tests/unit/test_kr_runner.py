@@ -11,13 +11,13 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 from zoneinfo import ZoneInfo
 
-import pandas as pd
 import pytest
+from pydantic import ValidationError
 
 from signal_program.enums import SignalDirection, SignalStrength, StrategyMode, Timeframe
 from signal_program.kr_runner import (
@@ -25,11 +25,12 @@ from signal_program.kr_runner import (
     KrStockRunnerService,
     _is_market_open,
     _next_hour_top,
+    _should_run_daily,
 )
 from signal_program.models import Candle, IndicatorSnapshot, Signal
 
 KST = ZoneInfo("Asia/Seoul")
-UTC = timezone.utc
+UTC = UTC
 
 pytestmark = pytest.mark.anyio
 
@@ -97,6 +98,7 @@ def _make_runner(
     notifier: MagicMock | None = None,
     cooldown_60m: MagicMock | None = None,
     cooldown_120m: MagicMock | None = None,
+    cooldown_day: MagicMock | None = None,
     settings: MagicMock | None = None,
 ) -> KrStockRunnerService:
     if exchange is None:
@@ -117,6 +119,10 @@ def _make_runner(
         cooldown_120m = MagicMock()
         cooldown_120m.is_cooled_down = MagicMock(return_value=True)
         cooldown_120m.mark_sent = MagicMock()
+    if cooldown_day is None:
+        cooldown_day = MagicMock()
+        cooldown_day.is_cooled_down = MagicMock(return_value=True)
+        cooldown_day.mark_sent = MagicMock()
     if settings is None:
         settings = _make_settings()
 
@@ -131,6 +137,7 @@ def _make_runner(
         signal_log=signal_log,
         cooldown_60m=cooldown_60m,
         cooldown_120m=cooldown_120m,
+        cooldown_day=cooldown_day,
         charts_dir=Path("/tmp/charts"),
     )
 
@@ -242,7 +249,7 @@ class TestKrCycleReport:
             signals_sent=1,
             failures=(),
         )
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             report.signals_sent = 99  # type: ignore[misc]
 
     def test_failures_is_tuple(self) -> None:
@@ -711,3 +718,69 @@ class TestChartIntegration:
 
         notifier.send_signal.assert_called_once_with(signal, None)
         assert report.signals_sent == 1
+
+
+# ------------------------------------------------------------------ #
+# 일봉 모드 (ADR-0024)
+# ------------------------------------------------------------------ #
+
+
+class TestShouldRunDaily:
+    """일봉 평가 시점 판정 (_should_run_daily)."""
+
+    def test_weekday_after_close_fires(self) -> None:
+        assert _should_run_daily(_kst(2026, 6, 16, 16, 0), None) is True  # 화 16시
+
+    def test_weekday_before_close_no(self) -> None:
+        assert _should_run_daily(_kst(2026, 6, 16, 14, 0), None) is False
+
+    def test_weekend_no(self) -> None:
+        assert _should_run_daily(_kst(2026, 6, 20, 16, 0), None) is False  # 토요일
+
+    def test_already_ran_today_no(self) -> None:
+        assert _should_run_daily(_kst(2026, 6, 16, 17, 0), date(2026, 6, 16)) is False
+
+    def test_ran_yesterday_fires(self) -> None:
+        assert _should_run_daily(_kst(2026, 6, 16, 16, 0), date(2026, 6, 15)) is True
+
+
+class TestRunOneCycleDay:
+    """run_one_cycle DAY 경로 — 일봉 전용 쿨다운 사용."""
+
+    async def test_day_uses_day_cooldown(self) -> None:
+        symbol = "005930"
+        now = _kst(2026, 6, 16, 16, 0)
+        candle = _make_candle(symbol, now)
+        signal = _make_signal(symbol)
+
+        exchange = AsyncMock()
+        exchange.fetch_candles = AsyncMock(return_value=[candle])
+        strategy = MagicMock()
+        strategy.evaluate = MagicMock(return_value=[signal])
+        notifier = AsyncMock()
+        notifier.send_signal = AsyncMock(return_value=None)
+
+        cooldown_day = MagicMock()
+        cooldown_day.is_cooled_down = MagicMock(return_value=True)
+        cooldown_day.mark_sent = MagicMock()
+        cooldown_60m = MagicMock()
+        cooldown_60m.is_cooled_down = MagicMock(return_value=True)
+        cooldown_60m.mark_sent = MagicMock()
+
+        runner = _make_runner(
+            exchange=exchange,
+            strategy=strategy,
+            notifier=notifier,
+            cooldown_60m=cooldown_60m,
+            cooldown_day=cooldown_day,
+            settings=_make_settings(kr_whitelist_symbols=[symbol]),
+        )
+        with patch(
+            "signal_program.kr_runner.generate_snapshot",
+            side_effect=ValueError("캔들 부족"),
+        ):
+            report = await runner.run_one_cycle(now, "cid", Timeframe.DAY)
+
+        assert report.timeframe == Timeframe.DAY.value
+        cooldown_day.mark_sent.assert_called_once()
+        cooldown_60m.mark_sent.assert_not_called()

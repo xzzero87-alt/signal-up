@@ -12,9 +12,9 @@ import typing
 from pathlib import Path
 
 import pytest
-import signal_program.web
 from fastapi.testclient import TestClient
 
+import signal_program.web
 from signal_program.web.app import create_app
 from signal_program.web.help_text import SETTING_HELP
 from signal_program.web.schemas import SettingsUpdate
@@ -110,9 +110,7 @@ def test_all_param_fields_have_help_text(client: TestClient) -> None:
     assert resp.status_code == 200
     field_names = set(re.findall(r'data-field="([a-zA-Z0-9_]+)"', resp.text))
     missing = sorted(f for f in field_names if f not in SETTING_HELP or not SETTING_HELP[f])
-    assert not missing, (
-        f"settings.html data-field가 SETTING_HELP에 없거나 비어있음: {missing}"
-    )
+    assert not missing, f"settings.html data-field가 SETTING_HELP에 없거나 비어있음: {missing}"
 
 
 # ── Task 2: JS 타입 집합 ↔ SettingsUpdate 타입 drift 가드 ──────────────────────
