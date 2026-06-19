@@ -110,7 +110,7 @@ def test_post_job_returns_429_when_queue_full(tmp_path: Path) -> None:
 
     def slow_executor(spec: object, output_path: _Path) -> None:
         # 큐가 가득 차는 동안만 워커를 붙잡으면 됨 — teardown이 join하므로 짧게
-        _time.sleep(3)
+        _time.sleep(0.1)
 
     with tempfile.TemporaryDirectory() as td:
         tmp = _Path(td)

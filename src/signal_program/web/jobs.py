@@ -135,6 +135,8 @@ class BacktestJobManager:
 
             with contextlib.suppress(asyncio.CancelledError):
                 await self._worker_task
+        loop = asyncio.get_running_loop()
+        await loop.shutdown_default_executor()
 
     async def submit(self, spec: JobSpec) -> JobRecord:
         """잡 큐잉. MAX_QUEUE_LEN 초과 시 JobQueueFullError 발생."""
