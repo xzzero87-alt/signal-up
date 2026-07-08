@@ -34,6 +34,8 @@ def _build_v1(settings: Settings) -> BbCciStrategy:
         squeeze_lookback=settings.squeeze_lookback,
         squeeze_quantile=settings.squeeze_quantile,
         volume_ratio_min_b=settings.volume_ratio_min_b,
+        regime_filter=settings.v1_regime_filter,
+        regime_sma_period=settings.v1_regime_sma_period,
     )
 
 

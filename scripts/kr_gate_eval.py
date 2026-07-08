@@ -17,9 +17,16 @@ from pathlib import Path
 
 import pandas as pd
 
-CSV = Path("reports/compare") / (
-    "kr_strategy_matrix_quick.csv" if "--quick" in sys.argv else "kr_strategy_matrix.csv"
-)
+
+def _resolve_csv_path(argv: list[str]) -> Path:
+    if "--csv" in argv:
+        idx = argv.index("--csv")
+        return Path(argv[idx + 1])
+    default_name = "kr_strategy_matrix_quick.csv" if "--quick" in argv else "kr_strategy_matrix.csv"
+    return Path("reports/compare") / default_name
+
+
+CSV = _resolve_csv_path(sys.argv)
 MIN_TRADES = 200
 
 

@@ -672,6 +672,94 @@ docs/ui-redesign-spec.md 를 읽고 §6 구현 순서대로 진행해줘.
 
 ---
 
+## 세션 — v1 레짐 필터 실험 (KR 일봉, ADR-0024 Risks 후속) [2026-07-08]
+
+> **선행 조건:** ADR-0024 accepted, 국장 라이브 v1 일봉 운용 중 (commit 1a2c0ff).
+> **성격:** 백테스트 실험. 라이브 반영은 게이트 통과 + ADR-0025 accepted 이후에만.
+> **배경:** v1 평균회귀는 방어형(2022·2024 B&H 압도)이나 강세장 열위(2025 B&H 초과 5/43).
+> 200일 SMA 레짐 필터로 개선되는지 검증한다. 필터 방향은 이론으로 정하지 않고 둘 다 실험.
+
+```
+docs/adr/0024-kr-daily-mean-reversion-redesign.md의 Risks 절을 먼저 읽고, 아래를 구현해줘.
+
+## 변경 파일 (5개, 기존 코드 최소 변경)
+
+### 1. src/signal_program/strategies/bb_cci.py
+BbCciStrategy 생성자에 optional 파라미터 2개 추가 (기본값 = 기존 동작 100% 불변):
+
+  regime_filter: Literal["above_sma", "below_sma"] | None = None
+  regime_sma_period: int = 200
+
+evaluate()에서 regime_filter 설정 시 **매수(BUY) 시그널만** 게이트:
+  - len(candles) < regime_sma_period → 매수 억제 (보수적)
+  - sma = close.rolling(regime_sma_period).mean().iloc[-1]
+  - "above_sma": close_last > sma 일 때만 매수 허용
+  - "below_sma": close_last < sma 일 때만 매수 허용
+  - SELL 시그널은 필터 무관 항상 발생 (보유자 보호)
+
+### 2. src/signal_program/config.py
+Settings에 추가 (환경변수로 매트릭스 실행 시에만 주입, 라이브 .env에는 설정 금지):
+
+  v1_regime_filter: Literal["above_sma", "below_sma"] | None = None
+  v1_regime_sma_period: int = 200
+
+### 3. src/signal_program/strategies/__init__.py
+_build_v1()에서 위 두 필드를 BbCciStrategy에 전달.
+
+### 4. scripts/kr_strategy_matrix.ps1
+-Strategy 파라미터(기본 "kr_fractal") + -RegimeFilter 파라미터(기본 없음) 추가.
+RegimeFilter 지정 시 $env:V1_REGIME_FILTER 설정 + 출력 CSV 이름에 suffix
+(kr_v1_regime_above.csv / kr_v1_regime_below.csv). 기존 호출 동작 불변.
+
+### 5. scripts/kr_gate_eval.py
+--csv <path> 인자 허용 (변형 CSV 평가용). 기본 동작 불변.
+
+## 실험 매트릭스
+
+- F0 (baseline): 기존 reports/compare/kr_v1_full.csv — 재실행 불필요
+- F1: above_sma / F2: below_sma — 각 43종, FULL + 연도분할, 비용 반영, max-hold 10
+  (F0과 조건 완전 동일해야 비교 유효)
+- ⚠ SMA 웜업: 2022-01-01 평가 시점에 200봉 이상 선행 데이터 필요.
+  캔들 페치 시작이 from−300일 이상인지 먼저 확인. 부족하면 2022년 초 매수가
+  전부 억제되어 F1/F2 성과가 왜곡됨 — 이 경우 페치 구간부터 수정.
+
+## 판정 (ADR-0022 게이트 + 개선 기준)
+
+F1/F2 중 채택하려면 셋 다 충족:
+1. ADR-0022 게이트 자체 통과: 집계 거래수 ≥200, 집계 샤프(중앙값) >0,
+   누적 중앙값 > B&H 중앙값, 과반 연도 양(+)
+2. baseline(F0) 대비 개선: 강세년(2023·2025) 누적 중앙값 개선
+   AND 방어년(2022·2024) 훼손 −1%p 이내
+3. OOS 선택: train 2022–2023으로 F1 vs F2 선택 → test 2024–2025로만 확정
+   (ADR-0024 Decision 3 선례)
+
+둘 다 미달 → 필터 NO-GO, baseline v1 유지. 결과가 어느 쪽이든 ADR-0025에 기록.
+
+## 테스트 (tests/unit/test_bb_cci_regime.py, TDD)
+
+1. regime_filter=None → 기존 v1 시그널과 완전 동일 (회귀 없음, 기존 테스트도 전부 통과)
+2. above_sma: close>sma 매수 통과 / close<sma 매수 억제 / SELL은 양쪽 모두 발생
+3. below_sma: 2의 반대
+4. len(candles) < regime_sma_period → 매수 억제, SELL 유지
+5. BbCciStrategy가 Strategy Protocol 계속 만족
+
+## 금지
+
+- Strategy Protocol·DESIGN.md §8.1~8.5 시그니처 수정
+- regime_filter 기본값을 None 이외로 변경 (코인 라이브 v1 영향 0이어야 함)
+- 게이트 판정 전 라이브 .env에 V1_REGIME_FILTER 설정
+- 자동매매 코드 (ADR-0002)
+
+## 산출물
+
+1. 변경 파일 목록 + 코드
+2. uv run pytest --cov=src/ -m "" --cov-fail-under=70 + ruff + mypy 통과 출력
+3. F1/F2 매트릭스 CSV + kr_gate_eval 출력 (FULL·연도별)
+4. F0 vs F1 vs F2 비교표 → Cowork에 "변경 요약"으로 회신 (Evaluator 게이트 검증 후 ADR-0025 초안)
+```
+
+---
+
 ## 일반 패턴 지시문
 
 ### 새 ADR이 필요한 결정이 발생했을 때

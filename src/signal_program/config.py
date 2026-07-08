@@ -103,6 +103,9 @@ class Settings(BaseSettings):
     volume_ratio_min_b: float = 1.5
     squeeze_lookback: int = 120
     squeeze_quantile: float = 0.20
+    # 레짐 필터 실험 (ADR-0024 Risks 후속) — 라이브 .env에는 설정 금지, 매트릭스 실행 전용
+    v1_regime_filter: Literal["above_sma", "below_sma"] | None = None
+    v1_regime_sma_period: int = 200
 
     # 송출 정책
     cooldown_hours: int = 2

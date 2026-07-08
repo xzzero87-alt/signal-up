@@ -484,3 +484,59 @@ def test_o_no_should_exit_uses_bb_target_regression() -> None:
     ).run(_MARKET, df)
     assert len(result.trades) == 1
     assert result.trades[0].bars_held == 10
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Phase 5 — warmup_bars (KR 레짐 필터 실험, ADR-0024 Risks 후속)
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+# ── p) warmup_bars 이전 시그널은 무시된다 ────────────────────────────────────
+
+
+def test_p_signal_before_warmup_boundary_is_ignored() -> None:
+    df = _make_candles_df(200)
+    sig = _buy_signal(bb_middle=99_000_000.0)
+    strat = _MockStrategy({50: [sig]})
+    result = BacktestEngine(strategy=strat, warmup_bars=100).run(_MARKET, df)
+    assert result.trades == ()
+
+
+# ── q) warmup_bars 이후(경계 포함) 시그널은 정상 진입한다 ────────────────────
+
+
+def test_q_signal_at_or_after_warmup_boundary_opens_position() -> None:
+    df = _make_candles_df(200)
+    sig = _buy_signal(bb_middle=99_000_000.0)
+    strat = _MockStrategy({100: [sig]})
+    result = BacktestEngine(strategy=strat, warmup_bars=100, max_holding_bars=24).run(_MARKET, df)
+    assert len(result.trades) == 1
+
+
+# ── r) period_from은 warmup_bars 인덱스 시점부터 계산된다 ───────────────────
+
+
+def test_r_period_from_starts_at_warmup_boundary() -> None:
+    df = _make_candles_df(200)
+    result = BacktestEngine(strategy=_MockStrategy({}), warmup_bars=100).run(_MARKET, df)
+    expected_period_from = df.iloc[100]["opened_at"].to_pydatetime()
+    assert result.period_from == expected_period_from
+    assert result.period_from != df.iloc[0]["opened_at"].to_pydatetime()
+
+
+# ── s) warmup_bars=0(기본) → period_from은 첫 봉(회귀 가드) ─────────────────
+
+
+def test_s_default_warmup_bars_zero_keeps_period_from_at_first_bar() -> None:
+    df = _make_candles_df(200)
+    result = BacktestEngine(strategy=_MockStrategy({})).run(_MARKET, df)
+    assert result.period_from == df.iloc[0]["opened_at"].to_pydatetime()
+
+
+# ── t) warmup_bars >= len(candles_df) → ValueError ──────────────────────────
+
+
+def test_t_warmup_bars_too_large_raises_value_error() -> None:
+    df = _make_candles_df(50)
+    with pytest.raises(ValueError):
+        BacktestEngine(strategy=_MockStrategy({}), warmup_bars=50).run(_MARKET, df)

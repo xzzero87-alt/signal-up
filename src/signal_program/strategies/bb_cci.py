@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -32,6 +32,8 @@ class BbCciStrategy:
         squeeze_lookback: int = 120,
         squeeze_quantile: float = 0.20,
         volume_ratio_min_b: float = 1.5,
+        regime_filter: Literal["above_sma", "below_sma"] | None = None,
+        regime_sma_period: int = 200,
     ) -> None:
         self.bb_period = bb_period
         self.bb_std_mult = bb_std_mult
@@ -43,6 +45,8 @@ class BbCciStrategy:
         self.squeeze_lookback = squeeze_lookback
         self.squeeze_quantile = squeeze_quantile
         self.volume_ratio_min_b = volume_ratio_min_b
+        self.regime_filter = regime_filter
+        self.regime_sma_period = regime_sma_period
 
     def evaluate(self, market: str, candles: pd.DataFrame) -> list[Signal]:
         min_len_a = max(self.bb_period, self.cci_period) + self.volume_lookback
@@ -75,10 +79,11 @@ class BbCciStrategy:
 
         signals: list[Signal] = []
         chg = calc_change_pct(candles)
+        regime_allows_buy = self._regime_allows_buy(close)
 
         # ── 모드 A: 평균회귀 ──────────────────────────────────────────────────
         buy_a = self._check_buy(close_last, bb_lower, cci_val, volume_ratio)
-        if buy_a is not None:
+        if buy_a is not None and regime_allows_buy:
             signals.append(
                 self._build_signal(
                     market,
@@ -137,7 +142,7 @@ class BbCciStrategy:
                 bb_width,
                 recent,
             )
-            if buy_b is not None:
+            if buy_b is not None and regime_allows_buy:
                 signals.append(
                     self._build_signal(
                         market,
@@ -187,6 +192,17 @@ class BbCciStrategy:
                 )
 
         return signals
+
+    def _regime_allows_buy(self, close: pd.Series) -> bool:
+        if self.regime_filter is None:
+            return True
+        if len(close) < self.regime_sma_period:
+            return False
+        sma = float(close.rolling(self.regime_sma_period).mean().iloc[-1])
+        close_last = float(close.iloc[-1])
+        if self.regime_filter == "above_sma":
+            return close_last > sma
+        return close_last < sma
 
     def _check_buy(
         self,

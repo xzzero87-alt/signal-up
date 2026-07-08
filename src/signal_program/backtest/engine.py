@@ -54,25 +54,36 @@ class BacktestEngine:
         slippage_rate: float = 0.0005,
         max_holding_bars: int = 24,
         stop_loss_pct: float | None = None,
+        warmup_bars: int = 0,
     ) -> None:
         self.strategy = strategy
         self.fee_rate = fee_rate
         self.slippage_rate = slippage_rate
         self.max_holding_bars = max_holding_bars
         self.stop_loss_pct = stop_loss_pct
+        self.warmup_bars = warmup_bars
         # 매 봉 isinstance 비용 회피 — 전략은 run() 중 교체되지 않으므로 1회 캐시
         self._uses_strategy_exit: bool = isinstance(strategy, SupportsExit)
 
     def run(self, market: str, candles_df: pd.DataFrame) -> BacktestResult:
-        """백테스트 실행. 전체 시뮬레이션 결과를 BacktestResult로 반환."""
+        """백테스트 실행. 전체 시뮬레이션 결과를 BacktestResult로 반환.
+
+        warmup_bars > 0인 경우 앞쪽 warmup_bars개 봉은 지표 계산용 선행 데이터로만
+        쓰이고(evaluate()에는 매 호출마다 전체 슬라이스가 전달됨), 신규 포지션 진입은
+        warmup_bars 이후부터 허용된다. 리포트 기간(period_from)도 그 시점부터 계산된다.
+        """
         if len(candles_df) == 0:
             raise ValueError("candles_df must not be empty")
+        if self.warmup_bars >= len(candles_df):
+            raise ValueError("warmup_bars must be less than len(candles_df)")
 
         trades: list[TradeRecord] = []
         position: dict[str, Any] | None = None
 
         for i in range(len(candles_df)):
             if position is None:
+                if i < self.warmup_bars:
+                    continue
                 signals = self.strategy.evaluate(market, candles_df.iloc[: i + 1])
                 buy_sig = next((s for s in signals if s.direction == SignalDirection.BUY), None)
                 if buy_sig is not None and i + 1 < len(candles_df):
@@ -146,7 +157,7 @@ class BacktestEngine:
     def _aggregate(
         self, market: str, candles_df: pd.DataFrame, trades: list[TradeRecord]
     ) -> BacktestResult:
-        period_from = _to_dt(candles_df.iloc[0]["opened_at"])
+        period_from = _to_dt(candles_df.iloc[self.warmup_bars]["opened_at"])
         period_to = _to_dt(candles_df.iloc[-1]["opened_at"])
 
         if not trades:

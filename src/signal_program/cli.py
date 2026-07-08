@@ -632,6 +632,13 @@ def backtest(
         str,
         typer.Option("--timeframe", help="캔들 타임프레임: 60 (1시간봉, 기본) / 1440 (일봉)"),
     ] = "60",
+    warmup_days: Annotated[
+        int,
+        typer.Option(
+            "--warmup-days",
+            help="지표 선행용 --from 이전 일수 (기본 0, 거래·지표 집계는 --from~--to만)",
+        ),
+    ] = 0,
 ) -> None:
     """저장된 parquet 캔들로 백테스트를 실행하고 결과를 표로 출력한다."""
     import asyncio
@@ -657,6 +664,7 @@ def backtest(
             grid,
             max_hold,
             timeframe,
+            warmup_days,
         )
     )
 
@@ -672,6 +680,7 @@ async def _backtest_async(
     grid_str: str = "",
     max_hold: int = 24,
     timeframe: str = "60",
+    warmup_days: int = 0,
 ) -> None:
     from datetime import datetime as _dt
     from datetime import timedelta as _td
@@ -687,10 +696,11 @@ async def _backtest_async(
     kst = ZoneInfo("Asia/Seoul")
     start = _dt.strptime(from_date, "%Y-%m-%d").replace(tzinfo=kst)
     end = _dt.strptime(to_date, "%Y-%m-%d").replace(tzinfo=kst) + _td(days=1)
+    warmup_start = start - _td(days=warmup_days) if warmup_days > 0 else start
 
-    # 월 단위 parquet 로드 (timeframe 서브디렉토리)
+    # 월 단위 parquet 로드 (timeframe 서브디렉토리) — warmup_days 지정 시 --from 이전 월도 포함
     all_candles = []
-    cur = start.replace(day=1)
+    cur = warmup_start.replace(day=1)
     while cur < end:
         month_str = cur.strftime("%Y-%m")
         path = Path(f"data/candles/{market}/{timeframe}/{month_str}.parquet")
@@ -698,15 +708,19 @@ async def _backtest_async(
             all_candles.extend(load_candles(path))
         cur = (cur + _td(days=32)).replace(day=1)
 
-    candles = [c for c in all_candles if start <= c.opened_at < end]
-    candles.sort(key=lambda c: c.opened_at)
+    windowed_candles = [c for c in all_candles if warmup_start <= c.opened_at < end]
+    windowed_candles.sort(key=lambda c: c.opened_at)
+
+    # 리포트/빈 데이터 판정은 항상 --from~--to 구간만 대상 (warmup 봉은 집계에서 제외)
+    candles = [c for c in windowed_candles if start <= c.opened_at < end]
 
     if not candles:
         msg = f"[yellow]캔들 없음: {market} {from_date}~{to_date}. fetch-candles 먼저 실행하세요.[/yellow]"  # noqa: E501
         Console().print(msg)
         return
 
-    df = pd.DataFrame([c.model_dump() for c in candles])
+    df = pd.DataFrame([c.model_dump() for c in windowed_candles])
+    warmup_bars = len(windowed_candles) - len(candles)
 
     # ── --grid: 파라미터 그리드 비교표 모드 ──────────────────────────────────
     if grid_str:
@@ -722,7 +736,7 @@ async def _backtest_async(
         return
 
     strategy = get_strategy(strategy_version, settings)
-    engine = BacktestEngine(strategy=strategy, max_holding_bars=max_hold)
+    engine = BacktestEngine(strategy=strategy, max_holding_bars=max_hold, warmup_bars=warmup_bars)
     result = engine.run(market, df)
 
     console = Console()
