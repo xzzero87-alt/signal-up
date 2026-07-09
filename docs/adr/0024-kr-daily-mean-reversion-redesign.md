@@ -1,7 +1,7 @@
 # ADR-0024: 국장 일봉 전략 — fractal breakout NO-GO, BB+CCI 평균회귀(v1) 채택
 
 **Date**: 2026-06-17
-**Status**: accepted
+**Status**: superseded by ADR-0026
 **Deciders**: xzzero87
 
 ## Context

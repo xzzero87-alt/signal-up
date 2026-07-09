@@ -29,8 +29,9 @@
 | [0021](0021-strategy-owned-backtest-exit.md) | 백테스트 청산 로직의 전략 위임 (SupportsExit 선택 프로토콜) | accepted | 2026-06-11 |
 | [0022](0022-post-v24-roadmap-edge-first.md) | v2.4 이후 로드맵 — 전략 엣지 검증을 게이트로 둔 단계 배치 | accepted | 2026-06-16 |
 | [0023](0023-kr-backtest-daily-timeframe.md) | 국장 백테스트 일봉 채택 — KIS 일봉 엔드포인트 추가, 라이브 전환은 엣지 게이트 후 | accepted | 2026-06-16 |
-| [0024](0024-kr-daily-mean-reversion-redesign.md) | 국장 일봉 전략 — fractal breakout NO-GO, BB+CCI 평균회귀(v1) 채택 | accepted | 2026-06-17 |
+| [0024](0024-kr-daily-mean-reversion-redesign.md) | 국장 일봉 전략 — fractal breakout NO-GO, BB+CCI 평균회귀(v1) 채택 | superseded by ADR-0026 | 2026-06-17 |
 | [0025](0025-kr-regime-filter-no-go.md) | 국장 일봉 v1 레짐 필터(200일 SMA) NO-GO — F0 기준선 게이트 미달 발견 | accepted | 2026-07-08 |
+| [0026](0026-kr-v1-gate-fail-live-stop.md) | 국장 일봉 v1 게이트 미달 확정 — 라이브 중단 + 재설계 | accepted | 2026-07-08 |
 
 ## 작성 규칙
 

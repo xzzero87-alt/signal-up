@@ -1,5 +1,7 @@
 ﻿# kr_strategy_matrix.ps1 — 국장 일봉 kr_fractal 엣지 매트릭스 (ADR-0022 Phase 1 게이트 입력)
 # 코인 strategy_matrix.ps1과 동일 패턴. 전략은 kr_fractal 고정, 타임프레임 1440(일봉).
+# KR 백테스트 표준 조건 = 웜업 320일 + max-hold 24 (ADR-0026). kr_fractal처럼 다른 max-hold가
+# 필요하면 -MaxHold <n>으로 명시 오버라이드할 것 — 하드코딩 금지(ADR-0026 재발 방지).
 # 실행: cd C:\Users\user3\Desktop\VibeCoding\signal-up
 #   빠른 감(10종):  powershell -ExecutionPolicy Bypass -File scripts\kr_strategy_matrix.ps1 -Quick
 #   전체 게이트(43종): powershell -ExecutionPolicy Bypass -File scripts\kr_strategy_matrix.ps1
@@ -7,7 +9,8 @@
 param(
     [switch]$Quick,
     [string]$Strategy = "kr_fractal",
-    [string]$RegimeFilter = ""
+    [string]$RegimeFilter = "",
+    [int]$MaxHold = 24
 )
 
 $ErrorActionPreference = "Continue"
@@ -20,7 +23,6 @@ $env:NO_COLOR = "1"
 $env:PYTHONIOENCODING = "utf-8"
 
 $Timeframe = "1440"
-$MaxHold   = 10
 
 $RegimeSuffixMap = @{ "above_sma" = "above"; "below_sma" = "below" }
 if ($RegimeFilter) {
@@ -82,15 +84,11 @@ $Periods = @(
     @{ Name = "2025"; From = "2025-01-01"; To = "2025-12-31" }
 )
 
-# 레짐 필터(200일 SMA) 웜업 — RegimeFilter 지정 시에만 적용, 미지정 시 기존 동작 그대로
+# 웜업(지표 선행 데이터) — ADR-0026: KR 백테스트 표준 조건, RegimeFilter 여부와 무관하게 항상 적용.
 # 320 캘린더일 ≈ 거래일 230봉 (200일 SMA 요구치 + 여유 30봉)
-$WarmupDays   = if ($RegimeFilter) { 320 } else { 0 }
+$WarmupDays   = 320
 $EarliestFrom = $Periods[0].From  # "FULL" 항목 — 정의상 항상 최솟값
-$FetchFromDate = if ($RegimeFilter) {
-    ([datetime]$EarliestFrom).AddDays(-$WarmupDays).ToString("yyyy-MM-dd")
-} else {
-    $EarliestFrom
-}
+$FetchFromDate = ([datetime]$EarliestFrom).AddDays(-$WarmupDays).ToString("yyyy-MM-dd")
 $ProbeMonth = ([datetime]$FetchFromDate).ToString("yyyy-MM")
 
 $OutDir = "reports\compare"
