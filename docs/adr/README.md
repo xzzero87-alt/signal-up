@@ -32,6 +32,10 @@
 | [0024](0024-kr-daily-mean-reversion-redesign.md) | 국장 일봉 전략 — fractal breakout NO-GO, BB+CCI 평균회귀(v1) 채택 | superseded by ADR-0026 | 2026-06-17 |
 | [0025](0025-kr-regime-filter-no-go.md) | 국장 일봉 v1 레짐 필터(200일 SMA) NO-GO — F0 기준선 게이트 미달 발견 | accepted | 2026-07-08 |
 | [0026](0026-kr-v1-gate-fail-live-stop.md) | 국장 일봉 v1 게이트 미달 확정 — 라이브 중단 + 재설계 | accepted | 2026-07-08 |
+| [0027](0027-verification-reset-live-audit.md) | 검증 전면 재평가 — KR 파킹, v4 피벗 철회, 라이브 코인 전략 실측 의무화 | accepted | 2026-07-09 |
+| [0028](0028-coin-live-stop-framework-retro.md) | 코인 라이브 중단 — 게이트 실측 NO-GO, 전 시장 알림 중지 + 프레임 회고 착수 | accepted | 2026-07-09 |
+| [0029](0029-dual-gate-momentum-track.md) | 이원 게이트 채택 + 모멘텀(선택) 트랙 개시 — point-in-time 유니버스를 검증 조건으로 | accepted | 2026-07-09 |
+| [0030](0030-momentum-m2-gate-pass.md) | 횡단면 모멘텀 M2 — PIT 재검증 게이트 통과, 정식 채택 절차 개시 | accepted | 2026-07-10 |
 
 ## 작성 규칙
 
