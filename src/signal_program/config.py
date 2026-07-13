@@ -93,6 +93,10 @@ class Settings(BaseSettings):
     # 화이트리스트
     whitelist_markets: list[str] = _DEFAULT_WHITELIST
 
+    # 코인 봉단위 라이브 러너 활성화 (ADR-0028) — v1 게이트 미달로 라이브 중단.
+    # kr_enabled와 대칭. 기본 비활성. 데몬 상시 기동(모멘텀) 시 코드 게이트로 무발화 보장.
+    coin_enabled: bool = False
+
     # 전략 파라미터
     bb_period: int = 20
     bb_std_mult: float = 2.0

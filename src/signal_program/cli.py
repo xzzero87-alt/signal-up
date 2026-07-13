@@ -8,6 +8,7 @@
     scan-once     단발 평가   [마일스톤 9]
     backtest      백테스트    [마일스톤 10]
     fetch-candles 캔들 다운로드 [마일스톤 10]
+    momentum-rebalance  M2 월간 리밸런스 수동 실행 [ADR-0031]
 """
 
 from __future__ import annotations
@@ -173,6 +174,22 @@ def run(
         asyncio.run(_run_async(settings))
 
 
+def _enabled_runners(settings: Settings) -> list[str]:
+    """활성 라이브 러너 목록 — 게이트 판정 단일 소스 (run/serve 양쪽 공유).
+
+    반환 순서는 조립·기동 순서. 코인 v1 라이브는 ADR-0028로 중단되어 기본
+    coin_enabled=False → 데몬 상시 기동(모멘텀) 중에도 코인 러너는 조립되지 않음.
+    """
+    active: list[str] = []
+    if settings.coin_enabled:
+        active.append("coin")
+    if settings.kr_enabled and settings.kis_app_key and settings.kis_app_secret:
+        active.append("kr")
+    if settings.momentum_enabled:
+        active.append("momentum")
+    return active
+
+
 async def _run_async(settings: Settings) -> None:
     """RunnerService 조립 후 run_forever 실행."""
     import asyncio
@@ -208,31 +225,48 @@ async def _run_async(settings: Settings) -> None:
     )
     signal_log = SignalLog(path=settings.signals_log_path)
 
-    async with httpx.AsyncClient(base_url="https://api.upbit.com", timeout=10.0) as http:
-        exchange = UpbitClient(_client=http)
-        notifier = TelegramNotifier(
-            bot_token=SecretStr(settings.telegram_bot_token),
-            chat_id=settings.telegram_chat_id,
-            dry_run=settings.dry_run,
-        )
-        on_signal_sent = None
-        if settings.ai_enrichment_enabled and settings.anthropic_api_key:
-            from signal_program.enrichment import AiEnrichmentService
+    notifier = TelegramNotifier(
+        bot_token=SecretStr(settings.telegram_bot_token),
+        chat_id=settings.telegram_chat_id,
+        dry_run=settings.dry_run,
+    )
+    on_signal_sent = None
+    if settings.ai_enrichment_enabled and settings.anthropic_api_key:
+        from signal_program.enrichment import AiEnrichmentService
 
-            enricher = AiEnrichmentService(settings, notifier.send_text)
-            on_signal_sent = enricher.enrich
+        enricher = AiEnrichmentService(settings, notifier.send_text)
+        on_signal_sent = enricher.enrich
 
-        runner = RunnerService(
-            settings=settings,
-            exchange=exchange,
-            strategy=strategy,
-            cooldown=cooldown,
-            notifier=notifier,
-            signal_log=signal_log,
-            charts_dir=settings.charts_dir,
-            on_signal_sent=on_signal_sent,
+    active = _enabled_runners(settings)
+    if not active:
+        logging.getLogger(__name__).warning(
+            "no_live_runner_enabled — 활성 러너 없음(coin/kr/momentum 모두 비활성). "
+            "라이브 루프를 시작하지 않고 종료합니다."
         )
-        if settings.kr_enabled and settings.kis_app_key and settings.kis_app_secret:
+        return
+
+    from contextlib import AsyncExitStack
+
+    runners: list[Any] = []
+    async with AsyncExitStack() as stack:
+        if "coin" in active:
+            http = await stack.enter_async_context(
+                httpx.AsyncClient(base_url="https://api.upbit.com", timeout=10.0)
+            )
+            exchange = UpbitClient(_client=http)
+            runners.append(
+                RunnerService(
+                    settings=settings,
+                    exchange=exchange,
+                    strategy=strategy,
+                    cooldown=cooldown,
+                    notifier=notifier,
+                    signal_log=signal_log,
+                    charts_dir=settings.charts_dir,
+                    on_signal_sent=on_signal_sent,
+                )
+            )
+        if "kr" in active:
             from signal_program.exchanges.kis_api import KisApiAdapter
             from signal_program.kr_runner import KrStockRunnerService
 
@@ -249,12 +283,15 @@ async def _run_async(settings: Settings) -> None:
                     fractal_volume_strong=settings.fractal_volume_strong,
                 )
 
-            async with KisApiAdapter(
-                app_key=settings.kis_app_key,
-                app_secret=settings.kis_app_secret,
-                is_paper=settings.kis_is_paper,
-            ) as kr_exchange:
-                kr_runner = KrStockRunnerService(
+            kr_exchange = await stack.enter_async_context(
+                KisApiAdapter(
+                    app_key=settings.kis_app_key,
+                    app_secret=settings.kis_app_secret,
+                    is_paper=settings.kis_is_paper,
+                )
+            )
+            runners.append(
+                KrStockRunnerService(
                     settings=settings,
                     exchange=kr_exchange,
                     strategy=kr_strategy,
@@ -274,14 +311,71 @@ async def _run_async(settings: Settings) -> None:
                     ),
                     charts_dir=settings.charts_dir,
                 )
-                async with asyncio.TaskGroup() as tg:
-                    tg.create_task(runner.run_forever())
-                    tg.create_task(kr_runner.run_forever())
-        else:
-            import contextlib
+            )
+        if "momentum" in active:
+            from signal_program.momentum.job import MomentumJob
 
-            with contextlib.suppress(asyncio.CancelledError):
-                await runner.run_forever()
+            runners.append(MomentumJob(settings=settings, notifier=notifier))
+
+        async with asyncio.TaskGroup() as tg:
+            for runner in runners:
+                tg.create_task(runner.run_forever())
+
+
+@app.command(name="momentum-rebalance")
+def momentum_rebalance(
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="알림 미발송·상태 미갱신, 콘솔 출력만")
+    ] = False,
+    asof: Annotated[
+        str | None, typer.Option("--asof", help="기준일 YYYY-MM-DD (기본: 오늘)")
+    ] = None,
+) -> None:
+    """M2(12-1 횡단면 모멘텀) 월간 리밸런스 수동 실행 (ADR-0031)."""
+    import asyncio
+    import contextlib
+
+    try:
+        settings = Settings()
+    except SystemExit as exc:
+        typer.echo(f"설정 오류: {exc}", err=True)
+        raise typer.Exit(1) from exc
+
+    with contextlib.suppress(KeyboardInterrupt):
+        asyncio.run(_momentum_rebalance_async(settings, dry_run, asof))
+
+
+async def _momentum_rebalance_async(
+    settings: Settings, dry_run: bool, asof_str: str | None
+) -> None:
+    from datetime import datetime as _dt
+    from zoneinfo import ZoneInfo
+
+    import pandas as pd
+    from pydantic import SecretStr
+
+    from signal_program.momentum.job import MomentumJob
+    from signal_program.notifiers.telegram import TelegramNotifier
+
+    configure_logging(settings)
+
+    kst = ZoneInfo("Asia/Seoul")
+    asof = pd.Timestamp(asof_str) if asof_str else pd.Timestamp(_dt.now(kst).date())
+
+    notifier = TelegramNotifier(
+        bot_token=SecretStr(settings.telegram_bot_token),
+        chat_id=settings.telegram_chat_id,
+        dry_run=dry_run or settings.dry_run,
+    )
+    job = MomentumJob(settings=settings, notifier=notifier)
+    if not dry_run:
+        await job.fetch_pool()
+    result = await job.run_once(asof, dry_run=dry_run)
+
+    console = Console()
+    console.print(result["text"])
+    status = " — dry-run: 알림 미발송·상태 미갱신" if dry_run else ""
+    console.print(f"\n[dim]유니버스 {result['universe_size']}종{status}[/dim]")
 
 
 @app.command()
@@ -428,33 +522,49 @@ async def _run_live_coro(settings: Settings) -> None:
     signal_log = SignalLog(path=settings.signals_log_path)
     failure_log = NotificationFailureLog(Path("state/notification_failures.jsonl"))
 
-    async with httpx.AsyncClient(base_url="https://api.upbit.com", timeout=10.0) as http:
-        exchange = UpbitClient(_client=http)
-        notifier = TelegramNotifier(
-            bot_token=SecretStr(settings.telegram_bot_token),
-            chat_id=settings.telegram_chat_id,
-            dry_run=settings.dry_run,
-            failure_log=failure_log,
+    notifier = TelegramNotifier(
+        bot_token=SecretStr(settings.telegram_bot_token),
+        chat_id=settings.telegram_chat_id,
+        dry_run=settings.dry_run,
+        failure_log=failure_log,
+    )
+    on_signal_sent = None
+    if settings.ai_enrichment_enabled and settings.anthropic_api_key:
+        from signal_program.enrichment import AiEnrichmentService
+
+        enricher = AiEnrichmentService(settings, notifier.send_text)
+        on_signal_sent = enricher.enrich
+
+    active = _enabled_runners(settings)
+    if not active:
+        logging.getLogger(__name__).warning(
+            "no_live_runner_enabled — 활성 러너 없음(coin/kr/momentum 모두 비활성). "
+            "데몬 라이브 루프를 시작하지 않고 종료합니다."
         )
-        on_signal_sent = None
-        if settings.ai_enrichment_enabled and settings.anthropic_api_key:
-            from signal_program.enrichment import AiEnrichmentService
+        return
 
-            enricher = AiEnrichmentService(settings, notifier.send_text)
-            on_signal_sent = enricher.enrich
+    from contextlib import AsyncExitStack
 
-        runner = RunnerService(
-            settings=settings,
-            exchange=exchange,
-            strategy=strategy,
-            cooldown=cooldown,
-            notifier=notifier,
-            signal_log=signal_log,
-            charts_dir=settings.charts_dir,
-            on_signal_sent=on_signal_sent,
-        )
-
-        if settings.kr_enabled and settings.kis_app_key and settings.kis_app_secret:
+    runners: list[Any] = []
+    async with AsyncExitStack() as stack:
+        if "coin" in active:
+            http = await stack.enter_async_context(
+                httpx.AsyncClient(base_url="https://api.upbit.com", timeout=10.0)
+            )
+            exchange = UpbitClient(_client=http)
+            runners.append(
+                RunnerService(
+                    settings=settings,
+                    exchange=exchange,
+                    strategy=strategy,
+                    cooldown=cooldown,
+                    notifier=notifier,
+                    signal_log=signal_log,
+                    charts_dir=settings.charts_dir,
+                    on_signal_sent=on_signal_sent,
+                )
+            )
+        if "kr" in active:
             from signal_program.exchanges.kis_api import KisApiAdapter
             from signal_program.kr_runner import KrStockRunnerService
 
@@ -473,12 +583,15 @@ async def _run_live_coro(settings: Settings) -> None:
                     fractal_volume_strong=settings.fractal_volume_strong,
                 )
 
-            async with KisApiAdapter(
-                app_key=settings.kis_app_key,
-                app_secret=settings.kis_app_secret,
-                is_paper=settings.kis_is_paper,
-            ) as kr_exchange:
-                kr_runner = KrStockRunnerService(
+            kr_exchange = await stack.enter_async_context(
+                KisApiAdapter(
+                    app_key=settings.kis_app_key,
+                    app_secret=settings.kis_app_secret,
+                    is_paper=settings.kis_is_paper,
+                )
+            )
+            runners.append(
+                KrStockRunnerService(
                     settings=settings,
                     exchange=kr_exchange,
                     strategy=kr_strategy,
@@ -498,11 +611,15 @@ async def _run_live_coro(settings: Settings) -> None:
                     ),
                     charts_dir=settings.charts_dir,
                 )
-                async with asyncio.TaskGroup() as tg:
-                    tg.create_task(runner.run_forever())
-                    tg.create_task(kr_runner.run_forever())
-        else:
-            await runner.run_forever()
+            )
+        if "momentum" in active:
+            from signal_program.momentum.job import MomentumJob
+
+            runners.append(MomentumJob(settings=settings, notifier=notifier))
+
+        async with asyncio.TaskGroup() as tg:
+            for runner in runners:
+                tg.create_task(runner.run_forever())
 
 
 def _make_exchange_client(http: httpx.AsyncClient) -> UpbitClient:

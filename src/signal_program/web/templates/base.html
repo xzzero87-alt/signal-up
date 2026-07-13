@@ -34,12 +34,19 @@
 <div class="app-body">
   <aside class="sidebar">
     <div class="sb-group-label">메뉴</div>
+    {% if bar_enabled %}
     <a href="/" class="sb-item {% if active=='dashboard' %}on{% endif %}">
       <span class="sb-icon">▦</span>대시보드
     </a>
+    {% endif %}
     <a href="/backtest" class="sb-item {% if active=='backtest' %}on{% endif %}">
       <span class="sb-icon">📈</span>백테스트
     </a>
+    {% if momentum_enabled %}
+    <a href="/momentum" class="sb-item {% if active=='momentum' %}on{% endif %}">
+      <span class="sb-icon">📊</span>모멘텀
+    </a>
+    {% endif %}
     <a href="/settings" class="sb-item {% if active=='settings' %}on{% endif %}">
       <span class="sb-icon">⚙</span>설정
     </a>

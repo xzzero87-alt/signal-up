@@ -15,9 +15,15 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 def client(tmp_path: Path):  # type: ignore[no-untyped-def]
+    import json
+
     def _noop(spec: object, output_path: Path) -> None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text("<html>ok</html>", encoding="utf-8")
+
+    # 봉단위 대시보드 표면을 고정 — coin_enabled=true여야 `/`가 index(대시보드)를 렌더한다.
+    # (미설정 시 리포 .env의 momentum-only 상태를 상속해 `/`가 /momentum으로 리다이렉트됨)
+    (tmp_path / "settings.json").write_text(json.dumps({"coin_enabled": True}), encoding="utf-8")
 
     app = create_app(
         settings_path=tmp_path / "settings.json",

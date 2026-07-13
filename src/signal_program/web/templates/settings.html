@@ -104,7 +104,8 @@
 
   <!-- ② 전략 -->
   <section class="settings-section">
-    <h2><span class="sec-num">2</span>코인 전략 <span class="sec-desc">코인에 적용됩니다. 하나만 운용됩니다 — 선택 즉시 아래 파라미터가 바뀝니다</span></h2>
+    <h2><span class="sec-num">2</span>코인 전략 <span class="sec-desc">코인에 적용됩니다. 하나만 운용됩니다 — 선택 즉시 아래 파라미터가 바뀝니다</span>
+      {% if not coin_enabled %}<span style="margin-left:.5rem;padding:.1rem .5rem;border-radius:.5rem;font-size:.72rem;background:var(--color-surface-2,#333);color:var(--color-text-muted,#aaa);vertical-align:middle" title="ADR-0028: 코인 봉단위 라이브 중단. 설정은 백테스트·재실험용으로 보존됩니다.">라이브 미운용</span>{% endif %}</h2>
 
     <div class="strat-grid">
       <label class="strat-card {% if settings.strategy_version == 'v1' %}on{% endif %}" id="card-v1">
@@ -291,6 +292,7 @@
       <div class="ind-param-info">
         <div class="pl">국장 전략
           <button type="button" class="help" data-help="{{ help['kr_strategy'] }}" aria-label="설명" aria-expanded="false">?</button>
+          {% if not kr_enabled %}<span style="margin-left:.4rem;padding:.1rem .5rem;border-radius:.5rem;font-size:.72rem;background:var(--color-surface-2,#333);color:var(--color-text-muted,#aaa)" title="ADR-0026: 국장 v1 라이브 중단. 설정은 백테스트·재실험용으로 보존됩니다.">라이브 미운용</span>{% endif %}
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:0.5rem;margin-top:0.5rem">
