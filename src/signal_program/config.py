@@ -177,6 +177,13 @@ class Settings(BaseSettings):
     ai_enrichment_daily_cap: int = Field(default=30, ge=1, le=500)
     ai_enrichment_timeout_seconds: int = Field(default=25, ge=5, le=120)
 
+    # 모멘텀 월간 리밸런스 (ADR-0029~0031) — 기존 봉단위 루프와 독립.
+    # 기본 비활성. 파라미터 변경은 게이트 재통과 없이는 금지(ADR-0031 §3).
+    momentum_enabled: bool = False
+    momentum_top_n: int = Field(default=10, ge=1, le=50)
+    momentum_universe_size: int = Field(default=50, ge=10, le=200)
+    momentum_pool_path: str = "scripts/round2_pool.csv"
+
     @field_validator("kr_whitelist_symbols", mode="before")
     @classmethod
     def _parse_kr_symbols(cls, v: object) -> list[str]:

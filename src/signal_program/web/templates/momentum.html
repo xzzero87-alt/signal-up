@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}모멘텀 리밸런스{% endblock %}
+
+{% block content %}
+<div class="page-content">
+<div class="page-header">
+  <h1>M2 월간 모멘텀 리밸런스</h1>
+  <p class="header-subtitle">12-1 횡단면 모멘텀 top10, 동일가중, 매월 마지막 거래일 마감 기준 (ADR-0031).</p>
+</div>
+
+<div class="settings-section">
+  <p>⚠ 초대형주 쏠림장에서는 시총가중 지수(코스피200 등) 대비 열위가 나타날 수 있습니다
+  (2026년 상반기 실측 확인 — ADR-0030). 정보 제공용 알림이며 투자 판단·책임은 본인에게 있습니다.</p>
+</div>
+
+<div class="settings-section">
+  <h2>현재 TOP10 <span id="mom-asof"></span></h2>
+  <table class="signal-table" id="mom-portfolio-table">
+    <thead>
+      <tr><th>#</th><th>종목코드</th></tr>
+    </thead>
+    <tbody id="mom-portfolio-tbody">
+      <tr><td colspan="2" class="empty-row">로딩 중...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="settings-section">
+  <h2>최근 편입/편출</h2>
+  <p>⬆ 편입: <span id="mom-added">-</span></p>
+  <p>⬇ 편출: <span id="mom-removed">-</span></p>
+</div>
+
+<div class="settings-section">
+  <h2>유니버스 <span id="mom-universe-year"></span></h2>
+  <p id="mom-universe-list" class="header-subtitle">로딩 중...</p>
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+'use strict';
+async function loadMomentum() {
+  const tbody = document.getElementById('mom-portfolio-tbody');
+  try {
+    const res = await fetch('/api/momentum/dashboard');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const p = data.portfolio || {};
+    const u = data.universe || {};
+
+    document.getElementById('mom-asof').textContent = p.asof ? `(기준: ${p.asof})` : '';
+    if (!p.codes || p.codes.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="2" class="empty-row">아직 리밸런스 이력 없음</td></tr>';
+    } else {
+      tbody.innerHTML = p.codes.map((c, i) => `<tr><td>${i + 1}</td><td>${c}</td></tr>`).join('');
+    }
+
+    document.getElementById('mom-added').textContent =
+      (p.added && p.added.length) ? p.added.join(', ') : '없음';
+    document.getElementById('mom-removed').textContent =
+      (p.removed && p.removed.length) ? p.removed.join(', ') : '없음';
+
+    document.getElementById('mom-universe-year').textContent = u.year ? `(${u.year}년)` : '';
+    document.getElementById('mom-universe-list').textContent =
+      (u.codes && u.codes.length) ? u.codes.join(', ') : '아직 계산되지 않음';
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="2" class="empty-row">오류: ${e.message}</td></tr>`;
+  }
+}
+loadMomentum();
+</script>
+{% endblock %}

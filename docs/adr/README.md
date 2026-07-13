@@ -36,6 +36,9 @@
 | [0028](0028-coin-live-stop-framework-retro.md) | 코인 라이브 중단 — 게이트 실측 NO-GO, 전 시장 알림 중지 + 프레임 회고 착수 | accepted | 2026-07-09 |
 | [0029](0029-dual-gate-momentum-track.md) | 이원 게이트 채택 + 모멘텀(선택) 트랙 개시 — point-in-time 유니버스를 검증 조건으로 | accepted | 2026-07-09 |
 | [0030](0030-momentum-m2-gate-pass.md) | 횡단면 모멘텀 M2 — PIT 재검증 게이트 통과, 정식 채택 절차 개시 | accepted | 2026-07-10 |
+| [0031](0031-momentum-live-monthly-rebalance.md) | M2 라이브 채택 — 월말 리밸런스 알림 제품 (국장 알림 재개) | accepted | 2026-07-10 |
+| [0032](0032-coin-donchian-trend-candidate.md) | 코인 돈치안 추세추종 — 후보 사전 등록·봉인 OOS 3개월+라이브 트래킹 3개월 | proposed | 2026-07-13 |
+| [0033](0033-momentum-ai-commentary.md) | M2 월간 알림 AI 해설 — LLM은 시그널 생성 금지, 해설 전용 | proposed | 2026-07-13 |
 
 ## 작성 규칙
 

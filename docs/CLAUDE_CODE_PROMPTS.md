@@ -970,6 +970,325 @@ uv run python scripts/round2_m2_backtest.py
 
 ---
 
+## 마일스톤 19 — M2 월말 리밸런스 알림 (`momentum/` 신규 모듈) [ADR-0031]
+
+> **선행 조건:** ADR-0031 accepted. `scripts/round2_m2_backtest.py`가 로직 레퍼런스.
+> **하드라인:** DESIGN.md §8.1~8.5 시그니처 불변, 자동매매 금지(ADR-0002), 기존 봉단위 루프 무변경.
+
+```
+docs/adr/0031-momentum-live-monthly-rebalance.md를 먼저 읽고, 아래를 구현해줘.
+로직 레퍼런스: scripts/round2_m2_backtest.py (build_universes/run_m2의 선정 로직과 동일해야 함).
+
+## 변경 파일
+
+### 1. src/signal_program/momentum/__init__.py + core.py [신규]
+순수 함수 모듈 (I/O 없음, 테스트 용이):
+
+  def build_universe(qv: pd.DataFrame, year: int, top_n: int = 50) -> list[str]:
+      """전년 12월 일평균 거래대금 top50. round2_m2_backtest.build_universes와 동일 로직
+      (12월 10일 이상 거래 필터 포함)."""
+
+  def select_top10(px: pd.DataFrame, universe: list[str], asof: pd.Timestamp,
+                   lb_long: int = 252, lb_skip: int = 21, n: int = 10) -> pd.DataFrame:
+      """12-1 모멘텀 상위 n. 반환: code, momentum, close 컬럼. 이력 부족 종목 자연 제외."""
+
+  def diff_portfolio(prev: list[str], curr: list[str]) -> tuple[list[str], list[str]]:
+      """(편입, 편출)."""
+
+  def is_last_trading_day_of_month(today: date, candle_dates: pd.DatetimeIndex) -> bool:
+      """당일 일봉이 존재하고, 당월 잔여 영업일(월~금, 캔들 기준)이 없으면 True.
+      KRX 휴장일은 '캔들 존재 여부'로 판정 — 별도 캘린더 의존 금지."""
+
+### 2. src/signal_program/momentum/job.py [신규]
+월간 잡 오케스트레이션:
+  - 풀(scripts/round2_pool.csv) 일봉 증분 페치 (기존 KIS fetch 재사용, 실패 종목 로그 후 계속)
+  - 유니버스 캐시 (state/momentum_universe.json: {year, codes, computed_at})
+  - select_top10 → 이전 상태(state/momentum_portfolio.json)와 diff → 알림 발송 → 상태 갱신
+  - 알림 포맷 (텔레그램, 기존 Notifier 재사용):
+      📊 M2 월간 리밸런스 (YYYY-MM 마감)
+      TOP10: 순위. 종목명(코드) — 12-1 모멘텀 +xx.x% / 종가
+      ⬆ 편입: ...   ⬇ 편출: ...
+      다음 리밸런스: YYYY-MM 마지막 거래일
+      ⚠ 정보 제공용 알림입니다. 투자 판단·책임은 본인에게 있습니다.
+
+### 3. src/signal_program/config.py — Settings 추가 (기존 필드 불변)
+  momentum_enabled: bool = False
+  momentum_top_n: int = 10
+  momentum_universe_size: int = 50
+  momentum_pool_path: str = "scripts/round2_pool.csv"
+
+### 4. CLI (src/signal_program/cli.py)
+  - signal momentum-rebalance [--dry-run] [--asof YYYY-MM-DD]:
+    수동 실행. --dry-run은 알림 미발송·상태 미갱신, 콘솔 출력만.
+  - signal serve/run의 데일리 스케줄에 통합: momentum_enabled=true일 때
+    매 평일 16:30 KST 체크 → is_last_trading_day_of_month면 잡 실행.
+    (기존 KR/코인 루프 코드는 수정 금지 — 스케줄 등록만 추가)
+
+### 5. GUI 최소 페이지 (templates/momentum.html + 라우트)
+  현재 top10 표 + 최근 편입/편출 + 유니버스 목록 + "시총가중 지수 열위 가능" 공시 문구(ADR-0031 §6).
+
+## 테스트 (tests/unit/test_momentum_*.py, TDD)
+
+1. build_universe: 합성 데이터로 top50 선정·12월 10일 미만 거래 종목 제외
+2. select_top10: 모멘텀 계산 정확성(수기 검증 케이스), 이력 부족 제외, n 미만 유니버스 처리
+3. diff_portfolio: 편입/편출/불변 케이스
+4. is_last_trading_day_of_month: 월말 평일/월말이 휴장일인 경우/월중
+5. 백테스트 패리티: scripts/round2_m2_backtest.py의 2025-12 시점 선정 결과와
+   select_top10 출력이 동일한지 (실캐시 사용, @pytest.mark.slow)
+6. 알림 포맷 스냅샷 (Notifier mock)
+
+## 금지
+
+- DESIGN.md §8.1~8.5 시그니처 수정, 자동매매, 기존 봉단위 루프(KR/코인) 로직 변경
+- momentum_enabled 기본값 true로 변경 (라이브 점화는 사용자가 설정으로)
+- 12-1/top10/유니버스 규칙 임의 변경 (ADR-0031 §3: 게이트 재통과 필요)
+
+## 산출물
+
+1. 변경 파일 + 코드
+2. pytest(-m "" 포함)/ruff/mypy 통과 출력
+3. signal momentum-rebalance --dry-run --asof 2025-12-30 출력
+   → round2_m2_backtest의 동일 시점 선정과 대조(패리티 증거)
+4. 변경 요약 → Cowork 회신 (Evaluator 검증 후 momentum_enabled 점화 결정)
+```
+
+---
+
+## 마일스톤 19-1 — 리밸런스 발화 스케줄 버그 수정 [ADR-0031 / 점화 블로커]
+
+```
+마일스톤 19 Evaluator 검증에서 발견된 발화 스케줄 결함을 수정한다.
+momentum_enabled 점화의 유일한 블로커. 선정 로직(core.build_universe/select_top10/
+diff_portfolio)과 알림 포맷은 검증 통과했으므로 건드리지 말 것.
+
+## 문제 (재현 완료)
+
+`is_last_trading_day_of_month`는 "오늘 이후 당월 평일에 캔들이 없는데 그 날짜가
+아직 미관측이면 보수적으로 False"를 반환한다. 라이브에서는 미래 캔들이 존재할 수
+없으므로, 당월 마지막 거래일 뒤에 "캔들 없는 평일"이 남는 달은 영구 미발화한다.
+
+KRX는 12/31을 상시 휴장 → **매년 12월 리밸런스가 통째로 누락된다.**
+
+  2025 마지막 거래일 = 12/30
+    12/30 라이브 판정 = False   (max_observed 12/30 < 12/31 → 미관측 보수 False)
+    12/31 라이브 판정 = False   (오늘 캔들 없음 → 즉시 False)
+
+반면 round2_m2_backtest.month_ends()는 2025-12-30에 리밸런스한다.
+→ 백테스트-라이브 스케줄 불일치. 11월말 포트폴리오를 1월말까지 2개월 보유하게 되며,
+   유니버스가 갱신되는 연말 구간이라 괴리가 가장 크다.
+
+또한 run_forever가 평일(weekday<5)에만 체크하므로, 월 마지막 캘린더일이 주말인 달
+(예: 2025-08-31 일요일)도 아래 수정만으로는 여전히 누락된다 — 체크 창도 함께 연다.
+
+## 수정 방침
+
+발화 조건을 "오늘이 마지막 거래일인가"(캘린더 지식 필요) 대신
+**"당월이 끝났는가"**(캘린더 지식 불필요)로 바꾼다.
+
+- 트리거: **당월 마지막 캘린더 날짜의 16:30 KST**. 이 시점엔 당월 종료가 확정이다.
+- `asof` = 관측된 최신 캔들(≤ today). → 백테스트 month_end와 정확히 일치.
+- 12/31 저녁에 asof=12/30으로 발송 → 다음 개장(1/2 시가)이 백테스트 진입 시점 → 패리티 유지.
+- 휴장일 캘린더·외부 의존성 추가 금지.
+
+## 변경 파일
+
+- `momentum/core.py`
+  - `is_last_trading_day_of_month` 제거 또는 대체 → 신규 순수함수:
+    `pending_rebalance_asof(candle_dates, today, last_rebalanced_asof) -> pd.Timestamp | None`
+    - 당월 종료 확정(= today가 당월 마지막 캘린더일) 또는 **캐치업**
+      (last_rebalanced_asof의 연·월 != 최신 완료 월) 이면 asof 반환, 아니면 None
+    - 캐치업이 페치 실패·프로세스 다운으로 트리거일을 놓친 경우를 복구한다
+- `momentum/job.py`
+  - `run_forever`: `now.weekday() < 5` 체크 창 제거(매일 16:30 체크)
+  - `finally: last_run_date = now.date()` → **성공 시에만** 갱신(실패 시 당일 재시도 허용)
+  - `fetch_pool`을 매일이 아니라 **트리거 후보일에만** 호출 (월 1회 잡에 150종 KIS 일일 페치는 과다)
+- `config.py`: `momentum_top_n`, `momentum_universe_size`에 `ge/le` 제약 추가
+  (ADR-0031 §3 파라미터 고정 원칙 — 오설정 방지)
+
+## 테스트 (필수)
+
+1. **발화일 패리티 테스트** (이게 없어서 버그가 통과했다 — 최우선):
+   `round2_m2_backtest.month_ends(px.index)` 전체 집합
+   == 라이브 트리거가 발화하는 asof 날짜 집합 (실 캔들 캐시, slow 마크)
+2. 12월 회귀: 라이브 조건(오늘까지만 관측된 캔들)에서 2025-12-31 체크 → asof=2025-12-30 발화
+3. 월말 주말 회귀: 2025-08-31(일) 체크 → asof=2025-08-29 발화
+4. 캐치업: 트리거일을 건너뛴 상태에서 다음날 체크 → 직전 월말 asof로 1회만 발화
+5. 중복 발화 금지: 같은 달에 두 번 발화하지 않음
+6. 기존 test_momentum_core.py의 `test_is_last_trading_day_*` 5종은
+   **버그를 정상 동작으로 못박고 있으므로 폐기/재작성** (특히
+   `test_is_last_trading_day_live_unknown_future_is_conservative`는 12/30→False를 단언)
+
+## 금지
+
+- 선정 로직(build_universe/select_top10/diff_portfolio) 변경
+- 12-1/top10/유니버스 규칙 변경 (게이트 재통과 필요)
+- momentum_enabled 기본값 변경
+- 휴장일 캘린더 라이브러리 추가
+
+## 산출물
+
+1. 변경 파일 + 코드
+2. pytest(-m "" 포함)/ruff/mypy 통과 출력
+3. **발화일 패리티 테스트 출력** (백테스트 month_ends와 라이브 발화일 집합 일치 증거)
+4. 변경 요약 → Cowork 회신 (Evaluator 재검증 → momentum_enabled 점화 결정)
+```
+
+---
+
+## 마일스톤 19-2 — 페치 실패 처리 (점화 전 마지막 항목) [ADR-0031]
+
+```
+마일스톤 19-1 Evaluator 재검증 통과(발화일 패리티 66/66 완전 일치, 12월·월말주말·윤달
+전부 정상). 발화 스케줄은 더 손대지 말 것.
+
+남은 두 결함은 뿌리가 하나다 — `fetch_pool()`이 실패를 조용히 삼키고(코드별
+try/except + 크리덴셜 없으면 early return) 성공 여부를 호출자에게 알리지 않는다.
+
+## 문제
+
+P2-1. 페치 실패 시 잘못된 asof로 조용히 발화
+  월 마지막 캘린더일이 "거래일인 달"(예: 2025-07-31 목)에 그날 KIS 페치가 실패하거나
+  일봉이 아직 안 들어왔으면 px에 7/31이 없다 → pending_rebalance_asof가 7/30을 반환
+  → 7/30 종가로 리밸런스하고 그 달을 완료 처리 → 재시도 없음, 로그상 성공.
+  백테스트(month_ends=7/31)와 어긋나는데 아무도 모른다.
+
+  ⚠ "오늘 캔들 없으면 스킵"으로 고치면 안 된다 — 12/31(정상 휴장)이 그 조건에 걸려
+    1/2로 밀리고, 그러면 개장 후 알림이 되어 패리티가 깨진다.
+    올바른 구분은 "휴장이라 없는 것" vs "페치 실패라 없는 것"이다.
+
+P2-2. 후보일 60초 재시도 폭주
+  asof가 None이거나 예외면 상태를 갱신하지 않으므로 while True + sleep(60)이
+  매 분 fetch_pool(150종 KIS)을 재호출한다. KIS 장애 시 16:30~자정 약 450회 × 150종
+  → 레이트리밋/차단 위험.
+
+## 수정 방침
+
+`fetch_pool()`이 성공 여부를 반환하게 하고, 그걸로 두 문제를 함께 푼다.
+
+- `fetch_pool() -> bool` (또는 성공/실패 종목 수를 담은 작은 결과 객체)
+  - 크리덴셜 없음 → False
+  - 실패 종목이 유의미한 비율(예: 임계치 이상) → False
+  - 그 외 → True
+- `run_forever` 발화 게이트:
+  - 페치 실패(False) → **오늘 발화 보류**. 상태 미갱신 → 캐치업이 다음 날 정상 asof로 발화
+    (M19-1 패리티 로직이 이미 처리한다 — 별도 로직 추가 금지)
+  - 페치 성공(True)인데도 오늘 캔들이 없음 → **진짜 휴장** → 최신 관측 캔들로 정상 발화
+    (12/31 케이스가 지금처럼 그대로 동작해야 한다)
+- 재시도 폭주 방지: 당일 시도 횟수 상한 또는 백오프. 실패해도 당일 재시도는 살리되
+  60초 간격 무한 반복은 금지(예: 실패 시 간격 확대, 또는 하루 N회 상한).
+
+## 금지
+
+- 발화 스케줄 로직(`_target_month`, `pending_rebalance_asof`, `_is_rebalance_candidate`) 변경
+- 선정 로직·알림 포맷·momentum_enabled 기본값 변경
+- 12-1/top10/유니버스 규칙 변경
+- 휴장일 캘린더 라이브러리 추가
+
+## 테스트
+
+1. 페치 실패 + 월말이 거래일 → 발화 안 함, 상태 미갱신
+2. 다음 날 페치 성공 → 캐치업이 **정확한 asof**(그 달 마지막 거래일)로 1회 발화
+3. 페치 성공 + 오늘 캔들 없음(12/31 휴장) → 최신 관측 캔들(12/30)로 정상 발화 — 회귀
+4. 실패 반복 시 fetch_pool 호출 횟수가 상한/백오프에 걸리는지
+5. **M19-1 발화일 패리티 테스트가 그대로 통과할 것** (66/66 — 회귀 금지)
+
+## 산출물
+
+1. 변경 파일 + 코드
+2. pytest(-m "" 포함)/ruff/mypy 통과 출력
+3. 발화일 패리티 테스트 통과 출력(회귀 없음 증거)
+4. 변경 요약 → Cowork 회신 (Evaluator 재검증 → momentum_enabled 점화)
+```
+
+---
+
+## 마일스톤 19-3 — 라이브 표면 정리 (코인 러너 게이트 + 대시보드 재구성) [ADR-0028/0031]
+
+```
+모멘텀 점화(ADR-0031)로 데몬을 상시 기동하게 되면서, ADR-0028에서 중단한 코인 라이브가
+"데몬을 안 켜둔다"는 운영상 조치로만 막혀 있었다는 사실이 드러났다. 코드 게이트가 없다.
+제품 표면을 실제 라이브(M2 모멘텀)에 맞게 정리한다.
+
+## 🔴 P0 — 코인 러너 무게이트 (데몬 재기동 전 필수)
+
+cli.py의 모든 분기에서 `runner.run_forever()`(코인)가 무조건 기동된다.
+kr_enabled·momentum_enabled는 게이트가 있는데 코인만 없다.
+
+  242:  if settings.kr_enabled and ...          ← 게이트 있음
+  237:  if settings.momentum_enabled:            ← 게이트 있음
+  285/291/297:  runner.run_forever()            ← 코인, 무조건
+  (serve 경로 509~586에도 동일 구조로 존재)
+
+→ 지금 데몬을 재기동하면 게이트 NO-GO(0/18 마켓, 샤프 −1.23) 판정된 코인 v1 알림이
+  되살아난다. ADR-0028 위반.
+
+수정:
+- `config.py`에 `coin_enabled: bool = False` 추가 (kr_enabled와 대칭)
+- cli.py의 `_run_async`와 serve 경로 양쪽에서 코인 러너를 `coin_enabled` 게이트 뒤로
+- 세 러너(coin/kr/momentum)가 임의 조합으로 켜지고 꺼질 수 있도록 TaskGroup 구성 정리.
+  현재는 if/elif가 조합을 하드코딩하고 있어 조합이 늘면 깨진다 —
+  "활성 러너를 리스트로 모아 TaskGroup에 일괄 등록" 형태로 단순화할 것.
+  ⚠ 활성 러너가 하나도 없으면 프로세스가 조용히 죽지 않게 명시적으로 로그 + 종료.
+- `.env`와 `state/settings.json` 양쪽에 `coin_enabled=false` 명시
+  (설정 소스 분열 버그 — 한쪽만 넣으면 진입점에 따라 안 먹는다)
+- config.py의 whitelist 검증(207행)이 coin_enabled=false일 때 코인 화이트리스트를
+  강제하지 않는지 확인
+
+## P1 — GUI: 죽은 전략 표면 숨김 (삭제 아님)
+
+원칙: **엔진·백테스트·API 라우터 코드는 전부 보존**한다(코인 PIT 모멘텀 재도전, Track 2
+방어 결합이 백로그에 있음). 숨기는 것은 **라이브 표면**뿐이며, 기준은 설정 플래그다 —
+플래그를 켜면 그대로 되살아나야 한다.
+
+- `base.html` 사이드바: 각 항목을 플래그로 조건부 렌더
+  - 대시보드(봉단위 시그널) → `coin_enabled or kr_enabled`일 때만
+  - 모멘텀 → `momentum_enabled`일 때만 (지금 유일한 라이브)
+  - 백테스트·설정·시스템·실패 → 항상 노출 (유지)
+- 기본 랜딩 라우트(`/`): 활성 라이브가 모멘텀뿐이면 `/momentum`으로 리다이렉트하거나,
+  대시보드를 모멘텀 중심으로 렌더. 봉단위 시그널 테이블/필터/요약카드는
+  `coin_enabled or kr_enabled`가 false면 렌더하지 않는다.
+- `index.html`의 "평가는 1시간봉 마감 기준", "데몬을 시작하면 1시간봉 마감마다
+  화이트리스트 마켓을 평가합니다" 등 봉단위 전제 문구는 모멘텀 라이브에서 거짓이다 →
+  조건부로 교체 (모멘텀: "매월 마지막 캘린더일 16:30 KST 리밸런스 알림")
+- `settings.html`: 비활성 전략의 설정 섹션(코인 전략/화이트리스트/타임프레임, 국장 전략)은
+  접힘(collapsed) 또는 "비활성" 배지 처리. 삭제하지 말 것 — 재도전 시 필요.
+- API 라우터(`dashboard`·`kr_dashboard`·`markets`·`signals`·`charts`·`feedback`)는
+  **그대로 둔다**. 페이지 노출만 차단.
+
+## 백테스트 페이지
+
+유지. 죽은 전략도 백테스트 대상으로 계속 선택 가능해야 한다(재도전 실험에 필요).
+변경 없음.
+
+## 금지
+
+- 모멘텀 발화 스케줄·선정 로직·알림 포맷 변경
+- 전략 엔진·백테스트 엔진·API 라우터 삭제
+- momentum_enabled 기본값 변경 (이미 .env/settings.json에서 true로 점화됨)
+- kr_enabled를 true로 되돌리는 것
+
+## 테스트
+
+1. coin_enabled=false → 코인 러너가 기동되지 않음 (러너 조립 단계에서 검증)
+2. coin_enabled=true → 기존대로 기동 (회귀)
+3. 세 플래그의 주요 조합(000/001/011/111)에서 TaskGroup이 올바른 러너 집합을 띄움
+4. 활성 러너 0개 → 명시적 로그 + 정상 종료(무한 대기/조용한 죽음 금지)
+5. GUI: momentum만 활성일 때 사이드바에 봉단위 대시보드가 안 뜨고, 봉단위 전제 문구가
+   렌더되지 않음
+6. 기존 스위트 887 + 발화일 패리티 회귀 없음
+
+## 산출물
+
+1. 변경 파일 + 코드
+2. pytest(-m "" 포함)/ruff/mypy 통과 출력
+3. `.env`/`state/settings.json`의 최종 플래그 상태
+   (momentum_enabled=true / coin_enabled=false / kr_enabled=false)
+4. 모멘텀만 활성일 때의 GUI 스크린샷 또는 렌더 확인
+5. 변경 요약 → Cowork 회신 (Evaluator 검증 후 데몬 재기동)
+```
+
+---
+
 ## 일반 패턴 지시문
 
 ### 새 ADR이 필요한 결정이 발생했을 때
